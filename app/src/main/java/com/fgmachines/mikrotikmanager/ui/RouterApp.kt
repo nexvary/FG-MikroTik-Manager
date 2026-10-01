@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
@@ -36,6 +38,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -62,22 +65,32 @@ import java.text.DecimalFormat
 @Composable
 fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var offlineCards by remember { mutableStateOf(false) }
 
     FgMikroTikTheme {
-        if (state.connected) {
-            RouterShell(
-                state = state,
-                onRefresh = viewModel::refresh,
-                onDisconnect = viewModel::disconnect,
-                onSection = viewModel::selectSection
-            )
-        } else {
-            ConnectionScreen(
-                connecting = state.connecting,
-                error = state.error,
-                onConnect = viewModel::connect,
-                onClearError = viewModel::clearError
-            )
+        when {
+            state.connected -> {
+                RouterShell(
+                    state = state,
+                    onRefresh = viewModel::refresh,
+                    onDisconnect = viewModel::disconnect,
+                    onSection = viewModel::selectSection
+                )
+            }
+            offlineCards -> {
+                OfflineVoucherShell(
+                    onBack = { offlineCards = false }
+                )
+            }
+            else -> {
+                ConnectionScreen(
+                    connecting = state.connecting,
+                    error = state.error,
+                    onConnect = viewModel::connect,
+                    onClearError = viewModel::clearError,
+                    onOfflineCards = { offlineCards = true }
+                )
+            }
         }
     }
 }
@@ -87,7 +100,8 @@ private fun ConnectionScreen(
     connecting: Boolean,
     error: String?,
     onConnect: (RouterConnectionSettings) -> Unit,
-    onClearError: () -> Unit
+    onClearError: () -> Unit,
+    onOfflineCards: () -> Unit
 ) {
     var host by remember { mutableStateOf("192.168.88.1") }
     var port by remember { mutableStateOf("443") }
@@ -190,6 +204,14 @@ private fun ConnectionScreen(
                     }
                 }
 
+                OutlinedButton(
+                    onClick = onOfflineCards,
+                    enabled = !connecting,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("إنشاء كروت بدون اتصال")
+                }
+
                 Text(
                     text = "For RouterOS REST, enable www-ssl and use a certificate trusted by Android.",
                     style = MaterialTheme.typography.bodySmall,
@@ -197,6 +219,41 @@ private fun ConnectionScreen(
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OfflineVoucherShell(
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("FG MikroTik Manager")
+                        Text(
+                            text = "WiFi Cards Generator",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        VoucherStudioScreen(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(18.dp)
+        )
     }
 }
 
@@ -281,6 +338,10 @@ private fun RouterShell(
                 when (state.section) {
                     AppSection.DASHBOARD ->
                         DashboardScreen(state.dashboard, state.error)
+                    AppSection.CARDS ->
+                        VoucherStudioScreen(
+                            modifier = Modifier.padding(18.dp)
+                        )
                     AppSection.INTERFACES ->
                         InterfacesScreen(state.interfaces, wide, state.error)
                 }
@@ -294,6 +355,8 @@ private fun SectionIcon(section: AppSection) {
     when (section) {
         AppSection.DASHBOARD ->
             Icon(Icons.Outlined.Dashboard, contentDescription = null)
+        AppSection.CARDS ->
+            Icon(Icons.Outlined.ConfirmationNumber, contentDescription = null)
         AppSection.INTERFACES ->
             Icon(Icons.Outlined.SettingsEthernet, contentDescription = null)
     }
