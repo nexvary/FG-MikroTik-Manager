@@ -49,7 +49,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MikroTik-Manager-debug
+          name: FG-MTM-0.5.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -107,23 +107,38 @@ jobs:
             adb exec-out screencap -p > ui-proof/01-main-menu.png
 
             adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen winbox
+            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen network
             sleep 3
-            adb exec-out screencap -p > ui-proof/02-winbox-manager.png
+            adb exec-out screencap -p > ui-proof/02-network.png
+
+            adb shell am force-stop com.fgmachines.mikrotikmanager
+            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen system
+            sleep 3
+            adb exec-out screencap -p > ui-proof/03-system-security.png
+
+            adb shell am force-stop com.fgmachines.mikrotikmanager
+            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen admin-users
+            sleep 3
+            adb exec-out screencap -p > ui-proof/04-admin-users.png
 
             adb shell am force-stop com.fgmachines.mikrotikmanager
             adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen vouchers
             sleep 3
-            adb exec-out screencap -p > ui-proof/03-vouchers.png
+            adb exec-out screencap -p > ui-proof/05-vouchers.png
+
+            adb shell am force-stop com.fgmachines.mikrotikmanager
+            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen about
+            sleep 3
+            adb exec-out screencap -p > ui-proof/06-about.png
 
             adb shell am force-stop com.fgmachines.mikrotikmanager
             adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen commands
             sleep 3
-            adb exec-out screencap -p > ui-proof/04-command-center.png
+            adb exec-out screencap -p > ui-proof/07-command-center.png
 
       - name: Upload UI proof
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.4.0-ui-proof
+          name: FG-MTM-0.5.0-ui-proof
           path: ui-proof/*.png
           if-no-files-found: error
