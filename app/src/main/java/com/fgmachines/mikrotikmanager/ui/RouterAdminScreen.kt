@@ -835,12 +835,39 @@ private fun fieldSpecs(module: RouterAdminModule): List<FieldSpec> =
             FieldSpec("protocol-mode", "Protocol mode", "Protocol mode"),
             FieldSpec("comment", "تعليق", "Comment")
         )
+        RouterAdminModule.VLAN -> listOf(
+            FieldSpec("name", "الاسم", "Name"),
+            FieldSpec("interface", "الواجهة", "Interface"),
+            FieldSpec("vlan-id", "VLAN ID", "VLAN ID"),
+            FieldSpec("mtu", "MTU", "MTU"),
+            FieldSpec("comment", "تعليق", "Comment")
+        )
+        RouterAdminModule.WIREGUARD -> listOf(
+            FieldSpec("name", "الاسم", "Name"),
+            FieldSpec("listen-port", "منفذ الاستماع", "Listen port"),
+            FieldSpec("mtu", "MTU", "MTU"),
+            FieldSpec("comment", "تعليق", "Comment")
+        )
+        RouterAdminModule.ZEROTIER -> listOf(
+            FieldSpec("name", "الاسم", "Name"),
+            FieldSpec("instance", "Instance", "Instance"),
+            FieldSpec("network", "Network ID", "Network ID"),
+            FieldSpec("allow-default", "Allow default true/false", "Allow default true/false"),
+            FieldSpec("comment", "تعليق", "Comment")
+        )
         RouterAdminModule.IP_ADDRESSES -> listOf(
             FieldSpec("address", "العنوان/CIDR", "Address/CIDR"),
             FieldSpec("interface", "الواجهة", "Interface"),
             FieldSpec("network", "Network", "Network"),
             FieldSpec("comment", "تعليق", "Comment")
         )
+        RouterAdminModule.ARP -> listOf(
+            FieldSpec("address", "IP Address", "IP address"),
+            FieldSpec("mac-address", "MAC", "MAC address"),
+            FieldSpec("interface", "الواجهة", "Interface"),
+            FieldSpec("comment", "تعليق", "Comment")
+        )
+        RouterAdminModule.NEIGHBORS -> emptyList()
         RouterAdminModule.DHCP -> listOf(
             FieldSpec("name", "الاسم", "Name"),
             FieldSpec("interface", "الواجهة", "Interface"),
@@ -900,6 +927,34 @@ private fun fieldSpecs(module: RouterAdminModule): List<FieldSpec> =
             FieldSpec("address", "الشبكات المسموحة", "Allowed addresses"),
             FieldSpec("max-sessions", "أقصى جلسات", "Max sessions")
         )
+        RouterAdminModule.IDENTITY -> listOf(
+            FieldSpec("name", "اسم الراوتر", "Router identity")
+        )
+        RouterAdminModule.CLOCK -> listOf(
+            FieldSpec("time-zone-name", "المنطقة الزمنية", "Time zone"),
+            FieldSpec("date", "التاريخ", "Date"),
+            FieldSpec("time", "الوقت", "Time")
+        )
+        RouterAdminModule.SCHEDULER -> listOf(
+            FieldSpec("name", "الاسم", "Name"),
+            FieldSpec("start-date", "تاريخ البدء", "Start date"),
+            FieldSpec("start-time", "وقت البدء", "Start time"),
+            FieldSpec("interval", "التكرار", "Interval"),
+            FieldSpec("on-event", "الأمر", "On event", singleLine = false),
+            FieldSpec("comment", "تعليق", "Comment")
+        )
+        RouterAdminModule.SCRIPTS -> listOf(
+            FieldSpec("name", "الاسم", "Name"),
+            FieldSpec("source", "الكود", "Source", singleLine = false),
+            FieldSpec("comment", "تعليق", "Comment")
+        )
+        RouterAdminModule.CERTIFICATES -> listOf(
+            FieldSpec("name", "الاسم", "Name"),
+            FieldSpec("common-name", "Common name", "Common name"),
+            FieldSpec("key-size", "Key size", "Key size"),
+            FieldSpec("days-valid", "مدة الصلاحية بالأيام", "Days valid")
+        )
+        RouterAdminModule.PACKAGES -> emptyList()
         RouterAdminModule.FILES -> emptyList()
         RouterAdminModule.LOGS -> emptyList()
     }
@@ -914,7 +969,12 @@ private fun moduleVisual(module: RouterAdminModule): ModuleVisual =
         RouterAdminModule.INTERFACES -> ModuleVisual(Icons.Outlined.SettingsEthernet, FgBlue)
         RouterAdminModule.WIFI -> ModuleVisual(Icons.Outlined.Wifi, FgMint)
         RouterAdminModule.BRIDGE -> ModuleVisual(Icons.Outlined.Hub, FgCyan)
+        RouterAdminModule.VLAN -> ModuleVisual(Icons.Outlined.AccountTree, FgPurple)
+        RouterAdminModule.WIREGUARD -> ModuleVisual(Icons.Outlined.Lock, FgMint)
+        RouterAdminModule.ZEROTIER -> ModuleVisual(Icons.Outlined.Public, FgCyan)
         RouterAdminModule.IP_ADDRESSES -> ModuleVisual(Icons.Outlined.Language, FgBlue)
+        RouterAdminModule.ARP -> ModuleVisual(Icons.Outlined.NetworkCheck, FgAmber)
+        RouterAdminModule.NEIGHBORS -> ModuleVisual(Icons.Outlined.Router, FgSilver)
         RouterAdminModule.DHCP -> ModuleVisual(Icons.Outlined.Dns, FgMint)
         RouterAdminModule.DNS -> ModuleVisual(Icons.Outlined.Public, FgCyan)
         RouterAdminModule.ROUTES -> ModuleVisual(Icons.Outlined.AccountTree, FgPurple)
@@ -924,6 +984,12 @@ private fun moduleVisual(module: RouterAdminModule): ModuleVisual =
         RouterAdminModule.QUEUES -> ModuleVisual(Icons.Outlined.Speed, FgAmber)
         RouterAdminModule.USERS -> ModuleVisual(Icons.Outlined.Groups, FgMint)
         RouterAdminModule.SERVICES -> ModuleVisual(Icons.Outlined.Router, FgBlue)
+        RouterAdminModule.IDENTITY -> ModuleVisual(Icons.Outlined.Router, FgMint)
+        RouterAdminModule.CLOCK -> ModuleVisual(Icons.Outlined.Description, FgCyan)
+        RouterAdminModule.SCHEDULER -> ModuleVisual(Icons.Outlined.AccountTree, FgAmber)
+        RouterAdminModule.SCRIPTS -> ModuleVisual(Icons.Outlined.Description, FgPurple)
+        RouterAdminModule.CERTIFICATES -> ModuleVisual(Icons.Outlined.Security, FgMint)
+        RouterAdminModule.PACKAGES -> ModuleVisual(Icons.Outlined.Description, FgSilver)
         RouterAdminModule.FILES -> ModuleVisual(Icons.Outlined.Folder, FgCyan)
         RouterAdminModule.LOGS -> ModuleVisual(Icons.Outlined.Description, FgSilver)
     }
@@ -933,7 +999,12 @@ private fun moduleTitle(module: RouterAdminModule, arabic: Boolean): String =
         RouterAdminModule.INTERFACES -> if (arabic) "واجهات الشبكة" else "Interfaces"
         RouterAdminModule.WIFI -> if (arabic) "الواي فاي" else "Wi-Fi"
         RouterAdminModule.BRIDGE -> "Bridge"
+        RouterAdminModule.VLAN -> "VLAN"
+        RouterAdminModule.WIREGUARD -> "WireGuard"
+        RouterAdminModule.ZEROTIER -> "ZeroTier"
         RouterAdminModule.IP_ADDRESSES -> if (arabic) "عناوين IP" else "IP Addresses"
+        RouterAdminModule.ARP -> "ARP"
+        RouterAdminModule.NEIGHBORS -> if (arabic) "الأجهزة المجاورة" else "Neighbors"
         RouterAdminModule.DHCP -> "DHCP"
         RouterAdminModule.DNS -> "DNS"
         RouterAdminModule.ROUTES -> if (arabic) "المسارات" else "Routes"
@@ -943,6 +1014,12 @@ private fun moduleTitle(module: RouterAdminModule, arabic: Boolean): String =
         RouterAdminModule.QUEUES -> if (arabic) "السرعات والطوابير" else "Queues"
         RouterAdminModule.USERS -> if (arabic) "المستخدمون وAdmin" else "Users & admins"
         RouterAdminModule.SERVICES -> if (arabic) "خدمات الراوتر" else "IP Services"
+        RouterAdminModule.IDENTITY -> if (arabic) "اسم الراوتر" else "Identity"
+        RouterAdminModule.CLOCK -> if (arabic) "الوقت والمنطقة الزمنية" else "Clock"
+        RouterAdminModule.SCHEDULER -> if (arabic) "المهام المجدولة" else "Scheduler"
+        RouterAdminModule.SCRIPTS -> if (arabic) "السكربتات" else "Scripts"
+        RouterAdminModule.CERTIFICATES -> if (arabic) "الشهادات" else "Certificates"
+        RouterAdminModule.PACKAGES -> if (arabic) "الحزم" else "Packages"
         RouterAdminModule.FILES -> if (arabic) "الملفات" else "Files"
         RouterAdminModule.LOGS -> if (arabic) "السجل" else "Logs"
     }
@@ -955,8 +1032,18 @@ private fun moduleSubtitle(module: RouterAdminModule, arabic: Boolean): String =
             if (arabic) "SSID وإعدادات Wi-Fi" else "SSID and wireless settings"
         RouterAdminModule.BRIDGE ->
             if (arabic) "إنشاء وإدارة Bridge" else "Create and manage bridges"
+        RouterAdminModule.VLAN ->
+            if (arabic) "إنشاء وإدارة VLAN" else "Create and manage VLANs"
+        RouterAdminModule.WIREGUARD ->
+            if (arabic) "واجهات WireGuard" else "WireGuard interfaces"
+        RouterAdminModule.ZEROTIER ->
+            if (arabic) "شبكات ZeroTier" else "ZeroTier networks"
         RouterAdminModule.IP_ADDRESSES ->
             if (arabic) "العناوين والشبكات" else "Addresses and networks"
+        RouterAdminModule.ARP ->
+            if (arabic) "IP وMAC داخل جدول ARP" else "IP and MAC ARP table"
+        RouterAdminModule.NEIGHBORS ->
+            if (arabic) "اكتشاف أجهزة الشبكة للقراءة" else "Read-only neighbor discovery"
         RouterAdminModule.DHCP ->
             if (arabic) "الخوادم ومدة Lease" else "Servers and lease settings"
         RouterAdminModule.DNS ->
@@ -975,6 +1062,18 @@ private fun moduleSubtitle(module: RouterAdminModule, arabic: Boolean): String =
             if (arabic) "إضافة Admin وتحديد المجموعة" else "Add admins and select groups"
         RouterAdminModule.SERVICES ->
             if (arabic) "WinBox وAPI وSSH والمنافذ" else "WinBox, API, SSH and ports"
+        RouterAdminModule.IDENTITY ->
+            if (arabic) "تغيير اسم الراوتر" else "Change router identity"
+        RouterAdminModule.CLOCK ->
+            if (arabic) "التوقيت والمنطقة الزمنية" else "Time and time zone"
+        RouterAdminModule.SCHEDULER ->
+            if (arabic) "إنشاء وتشغيل مهام تلقائية" else "Create scheduled automation"
+        RouterAdminModule.SCRIPTS ->
+            if (arabic) "إدارة RouterOS Scripts" else "Manage RouterOS scripts"
+        RouterAdminModule.CERTIFICATES ->
+            if (arabic) "إدارة شهادات RouterOS" else "Manage RouterOS certificates"
+        RouterAdminModule.PACKAGES ->
+            if (arabic) "الحزم المثبتة للقراءة" else "Read installed packages"
         RouterAdminModule.FILES ->
             if (arabic) "عرض وحذف ملفات الراوتر" else "View and delete router files"
         RouterAdminModule.LOGS ->
