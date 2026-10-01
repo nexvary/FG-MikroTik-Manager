@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 
 enum class AppSection(val title: String) {
     DASHBOARD("Dashboard"),
+    VOUCHERS("Vouchers"),
     INTERFACES("Interfaces")
 }
 
