@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
+import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
 import com.fgmachines.mikrotikmanager.data.RouterRepository
@@ -13,6 +14,7 @@ import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherHistoryStore
 import com.fgmachines.mikrotikmanager.voucher.VoucherMode
 import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionSummary
+import com.fgmachines.mikrotikmanager.network.MndpDiscovery
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +39,9 @@ data class RouterUiState(
     val voucherProvisioning: Boolean = false,
     val voucherProvisionResult: VoucherProvisionSummary? = null,
     val voucherHistoryCount: Int = 0,
-    val recentVoucherBatches: List<SavedVoucherBatch> = emptyList()
+    val recentVoucherBatches: List<SavedVoucherBatch> = emptyList(),
+    val discoveringRouters: Boolean = false,
+    val discoveredRouters: List<DiscoveredRouter> = emptyList()
 )
 
 class RouterViewModel(application: Application) : AndroidViewModel(application) {
@@ -46,6 +50,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
 
     private var repository: RouterRepository? = null
     private val voucherHistory = VoucherHistoryStore(application)
+    private val mndpDiscovery = MndpDiscovery(application)
 
     init {
         viewModelScope.launch {
@@ -53,6 +58,35 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 voucherHistoryCount = voucherHistory.count(),
                 recentVoucherBatches = voucherHistory.recent()
             )
+        }
+    }
+
+    fun discoverRouters() {
+        if (_state.value.discoveringRouters) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                discoveringRouters = true,
+                error = null
+            )
+            runCatching {
+                mndpDiscovery.discover()
+            }.onSuccess { routers ->
+                _state.value = _state.value.copy(
+                    discoveringRouters = false,
+                    discoveredRouters = routers,
+                    error = if (routers.isEmpty()) {
+                        "No MikroTik routers were discovered on this local network"
+                    } else {
+                        null
+                    }
+                )
+            }.onFailure { throwable ->
+                _state.value = _state.value.copy(
+                    discoveringRouters = false,
+                    error = throwable.message ?: "Router discovery failed"
+                )
+            }
         }
     }
 
