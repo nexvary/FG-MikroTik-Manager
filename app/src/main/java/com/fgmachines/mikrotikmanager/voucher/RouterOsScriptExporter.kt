@@ -136,8 +136,24 @@ class RouterOsScriptExporter {
         }
     }
 
-    private fun quote(value: String): String =
-        """ + value
-            .replace("\\", "\\\\")
-            .replace(""", "\\"") + """
+    private fun quote(value: String): String {
+        val quote = 34.toChar()
+        val slash = 92.toChar()
+        val escaped = buildString {
+            value.forEach { char ->
+                when (char) {
+                    slash -> {
+                        append(slash)
+                        append(slash)
+                    }
+                    quote -> {
+                        append(slash)
+                        append(quote)
+                    }
+                    else -> append(char)
+                }
+            }
+        }
+        return quote + escaped + quote
+    }
 }
