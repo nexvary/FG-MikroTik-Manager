@@ -50,6 +50,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -173,55 +174,20 @@ fun VoucherStudioScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    if (arabic) "الكروت" else "Vouchers",
-                    color = FgMint,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    if (arabic) {
-                        "أنشئ الكروت وفعّلها على MikroTik مباشرة"
-                    } else {
-                        "Create vouchers and provision them directly to MikroTik"
-                    },
-                    color = FgSilver
-                )
-            }
-        }
-
-        item {
-            NeonCard(accent = FgBlue) {
-                Text(
-                    if (arabic) "نوع الكارت" else "Voucher type",
-                    color = FgWhite,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    VoucherMode.entries.forEach { item ->
-                        FilterChip(
-                            selected = mode == item,
-                            onClick = {
-                                mode = item
-                                batch = null
-                                onClearProvisionResult()
-                                onModeSelected(item)
-                                profiles[item]?.firstOrNull()?.let {
-                                    profile = it.name
-                                }
-                            },
-                            label = { Text(modeLabel(item, arabic)) }
-                        )
+            VoucherStudioHero(
+                arabic = arabic,
+                connected = connected,
+                mode = mode,
+                onModeChange = { item ->
+                    mode = item
+                    batch = null
+                    onClearProvisionResult()
+                    onModeSelected(item)
+                    profiles[item]?.firstOrNull()?.let {
+                        profile = it.name
                     }
                 }
-            }
+            )
         }
 
         item {
@@ -732,6 +698,128 @@ fun VoucherStudioScreen(
 }
 
 @Composable
+private fun VoucherStudioHero(
+    arabic: Boolean,
+    connected: Boolean,
+    mode: VoucherMode,
+    onModeChange: (VoucherMode) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.6.dp, FgBlue),
+        shape = RoundedCornerShape(22.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF061824),
+                            Color(0xFF0A2638),
+                            Color(0xFF102638)
+                        )
+                    )
+                )
+                .padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(
+                            Brush.linearGradient(listOf(FgPurple, FgBlue, FgMint)),
+                            RoundedCornerShape(15.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Outlined.CreditCard,
+                        contentDescription = null,
+                        tint = FgBlack,
+                        modifier = Modifier.size(31.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (arabic) "استوديو الكروت" else "Voucher Studio",
+                        color = FgWhite,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        if (arabic) {
+                            "إنشاء • تفعيل • طباعة • QR"
+                        } else {
+                            "Create • activate • print • QR"
+                        },
+                        color = FgCyan,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (connected) FgMint.copy(alpha = 0.12f)
+                            else FgAmber.copy(alpha = 0.12f),
+                            RoundedCornerShape(10.dp)
+                        )
+                        .padding(horizontal = 9.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        if (connected) {
+                            if (arabic) "الراوتر متصل" else "Router online"
+                        } else {
+                            if (arabic) "بدون راوتر" else "Offline"
+                        },
+                        color = if (connected) FgMint else FgAmber,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Text(
+                if (arabic) "اختر نوع الكارت" else "Choose voucher type",
+                color = FgSilver,
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                VoucherMode.entries.forEach { item ->
+                    FilterChip(
+                        selected = mode == item,
+                        onClick = { onModeChange(item) },
+                        label = {
+                            Text(
+                                modeLabel(item, arabic),
+                                fontWeight = if (mode == item) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.Medium
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun NeonCard(
     accent: Color,
     content: @Composable ColumnScope.() -> Unit
@@ -833,21 +921,50 @@ private fun VoucherPreview(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = FgDeepNavy),
-        border = BorderStroke(1.4.dp, FgCyan),
-        shape = RoundedCornerShape(18.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(1.6.dp, FgCyan),
+        shape = RoundedCornerShape(22.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF071C2B),
+                            Color(0xFF0B2E3D),
+                            Color(0xFF101D2F)
+                        )
+                    )
+                )
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(FgBlue, FgMint)
+                            ),
+                            RoundedCornerShape(14.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Outlined.Wifi,
+                        contentDescription = null,
+                        tint = FgBlack,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         voucher.branding.networkName.ifBlank { "WiFi" },
                         color = FgWhite,
@@ -855,49 +972,67 @@ private fun VoucherPreview(
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        if (arabic) "معاينة الكارت • الدفعة ${count}"
-                        else "Voucher preview • batch ${count}",
-                        color = FgSilverMuted,
-                        style = MaterialTheme.typography.bodySmall
+                        if (arabic) "كارت إنترنت • الدفعة $count"
+                        else "Internet voucher • batch $count",
+                        color = FgCyan,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                Icon(
-                    Icons.Outlined.Wifi,
-                    contentDescription = null,
-                    tint = FgMint
-                )
+                Box(
+                    modifier = Modifier
+                        .background(
+                            FgAmber.copy(alpha = 0.14f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                ) {
+                    Text(
+                        voucher.branding.priceEgp?.let {
+                            if (arabic) {
+                                DecimalFormat("0.##").format(it) + " جنيه"
+                            } else {
+                                DecimalFormat("0.##").format(it) + " EGP"
+                            }
+                        } ?: if (arabic) "بدون سعر" else "No price",
+                        color = FgAmber,
+                        fontWeight = FontWeight.Black
+                    )
+                }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HorizontalDivider(color = FgCyan.copy(alpha = 0.28f))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 PreviewValue(
                     modifier = Modifier.weight(1f),
                     label = if (arabic) "الكود" else "Username",
-                    value = voucher.username
+                    value = voucher.username,
+                    accent = FgMint,
+                    emphasized = true
                 )
                 PreviewValue(
                     modifier = Modifier.weight(1f),
-                    label = if (arabic) "الباسورد" else "Password",
-                    value = voucher.password
+                    label = if (arabic) "كلمة المرور" else "Password",
+                    value = voucher.password,
+                    accent = FgBlue,
+                    emphasized = true
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 PreviewValue(
                     modifier = Modifier.weight(1f),
                     label = if (arabic) "المدة" else "Duration",
-                    value = voucher.displayDuration(arabic)
+                    value = voucher.displayDuration(arabic),
+                    accent = FgPurple
                 )
                 PreviewValue(
                     modifier = Modifier.weight(1f),
-                    label = if (arabic) "السعر" else "Price",
-                    value = voucher.branding.priceEgp?.let {
-                        if (arabic) {
-                            DecimalFormat("0.##").format(it) + " جنيه"
-                        } else {
-                            DecimalFormat("0.##").format(it) + " EGP"
-                        }
-                    } ?: "—"
+                    label = if (arabic) "الباقة" else "Profile",
+                    value = voucher.profile.ifBlank { "—" },
+                    accent = FgCyan
                 )
             }
 
@@ -905,17 +1040,33 @@ private fun VoucherPreview(
                 PreviewValue(
                     modifier = Modifier.fillMaxWidth(),
                     label = if (arabic) "ينتهي في" else "Expires",
-                    value = formatExpiry(expiry, arabic)
+                    value = formatExpiry(expiry, arabic),
+                    accent = FgAmber
                 )
             }
 
-            Image(
-                bitmap = qrBitmap.asImageBitmap(),
-                contentDescription = "QR",
+            Box(
                 modifier = Modifier
-                    .size(126.dp)
                     .align(Alignment.CenterHorizontally)
-            )
+                    .background(Color.White, RoundedCornerShape(14.dp))
+                    .padding(8.dp)
+            ) {
+                Image(
+                    bitmap = qrBitmap.asImageBitmap(),
+                    contentDescription = "QR",
+                    modifier = Modifier.size(118.dp)
+                )
+            }
+
+            if (voucher.branding.supportPhone.isNotBlank()) {
+                Text(
+                    (if (arabic) "الدعم: " else "Support: ") +
+                        voucher.branding.supportPhone,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    color = FgSilver,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
@@ -924,23 +1075,31 @@ private fun VoucherPreview(
 private fun PreviewValue(
     modifier: Modifier,
     label: String,
-    value: String
+    value: String,
+    accent: Color = FgBlue,
+    emphasized: Boolean = false
 ) {
     Column(
         modifier = modifier
-            .background(FgPanel, RoundedCornerShape(12.dp))
-            .padding(10.dp),
+            .background(accent.copy(alpha = 0.09f), RoundedCornerShape(13.dp))
+            .padding(horizontal = 11.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         Text(
             label,
-            color = FgSilverMuted,
-            style = MaterialTheme.typography.labelSmall
+            color = accent,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold
         )
         Text(
             value,
             color = FgWhite,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Black,
+            style = if (emphasized) {
+                MaterialTheme.typography.titleLarge
+            } else {
+                MaterialTheme.typography.bodyLarge
+            }
         )
     }
 }
