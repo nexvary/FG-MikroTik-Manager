@@ -9,8 +9,10 @@ class RouterConnectionSettingsTest {
     fun normalizesHttpsHost() {
         val settings = RouterConnectionSettings(
             host = "https://192.168.88.1/",
+            port = 443,
             username = "admin",
-            password = "secret"
+            password = "secret",
+            protocol = RouterProtocol.REST_HTTPS
         )
 
         assertEquals("192.168.88.1", settings.normalizedHost())
@@ -23,7 +25,8 @@ class RouterConnectionSettingsTest {
             host = "router.example.net",
             port = 8443,
             username = "admin",
-            password = "secret"
+            password = "secret",
+            protocol = RouterProtocol.REST_HTTPS
         )
 
         assertEquals("https://router.example.net:8443/rest", settings.restBaseUrl())
