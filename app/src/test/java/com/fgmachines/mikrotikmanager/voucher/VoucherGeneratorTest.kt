@@ -3,15 +3,14 @@ package com.fgmachines.mikrotikmanager.voucher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Random
 
 class VoucherGeneratorTest {
 
     @Test
     fun generatesRequestedNumberOfUniqueVouchers() {
-        val seeded = java.util.Random(42L)
-        val source = RandomSource { bound ->
-            seeded.nextInt(bound)
-        }
+        val seeded = Random(1234L)
+        val source = RandomSource { bound -> seeded.nextInt(bound) }
 
         val batch = VoucherGenerator(source).generate(
             VoucherBatchRequest(
@@ -31,10 +30,8 @@ class VoucherGeneratorTest {
 
     @Test
     fun generatesSeparateRandomPasswords() {
-        val seeded = java.util.Random(1337L)
-        val source = RandomSource { bound ->
-            seeded.nextInt(bound)
-        }
+        val seeded = Random(9876L)
+        val source = RandomSource { bound -> seeded.nextInt(bound) }
 
         val batch = VoucherGenerator(source).generate(
             VoucherBatchRequest(
