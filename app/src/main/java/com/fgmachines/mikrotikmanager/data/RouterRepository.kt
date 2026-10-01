@@ -190,6 +190,7 @@ class RouterRepository private constructor(
     companion object {
         fun create(settings: RouterConnectionSettings): RouterRepository {
             val transport = when (settings.protocol) {
+                RouterProtocol.REST_HTTP,
                 RouterProtocol.REST_HTTPS -> RestRouterOsTransport(settings)
                 RouterProtocol.API_SSL,
                 RouterProtocol.API -> error("Native RouterOS API transport is scheduled for phase 2")
