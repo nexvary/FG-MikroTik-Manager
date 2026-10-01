@@ -480,34 +480,36 @@ private fun RouterShell(
     }
 
     if (wide) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(FgBlack)
         ) {
-            PersistentMainMenu(
-                state = state,
-                arabic = arabic,
-                onSection = onSection,
-                onDisconnect = onDisconnect,
-                modifier = Modifier
-                    .width(280.dp)
-                    .fillMaxHeight()
-            )
-            VerticalDivider(color = FgBlue.copy(alpha = 0.35f))
-            RouterContent(
-                state = state,
-                arabic = arabic,
-                onRefresh = onRefresh,
-                onOpenAdminModule = onOpenAdminModule,
-                onRefreshAdminModule = onRefreshAdminModule,
-                onCloseAdminModule = onCloseAdminModule,
-                onVoucherModeSelected = onVoucherModeSelected,
-                onVoucherBatchGenerated = onVoucherBatchGenerated,
-                onProvisionVouchers = onProvisionVouchers,
-                onClearVoucherResult = onClearVoucherResult,
-                modifier = Modifier.weight(1f)
-            )
+            Row(modifier = Modifier.fillMaxSize()) {
+                PersistentMainMenu(
+                    state = state,
+                    arabic = arabic,
+                    onSection = onSection,
+                    onDisconnect = onDisconnect,
+                    modifier = Modifier
+                        .width(280.dp)
+                        .fillMaxHeight()
+                )
+                VerticalDivider(color = FgBlue.copy(alpha = 0.35f))
+                RouterContent(
+                    state = state,
+                    arabic = arabic,
+                    onRefresh = onRefresh,
+                    onOpenAdminModule = onOpenAdminModule,
+                    onRefreshAdminModule = onRefreshAdminModule,
+                    onCloseAdminModule = onCloseAdminModule,
+                    onVoucherModeSelected = onVoucherModeSelected,
+                    onVoucherBatchGenerated = onVoucherBatchGenerated,
+                    onProvisionVouchers = onProvisionVouchers,
+                    onClearVoucherResult = onClearVoucherResult,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             if (state.section == AppSection.WINBOX) {
                 FloatingActionButton(
@@ -521,6 +523,19 @@ private fun RouterShell(
                     Icon(Icons.Outlined.Terminal, contentDescription = "Command Center")
                 }
             }
+        }
+
+        if (commandCenterOpen) {
+            CommandCenterSheet(
+                arabic = arabic,
+                running = state.commandRunning,
+                results = state.commandResults,
+                history = state.commandHistory,
+                onRun = onRunCommands,
+                onClearResults = onClearCommandResults,
+                onDismiss = { commandCenterOpen = false },
+                initialText = commandCenterInitialText
+            )
         }
         return
     }
