@@ -44,6 +44,7 @@ class VoucherExportersTest {
         assertTrue(html.contains("@page"))
         assertTrue(html.contains("FG WiFi"))
         assertTrue(html.contains("123456"))
+        assertTrue(html.contains("<svg"))
     }
 
     @Test
