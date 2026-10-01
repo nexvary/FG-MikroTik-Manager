@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 enum class AppSection(val title: String) {
+    MENU("Menu"),
     DASHBOARD("Dashboard"),
     WINBOX("WinBox"),
     VOUCHERS("Vouchers"),
@@ -36,7 +37,7 @@ data class RouterUiState(
     val error: String? = null,
     val dashboard: DashboardSnapshot? = null,
     val interfaces: List<RouterInterface> = emptyList(),
-    val section: AppSection = AppSection.DASHBOARD,
+    val section: AppSection = AppSection.MENU,
     val voucherProfiles: Map<VoucherMode, List<RouterVoucherProfile>> = emptyMap(),
     val voucherProfilesLoading: Boolean = false,
     val voucherProvisioning: Boolean = false,
