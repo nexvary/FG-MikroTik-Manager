@@ -1,12 +1,21 @@
 package com.fgmachines.mikrotikmanager.voucher
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
 class RouterOsScriptExporter {
 
     fun export(batch: VoucherBatch): String {
         val header = buildString {
-            appendLine("# FG MikroTik Manager")
+            appendLine("# FG MTM - FG MikroTik Manager")
             appendLine("# Generated voucher batch")
             appendLine("# Mode: " + batch.request.mode.name)
+            appendLine("# Duration: " + batch.request.routerOsDuration())
+            batch.request.branding.priceEgp?.let {
+                appendLine("# Price: " + it + " EGP")
+            }
             appendLine()
         }
 
@@ -34,6 +43,7 @@ class RouterOsScriptExporter {
             }
             appendLine()
         }
+        appendExpirySchedulers(batch, VoucherMode.HOTSPOT)
     }
 
     private fun exportPppoe(batch: VoucherBatch): String = buildString {
@@ -46,10 +56,10 @@ class RouterOsScriptExporter {
             if (voucher.comment.isNotBlank()) append(" comment=" + quote(voucher.comment))
             appendLine()
         }
+        appendExpirySchedulers(batch, VoucherMode.PPPOE)
     }
 
     private fun exportUserManager(batch: VoucherBatch): String = buildString {
-        appendLine("# RouterOS v7 User Manager / userman-5")
         appendLine("/user-manager user")
         batch.vouchers.forEach { voucher ->
             append("add name=" + quote(voucher.username))
@@ -58,15 +68,76 @@ class RouterOsScriptExporter {
             appendLine()
         }
         appendLine()
-        appendLine("# Profile assignment is handled by the User Manager adapter after")
-        appendLine("# capability/profile lookup because profiles and limitations are separate objects.")
+        batch.vouchers.forEach { voucher ->
+            if (voucher.profile.isNotBlank() &&
+                !voucher.profile.equals("No Profile", ignoreCase = true)
+            ) {
+                appendLine(
+                    "/user-manager user-profile add user=" +
+                        quote(voucher.username) +
+                        " profile=" +
+                        quote(voucher.profile)
+                )
+            }
+        }
+        appendExpirySchedulers(batch, VoucherMode.USER_MANAGER)
+    }
+
+    private fun StringBuilder.appendExpirySchedulers(
+        batch: VoucherBatch,
+        mode: VoucherMode
+    ) {
+        val expiring = batch.vouchers.filter { it.absoluteExpiryEpochMs != null }
+        if (expiring.isEmpty()) return
+
+        appendLine()
+        appendLine("# Automatic voucher expiration")
+        expiring.forEach { voucher ->
+            val expiry = voucher.absoluteExpiryEpochMs ?: return@forEach
+            val dateTime = Instant.ofEpochMilli(expiry)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime()
+
+            val schedulerName = ("fg-exp-" + voucher.username)
+                .replace(Regex("[^A-Za-z0-9_-]"), "_")
+                .take(48)
+
+            val disable = when (mode) {
+                VoucherMode.HOTSPOT ->
+                    "/ip hotspot user disable [find where name=" + quote(voucher.username) + "]"
+                VoucherMode.PPPOE ->
+                    "/ppp secret disable [find where name=" + quote(voucher.username) + "]"
+                VoucherMode.USER_MANAGER ->
+                    "/user-manager user disable [find where name=" + quote(voucher.username) + "]"
+                VoucherMode.OFFLINE -> return@forEach
+            }
+
+            val onEvent = disable +
+                "; /system scheduler remove [find where name=" +
+                quote(schedulerName) +
+                "]"
+
+            append("/system scheduler add")
+            append(" name=" + quote(schedulerName))
+            append(
+                " start-date=" +
+                    dateTime.format(
+                        DateTimeFormatter.ofPattern("MMM/dd/yyyy", Locale.ENGLISH)
+                    ).lowercase(Locale.ENGLISH)
+            )
+            append(
+                " start-time=" +
+                    dateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+            )
+            append(" interval=0s")
+            append(" on-event=" + quote(onEvent))
+            append(" comment=" + quote("FG MTM voucher expiry"))
+            appendLine()
+        }
     }
 
     private fun quote(value: String): String =
-        "\"" + value
+        """ + value
             .replace("\\", "\\\\")
-            .replace("\"", "\\\"") + "\""
-
-    private fun safeComment(value: String): String =
-        value.replace("\r", " ").replace("\n", " ")
+            .replace(""", "\\"") + """
 }
