@@ -2,12 +2,14 @@ package com.fgmachines.mikrotikmanager.voucher
 
 enum class VoucherCharacterSet {
     NUMERIC,
+    LETTERS,
     ALPHANUMERIC
 }
 
 enum class VoucherPasswordMode {
     SAME_AS_USERNAME,
-    RANDOM
+    RANDOM,
+    NONE
 }
 
 data class VoucherBatchRequest(
