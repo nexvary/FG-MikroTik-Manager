@@ -13,6 +13,11 @@ import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionStatus
 import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionSummary
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class RouterRepository private constructor(
     private val transport: RouterOsTransport
@@ -111,6 +116,11 @@ class RouterRepository private constructor(
             .toMutableSet()
 
         val results = ArrayList<VoucherProvisionItem>(batch.vouchers.size)
+        val routerClock = if (batch.vouchers.any { it.absoluteExpiryEpochMs != null }) {
+            runCatching { readRouterClock() }.getOrNull()
+        } else {
+            null
+        }
 
         for (voucher in batch.vouchers) {
             if (voucher.username in existingNames) {
@@ -189,10 +199,28 @@ class RouterRepository private constructor(
                 }
 
                 existingNames += voucher.username
+
+                val expiryMessage = voucher.absoluteExpiryEpochMs?.let { expiryEpoch ->
+                    runCatching {
+                        scheduleVoucherExpiry(
+                            voucher = voucher,
+                            expiryEpochMs = expiryEpoch,
+                            routerClock = routerClock
+                        )
+                    }.fold(
+                        onSuccess = { " • expires automatically" },
+                        onFailure = { " • created, but expiry schedule failed: " + (it.message ?: "unknown error") }
+                    )
+                }.orEmpty()
+
                 results += VoucherProvisionItem(
                     username = voucher.username,
-                    status = VoucherProvisionStatus.CREATED,
-                    message = "Created",
+                    status = if (expiryMessage.contains("failed")) {
+                        VoucherProvisionStatus.FAILED
+                    } else {
+                        VoucherProvisionStatus.CREATED
+                    },
+                    message = "Created" + expiryMessage,
                     routerId = created.firstOrNull()?.get(".id")
                 )
             } catch (t: Throwable) {
@@ -205,6 +233,80 @@ class RouterRepository private constructor(
         }
 
         return results.toSummary(batch.request.mode)
+    }
+
+    private suspend fun readRouterClock(): LocalDateTime? {
+        val row = transport.read("system/clock").firstOrNull() ?: return null
+        val date = row["date"].orEmpty()
+        val time = row["time"].orEmpty()
+        if (date.isBlank() || time.isBlank()) return null
+
+        val parsedDate = parseRouterDate(date) ?: return null
+        val parsedTime = runCatching {
+            LocalTime.parse(time.take(8), DateTimeFormatter.ofPattern("HH:mm:ss"))
+        }.getOrNull() ?: return null
+
+        return LocalDateTime.of(parsedDate, parsedTime)
+    }
+
+    private fun parseRouterDate(value: String): LocalDate? {
+        val normalized = value.trim().lowercase(Locale.ENGLISH)
+        val formats = listOf(
+            DateTimeFormatter.ofPattern("MMM/dd/yyyy", Locale.ENGLISH),
+            DateTimeFormatter.ISO_LOCAL_DATE
+        )
+        return formats.firstNotNullOfOrNull { formatter ->
+            runCatching { LocalDate.parse(normalized, formatter) }.getOrNull()
+        }
+    }
+
+    private suspend fun scheduleVoucherExpiry(
+        voucher: com.fgmachines.mikrotikmanager.voucher.VoucherDraft,
+        expiryEpochMs: Long,
+        routerClock: LocalDateTime?
+    ) {
+        val delayMs = expiryEpochMs - System.currentTimeMillis()
+        require(delayMs > 0) { "Expiry time must be in the future" }
+
+        val routerNow = routerClock ?: LocalDateTime.now()
+        val target = routerNow.plusSeconds(delayMs / 1000L)
+
+        val schedulerName = ("fg-exp-" + voucher.username)
+            .replace(Regex("[^A-Za-z0-9_-]"), "_")
+            .take(48)
+
+        val escapedUser = voucher.username
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+
+        val disableCommand = when (voucher.mode) {
+            VoucherMode.HOTSPOT ->
+                "/ip hotspot user disable [find where name=\"$escapedUser\"]"
+            VoucherMode.PPPOE ->
+                "/ppp secret disable [find where name=\"$escapedUser\"]"
+            VoucherMode.USER_MANAGER ->
+                "/user-manager user disable [find where name=\"$escapedUser\"]"
+            VoucherMode.OFFLINE -> return
+        }
+
+        val onEvent = disableCommand +
+            "; /system scheduler remove [find where name=\"$schedulerName\"]"
+
+        transport.create(
+            "system/scheduler",
+            mapOf(
+                "name" to schedulerName,
+                "start-date" to target.format(
+                    DateTimeFormatter.ofPattern("MMM/dd/yyyy", Locale.ENGLISH)
+                ).lowercase(Locale.ENGLISH),
+                "start-time" to target.format(
+                    DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ENGLISH)
+                ),
+                "interval" to "0s",
+                "on-event" to onEvent,
+                "comment" to "FG MTM voucher expiry for " + voucher.username
+            )
+        )
     }
 
     override fun close() = transport.close()
