@@ -49,11 +49,17 @@ class RouterOsScriptExporter {
     }
 
     private fun exportUserManager(batch: VoucherBatch): String = buildString {
-        appendLine("# User Manager commands vary by RouterOS generation/package.")
-        appendLine("# This batch is intentionally not emitted until router capability detection selects the correct adapter.")
-        batch.vouchers.forEach {
-            appendLine("# " + safeComment(it.username) + " / profile=" + safeComment(it.profile))
+        appendLine("# RouterOS v7 User Manager / userman-5")
+        appendLine("/user-manager user")
+        batch.vouchers.forEach { voucher ->
+            append("add name=" + quote(voucher.username))
+            append(" password=" + quote(voucher.password))
+            if (voucher.comment.isNotBlank()) append(" comment=" + quote(voucher.comment))
+            appendLine()
         }
+        appendLine()
+        appendLine("# Profile assignment is handled by the User Manager adapter after")
+        appendLine("# capability/profile lookup because profiles and limitations are separate objects.")
     }
 
     private fun quote(value: String): String =
