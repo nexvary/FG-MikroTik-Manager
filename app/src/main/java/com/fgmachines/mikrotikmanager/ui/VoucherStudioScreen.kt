@@ -44,8 +44,8 @@ fun VoucherStudioScreen(
     var quantity by remember { mutableStateOf("20") }
     var usernameLength by remember { mutableStateOf("6") }
     var passwordLength by remember { mutableStateOf("6") }
-    var samePassword by remember { mutableStateOf(true) }
-    var alphanumeric by remember { mutableStateOf(false) }
+    var passwordMode by remember { mutableStateOf(VoucherPasswordMode.SAME_AS_USERNAME) }
+    var characterSet by remember { mutableStateOf(VoucherCharacterSet.NUMERIC) }
     var networkName by remember { mutableStateOf("FG WiFi") }
     var supportPhone by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
@@ -95,6 +95,11 @@ fun VoucherStudioScreen(
                             OutlinedButton(
                                 onClick = {
                                     mode = item
+                                    if (item != VoucherAccessMode.HOTSPOT &&
+                                        passwordMode == VoucherPasswordMode.NONE
+                                    ) {
+                                        passwordMode = VoucherPasswordMode.RANDOM
+                                    }
                                     export = null
                                 },
                                 modifier = Modifier.weight(1f)
@@ -204,20 +209,51 @@ fun VoucherStudioScreen(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
-                            onClick = { samePassword = !samePassword },
+                            onClick = {
+                                passwordMode = when (passwordMode) {
+                                    VoucherPasswordMode.SAME_AS_USERNAME ->
+                                        VoucherPasswordMode.RANDOM
+                                    VoucherPasswordMode.RANDOM ->
+                                        if (mode == VoucherAccessMode.HOTSPOT) {
+                                            VoucherPasswordMode.NONE
+                                        } else {
+                                            VoucherPasswordMode.SAME_AS_USERNAME
+                                        }
+                                    VoucherPasswordMode.NONE ->
+                                        VoucherPasswordMode.SAME_AS_USERNAME
+                                }
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(if (samePassword) "الباسورد = الكود" else "باسورد مستقل")
+                            Text(
+                                when (passwordMode) {
+                                    VoucherPasswordMode.SAME_AS_USERNAME -> "الباسورد = الكود"
+                                    VoucherPasswordMode.RANDOM -> "باسورد مستقل"
+                                    VoucherPasswordMode.NONE -> "بدون باسورد"
+                                }
+                            )
                         }
                         OutlinedButton(
-                            onClick = { alphanumeric = !alphanumeric },
+                            onClick = {
+                                characterSet = when (characterSet) {
+                                    VoucherCharacterSet.NUMERIC -> VoucherCharacterSet.LETTERS
+                                    VoucherCharacterSet.LETTERS -> VoucherCharacterSet.ALPHANUMERIC
+                                    VoucherCharacterSet.ALPHANUMERIC -> VoucherCharacterSet.NUMERIC
+                                }
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(if (alphanumeric) "حروف + أرقام" else "أرقام فقط")
+                            Text(
+                                when (characterSet) {
+                                    VoucherCharacterSet.NUMERIC -> "أرقام فقط"
+                                    VoucherCharacterSet.LETTERS -> "حروف فقط"
+                                    VoucherCharacterSet.ALPHANUMERIC -> "حروف + أرقام"
+                                }
+                            )
                         }
                     }
 
-                    if (!samePassword) {
+                    if (passwordMode == VoucherPasswordMode.RANDOM) {
                         OutlinedTextField(
                             value = passwordLength,
                             onValueChange = { passwordLength = it.filter(Char::isDigit) },
@@ -306,16 +342,8 @@ fun VoucherStudioScreen(
                             quantity = quantity.toIntOrNull() ?: 0,
                             usernameLength = usernameLength.toIntOrNull() ?: 0,
                             passwordLength = passwordLength.toIntOrNull() ?: 0,
-                            passwordMode = if (samePassword) {
-                                VoucherPasswordMode.SAME_AS_USERNAME
-                            } else {
-                                VoucherPasswordMode.RANDOM
-                            },
-                            characterSet = if (alphanumeric) {
-                                VoucherCharacterSet.ALPHANUMERIC
-                            } else {
-                                VoucherCharacterSet.NUMERIC
-                            },
+                            passwordMode = passwordMode,
+                            characterSet = characterSet,
                             prefix = prefix,
                             limitUptime = uptime.trim().ifBlank { null },
                             dataLimitBytes = bytes,
