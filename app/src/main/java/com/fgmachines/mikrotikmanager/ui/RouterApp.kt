@@ -83,7 +83,9 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
             if (offlineStudio) {
                 OfflineVoucherShell(
                     arabic = arabic,
+                    historyCount = state.voucherHistoryCount,
                     onLanguageToggle = { arabic = !arabic },
+                    onBatchGenerated = viewModel::saveGeneratedBatch,
                     onBack = { offlineStudio = false }
                 )
             } else if (state.connected) {
@@ -93,7 +95,11 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     onLanguageToggle = { arabic = !arabic },
                     onRefresh = viewModel::refresh,
                     onDisconnect = viewModel::disconnect,
-                    onSection = viewModel::selectSection
+                    onSection = viewModel::selectSection,
+                    onVoucherModeSelected = viewModel::refreshVoucherProfiles,
+                    onVoucherBatchGenerated = viewModel::saveGeneratedBatch,
+                    onProvisionVouchers = viewModel::provisionVouchers,
+                    onClearVoucherResult = viewModel::clearVoucherProvisionResult
                 )
             } else {
                 ConnectionScreen(
@@ -263,7 +269,11 @@ private fun RouterShell(
     onLanguageToggle: () -> Unit,
     onRefresh: () -> Unit,
     onDisconnect: () -> Unit,
-    onSection: (AppSection) -> Unit
+    onSection: (AppSection) -> Unit,
+    onVoucherModeSelected: (com.fgmachines.mikrotikmanager.voucher.VoucherMode) -> Unit,
+    onVoucherBatchGenerated: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
+    onProvisionVouchers: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
+    onClearVoucherResult: () -> Unit
 ) {
     val wide = LocalConfiguration.current.screenWidthDp >= 840
     val identity = state.dashboard?.identity ?: "RouterOS"
@@ -342,7 +352,20 @@ private fun RouterShell(
                     AppSection.DASHBOARD ->
                         DashboardScreen(state.dashboard, state.error, arabic)
                     AppSection.VOUCHERS ->
-                        VoucherStudioScreen(arabic = arabic, modifier = Modifier.fillMaxSize())
+                        VoucherStudioScreen(
+                            arabic = arabic,
+                            connected = true,
+                            profiles = state.voucherProfiles,
+                            profilesLoading = state.voucherProfilesLoading,
+                            provisioning = state.voucherProvisioning,
+                            provisionResult = state.voucherProvisionResult,
+                            historyCount = state.voucherHistoryCount,
+                            onModeSelected = onVoucherModeSelected,
+                            onBatchGenerated = onVoucherBatchGenerated,
+                            onProvision = onProvisionVouchers,
+                            onClearProvisionResult = onClearVoucherResult,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     AppSection.INTERFACES ->
                         InterfacesScreen(state.interfaces, wide, state.error, arabic)
                 }
@@ -510,7 +533,9 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
 @Composable
 private fun OfflineVoucherShell(
     arabic: Boolean,
+    historyCount: Int,
     onLanguageToggle: () -> Unit,
+    onBatchGenerated: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -545,6 +570,9 @@ private fun OfflineVoucherShell(
     ) { padding ->
         VoucherStudioScreen(
             arabic = arabic,
+            connected = false,
+            historyCount = historyCount,
+            onBatchGenerated = onBatchGenerated,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
