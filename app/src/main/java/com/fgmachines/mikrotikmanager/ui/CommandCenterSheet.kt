@@ -430,7 +430,7 @@ private fun highlightedCommand(command: ParsedRouterCommand): AnnotatedString =
                     CommandRisk.DANGEROUS -> FgAmber
                     CommandRisk.CHANGE -> FgMint
                     CommandRisk.SAFE -> FgCyan
-                    CommandRisk.UNSUPPORTED -> MaterialTheme.colorScheme.error
+                    CommandRisk.UNSUPPORTED -> Color(0xFFFF7B7B)
                 }
                 token.contains("=") -> FgPurple
                 else -> FgSilver
