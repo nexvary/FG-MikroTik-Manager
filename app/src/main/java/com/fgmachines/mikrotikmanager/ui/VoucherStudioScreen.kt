@@ -1,20 +1,24 @@
 package com.fgmachines.mikrotikmanager.ui
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,31 +26,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Print
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -54,20 +59,26 @@ import androidx.compose.ui.unit.dp
 import com.fgmachines.mikrotikmanager.voucher.CsvVoucherExporter
 import com.fgmachines.mikrotikmanager.voucher.HtmlVoucherExporter
 import com.fgmachines.mikrotikmanager.voucher.RouterOsScriptExporter
+import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
+import com.fgmachines.mikrotikmanager.voucher.SavedVoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherBatchRequest
 import com.fgmachines.mikrotikmanager.voucher.VoucherBranding
 import com.fgmachines.mikrotikmanager.voucher.VoucherGenerator
 import com.fgmachines.mikrotikmanager.voucher.VoucherMode
-import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
-import com.fgmachines.mikrotikmanager.voucher.SavedVoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherPasswordMode
 import com.fgmachines.mikrotikmanager.voucher.VoucherPdfExporter
 import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionSummary
 import com.fgmachines.mikrotikmanager.voucher.VoucherQrCodeFactory
 import com.fgmachines.mikrotikmanager.voucher.VoucherQrPayloadBuilder
 import com.fgmachines.mikrotikmanager.voucher.VoucherShareManager
+import com.fgmachines.mikrotikmanager.voucher.VoucherTimeUnit
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun VoucherStudioScreen(
@@ -86,181 +97,147 @@ fun VoucherStudioScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+
     val generator = remember { VoucherGenerator() }
-    val exporter = remember { RouterOsScriptExporter() }
+    val scriptExporter = remember { RouterOsScriptExporter() }
     val csvExporter = remember { CsvVoucherExporter() }
     val htmlExporter = remember { HtmlVoucherExporter() }
     val pdfExporter = remember { VoucherPdfExporter() }
 
-    var mode by remember { mutableStateOf(VoucherMode.HOTSPOT) }
-    var quantity by remember { mutableStateOf("10") }
-    var usernameLength by remember { mutableStateOf("6") }
-    var passwordLength by remember { mutableStateOf("6") }
-    var profile by remember { mutableStateOf("default") }
-    var uptime by remember { mutableStateOf("1d") }
-    var dataMb by remember { mutableStateOf("") }
-    var networkName by remember { mutableStateOf("FG WiFi") }
-    var supportPhone by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var samePassword by remember { mutableStateOf(true) }
+    var mode by rememberSaveable { mutableStateOf(VoucherMode.HOTSPOT) }
+    var quantity by rememberSaveable { mutableStateOf("10") }
+    var usernameLength by rememberSaveable { mutableStateOf("6") }
+    var passwordLength by rememberSaveable { mutableStateOf("6") }
+    var samePassword by rememberSaveable { mutableStateOf(true) }
+
+    var profile by rememberSaveable { mutableStateOf("default") }
+    var durationValue by rememberSaveable { mutableStateOf("60") }
+    var durationUnit by rememberSaveable { mutableStateOf(VoucherTimeUnit.MINUTES) }
+    var dataMb by rememberSaveable { mutableStateOf("") }
+    var priceEgp by rememberSaveable { mutableStateOf("5") }
+    var networkName by rememberSaveable { mutableStateOf("FG WiFi") }
+    var supportPhone by rememberSaveable { mutableStateOf("") }
+
+    var expiryEnabled by rememberSaveable { mutableStateOf(true) }
+    var expiryEpochMs by rememberSaveable {
+        mutableStateOf(System.currentTimeMillis() + 24L * 60L * 60L * 1000L)
+    }
+
     var batch by remember { mutableStateOf<VoucherBatch?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    var scriptPreview by remember { mutableStateOf("") }
+    var advancedOpen by rememberSaveable { mutableStateOf(false) }
     var pdfExporting by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        HeroHeader(arabic)
-
-        if (recentBatches.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text(
-                    if (arabic) "آخر الدفعات المحفوظة" else "Recent saved batches",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    recentBatches.take(12).forEach { saved ->
-                        val savedProfile = saved.batch.request.profile.ifBlank { "—" }
-                        FilterChip(
-                            selected = false,
-                            onClick = {
-                                batch = saved.batch
-                                mode = saved.batch.request.mode
-                                profile = saved.batch.request.profile
-                                scriptPreview = exporter.export(saved.batch)
-                                onClearProvisionResult()
-                            },
-                            label = {
-                                Text(
-                                    modeLabel(saved.batch.request.mode, arabic) +
-                                        " • " + saved.batch.vouchers.size +
-                                        " • " + savedProfile
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.History, contentDescription = null)
-                            }
-                        )
-                    }
-                }
-            }
+    fun chooseExpiry() {
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = expiryEpochMs
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            VoucherMode.entries.forEach { item ->
-                FilterChip(
-                    selected = mode == item,
-                    onClick = {
-                        mode = item
-                        batch = null
-                        scriptPreview = ""
-                        onClearProvisionResult()
-                        onModeSelected(item)
-                        profiles[item]?.firstOrNull()?.let { selected ->
-                            profile = selected.name
-                        }
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                val selected = Calendar.getInstance().apply {
+                    timeInMillis = expiryEpochMs
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, day)
+                }
+
+                TimePickerDialog(
+                    context,
+                    { _, hour, minute ->
+                        selected.set(Calendar.HOUR_OF_DAY, hour)
+                        selected.set(Calendar.MINUTE, minute)
+                        selected.set(Calendar.SECOND, 0)
+                        selected.set(Calendar.MILLISECOND, 0)
+                        expiryEpochMs = selected.timeInMillis
+                        expiryEnabled = true
                     },
-                    label = { Text(modeLabel(item, arabic)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = when (item) {
-                                VoucherMode.HOTSPOT -> Icons.Outlined.Wifi
-                                VoucherMode.USER_MANAGER -> Icons.Outlined.Person
-                                VoucherMode.PPPOE -> Icons.Outlined.Lock
-                                VoucherMode.OFFLINE -> Icons.Outlined.CreditCard
-                            },
-                            contentDescription = null
-                        )
-                    }
+                    selected.get(Calendar.HOUR_OF_DAY),
+                    selected.get(Calendar.MINUTE),
+                    false
+                ).show()
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(FgBlack),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    if (arabic) "الكروت" else "Vouchers",
+                    color = FgMint,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    if (arabic) {
+                        "أنشئ الكروت وفعّلها على MikroTik مباشرة"
+                    } else {
+                        "Create vouchers and provision them directly to MikroTik"
+                    },
+                    color = FgSilver
                 )
             }
         }
 
-        val currentProfiles = profiles[mode].orEmpty()
-        if (profilesLoading && mode != VoucherMode.OFFLINE) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.width(18.dp).height(18.dp),
-                    strokeWidth = 2.dp
-                )
+        item {
+            NeonCard(accent = FgBlue) {
                 Text(
-                    if (arabic) "جاري قراءة الباقات من الراوتر..."
-                    else "Loading profiles from router...",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    if (arabic) "نوع الكارت" else "Voucher type",
+                    color = FgWhite,
+                    fontWeight = FontWeight.Bold
                 )
-            }
-        } else if (currentProfiles.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    if (arabic) "الباقات الموجودة على الراوتر" else "Router profiles",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    currentProfiles.forEach { item ->
+                    VoucherMode.entries.forEach { item ->
                         FilterChip(
-                            selected = profile == item.name,
-                            onClick = { profile = item.name },
-                            label = {
-                                Text(
-                                    if (item.rateLimit.isBlank()) item.name
-                                    else item.name + " • " + item.rateLimit
-                                )
-                            }
+                            selected = mode == item,
+                            onClick = {
+                                mode = item
+                                batch = null
+                                onClearProvisionResult()
+                                onModeSelected(item)
+                                profiles[item]?.firstOrNull()?.let {
+                                    profile = it.name
+                                }
+                            },
+                            label = { Text(modeLabel(item, arabic)) }
                         )
                     }
                 }
             }
         }
 
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)),
-            shape = RoundedCornerShape(18.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        item {
+            NeonCard(accent = FgMint) {
                 Text(
-                    text = if (arabic) "إعداد دفعة الكروت" else "Voucher batch setup",
-                    style = MaterialTheme.typography.titleLarge,
+                    if (arabic) "إعدادات الكروت" else "Voucher settings",
+                    color = FgWhite,
                     fontWeight = FontWeight.Bold
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = quantity,
                         onValueChange = { quantity = it.filter(Char::isDigit).take(4) },
                         modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "العدد" else "Quantity") },
+                        label = { Text(if (arabic) "عدد الكروت" else "Quantity") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -274,79 +251,120 @@ fun VoucherStudioScreen(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = profile,
-                        onValueChange = { profile = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "البروفايل" else "Profile") },
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = uptime,
-                        onValueChange = { uptime = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "المدة" else "Time limit") },
-                        singleLine = true
-                    )
-                }
+                Text(
+                    if (arabic) "مدة الاستخدام" else "Usage duration",
+                    color = FgSilver,
+                    style = MaterialTheme.typography.labelLarge
+                )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = dataMb,
-                        onValueChange = { dataMb = it.filter(Char::isDigit) },
+                        value = durationValue,
+                        onValueChange = { durationValue = it.filter(Char::isDigit).take(5) },
                         modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "الحجم MB" else "Data MB") },
+                        label = { Text(if (arabic) "المدة" else "Duration") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
+
+                    Row(
+                        modifier = Modifier
+                            .weight(1.7f)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        VoucherTimeUnit.entries.forEach { unit ->
+                            FilterChip(
+                                selected = durationUnit == unit,
+                                onClick = { durationUnit = unit },
+                                label = { Text(timeUnitLabel(unit, arabic)) }
+                            )
+                        }
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = price,
-                        onValueChange = { price = it },
+                        value = priceEgp,
+                        onValueChange = {
+                            priceEgp = it.filter { ch -> ch.isDigit() || ch == '.' }.take(9)
+                        },
                         modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "السعر" else "Price") },
+                        label = { Text(if (arabic) "السعر بالجنيه" else "Price EGP") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = dataMb,
+                        onValueChange = { dataMb = it.filter(Char::isDigit).take(8) },
+                        modifier = Modifier.weight(1f),
+                        label = { Text(if (arabic) "البيانات MB" else "Data MB") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
                 }
 
-                OutlinedTextField(
-                    value = networkName,
-                    onValueChange = { networkName = it },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (arabic) "اسم الشبكة على الكارت" else "Network name on card") },
-                    singleLine = true
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            if (arabic) "وقت انتهاء فعلي" else "Absolute expiry",
+                            color = FgWhite,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            if (expiryEnabled) formatExpiry(expiryEpochMs, arabic)
+                            else if (arabic) "بدون موعد انتهاء" else "No absolute expiry",
+                            color = if (expiryEnabled) FgAmber else FgSilverMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
 
-                OutlinedTextField(
-                    value = supportPhone,
-                    onValueChange = { supportPhone = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (arabic) "رقم الدعم" else "Support phone") },
-                    singleLine = true
-                )
+                    Switch(
+                        checked = expiryEnabled,
+                        onCheckedChange = { expiryEnabled = it }
+                    )
+                }
+
+                if (expiryEnabled) {
+                    OutlinedButton(
+                        onClick = { chooseExpiry() },
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.2.dp, FgAmber)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = FgAmber
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (arabic) "اختيار تاريخ ووقت الانتهاء" else "Choose expiry date & time",
+                            color = FgAmber
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilterChip(
                         selected = samePassword,
                         onClick = { samePassword = true },
                         label = {
-                            Text(
-                                if (arabic) "الكود = الباسورد"
-                                else "Code = password"
-                            )
+                            Text(if (arabic) "الكود = الباسورد" else "Code = password")
                         }
                     )
                     FilterChip(
                         selected = !samePassword,
                         onClick = { samePassword = false },
                         label = {
-                            Text(
-                                if (arabic) "باسورد مختلف"
-                                else "Separate password"
-                            )
+                            Text(if (arabic) "باسورد مختلف" else "Separate password")
                         }
                     )
                 }
@@ -357,308 +375,323 @@ fun VoucherStudioScreen(
                         onValueChange = { passwordLength = it.filter(Char::isDigit).take(2) },
                         modifier = Modifier.fillMaxWidth(),
                         label = {
-                            Text(
-                                if (arabic) "طول الباسورد"
-                                else "Password length"
-                            )
+                            Text(if (arabic) "طول كلمة المرور" else "Password length")
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
                 }
-
-                error?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        try {
-                            val request = VoucherBatchRequest(
-                                quantity = quantity.toIntOrNull() ?: 10,
-                                usernameLength = usernameLength.toIntOrNull() ?: 6,
-                                passwordMode = if (samePassword) {
-                                    VoucherPasswordMode.SAME_AS_USERNAME
-                                } else {
-                                    VoucherPasswordMode.RANDOM
-                                },
-                                passwordLength = passwordLength.toIntOrNull() ?: 6,
-                                mode = mode,
-                                profile = if (mode == VoucherMode.OFFLINE) {
-                                    profile.ifBlank { "offline" }
-                                } else {
-                                    profile
-                                },
-                                limitUptime = uptime.ifBlank { null },
-                                limitBytesTotal = dataMb.toLongOrNull()?.times(1024L * 1024L),
-                                branding = VoucherBranding(
-                                    networkName = networkName,
-                                    supportPhone = supportPhone,
-                                    priceText = price
-                                )
-                            )
-                            val generated = generator.generate(request)
-                            batch = generated
-                            scriptPreview = exporter.export(generated)
-                            onBatchGenerated(generated)
-                            onClearProvisionResult()
-                            error = null
-                        } catch (t: Throwable) {
-                            error = t.message ?: "Invalid voucher settings"
-                            batch = null
-                            scriptPreview = ""
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Outlined.CreditCard, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (arabic) "إنشاء الكروت والمعاينة"
-                        else "Generate vouchers & preview"
-                    )
-                }
             }
         }
 
-        batch?.let { generated ->
-            val first = generated.vouchers.firstOrNull()
-            if (first != null) {
-                VoucherPreview(
-                    arabic = arabic,
-                    networkName = first.branding.networkName,
-                    username = first.username,
-                    password = first.password,
-                    profile = first.profile,
-                    uptime = first.limitUptime.orEmpty(),
-                    price = first.branding.priceText,
-                    supportPhone = first.branding.supportPhone,
-                    count = generated.vouchers.size
-                )
-            }
-        }
+        if (mode != VoucherMode.OFFLINE) {
+            item {
+                NeonCard(accent = FgCyan) {
+                    Text(
+                        if (arabic) "الباقة على الراوتر" else "Router profile",
+                        color = FgWhite,
+                        fontWeight = FontWeight.Bold
+                    )
 
-        batch?.let { generated ->
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
-                ),
-                border = BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
-                ),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    val currentProfiles = profiles[mode].orEmpty()
+
+                    if (profilesLoading) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Outlined.History, contentDescription = null)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = FgMint
+                            )
                             Text(
-                                if (arabic) "دفعات محفوظة: ${historyCount}"
-                                else "Saved batches: ${historyCount}",
-                                fontWeight = FontWeight.SemiBold
+                                if (arabic) "جاري قراءة الباقات..." else "Loading profiles...",
+                                color = FgSilver
                             )
                         }
-                        Text(
-                            if (arabic) "الحفظ مشفّر" else "Encrypted",
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-
-                    if (connected && generated.request.mode != VoucherMode.OFFLINE) {
-                        Button(
-                            onClick = { onProvision(generated) },
-                            enabled = !provisioning,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (provisioning) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.width(18.dp).height(18.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(Icons.Outlined.CloudUpload, contentDescription = null)
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                if (arabic) {
-                                    if (provisioning) "جاري رفع الكروت..." else "رفع ${generated.vouchers.size} كارت إلى الراوتر"
-                                } else {
-                                    if (provisioning) "Provisioning vouchers..." else "Provision ${generated.vouchers.size} vouchers to router"
-                                }
-                            )
-                        }
-                    } else {
-                        Text(
-                            if (arabic) {
-                                "تم حفظ الدفعة محليًا ويمكن تصديرها أو رفعها لاحقًا."
-                            } else {
-                                "Batch saved locally and can be exported or provisioned later."
-                            },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-
-        provisionResult?.let { result ->
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (result.failed == 0) {
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-                    } else {
-                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
-                    }
-                ),
-                border = BorderStroke(
-                    1.dp,
-                    if (result.failed == 0) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.error
-                ),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Outlined.CheckCircle, contentDescription = null)
-                        Text(
-                            if (arabic) "نتيجة الرفع" else "Provision result",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
-                        if (arabic) {
-                            "تم إنشاء ${result.created} • مكرر ${result.duplicates} • فشل ${result.failed}"
-                        } else {
-                            "Created ${result.created} • duplicates ${result.duplicates} • failed ${result.failed}"
-                        }
-                    )
-                    result.items.firstOrNull { it.status.name == "FAILED" }?.let { failed ->
-                        Text(
-                            failed.username + ": " + failed.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    OutlinedButton(onClick = onClearProvisionResult) {
-                        Text(if (arabic) "إغلاق النتيجة" else "Dismiss")
-                    }
-                }
-            }
-        }
-
-        if (scriptPreview.isNotBlank()) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        if (arabic) "معاينة ملف RouterOS (.rsc)" else "RouterOS script preview (.rsc)",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        scriptPreview.lineSequence().take(7).joinToString("\n"),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            scriptPreview = exporter.export(batch!!)
-                        }
-                    ) {
-                        Text(if (arabic) "تحديث المعاينة" else "Refresh preview")
-                    }
-
-                    batch?.let { generated ->
+                    } else if (currentProfiles.isNotEmpty()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            currentProfiles.forEach { item ->
+                                FilterChip(
+                                    selected = profile == item.name,
+                                    onClick = { profile = item.name },
+                                    label = {
+                                        Text(
+                                            if (item.rateLimit.isBlank()) item.name
+                                            else item.name + " • " + item.rateLimit
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = profile,
+                            onValueChange = { profile = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(if (arabic) "اسم الباقة" else "Profile") },
+                            singleLine = true
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            NeonCard(accent = FgPurple) {
+                Text(
+                    if (arabic) "بيانات تظهر على الكارت" else "Printed card details",
+                    color = FgWhite,
+                    fontWeight = FontWeight.Bold
+                )
+
+                OutlinedTextField(
+                    value = networkName,
+                    onValueChange = { networkName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(if (arabic) "اسم الشبكة" else "Network name") },
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = supportPhone,
+                    onValueChange = { supportPhone = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(if (arabic) "رقم الدعم - اختياري" else "Support phone - optional") },
+                    singleLine = true
+                )
+            }
+        }
+
+        error?.let { message ->
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                ) {
+                    Text(
+                        message,
+                        modifier = Modifier.padding(14.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
+
+        item {
+            Button(
+                onClick = {
+                    try {
+                        val value = durationValue.toIntOrNull()
+                            ?: throw IllegalArgumentException(
+                                if (arabic) "اكتب مدة صحيحة" else "Enter a valid duration"
+                            )
+
+                        val expiry = if (expiryEnabled) expiryEpochMs else null
+                        if (expiry != null && expiry <= System.currentTimeMillis()) {
+                            throw IllegalArgumentException(
+                                if (arabic) "وقت الانتهاء يجب أن يكون في المستقبل"
+                                else "Expiry must be in the future"
+                            )
+                        }
+
+                        val price = priceEgp.toDoubleOrNull()
+
+                        val request = VoucherBatchRequest(
+                            quantity = quantity.toIntOrNull() ?: 10,
+                            usernameLength = usernameLength.toIntOrNull() ?: 6,
+                            passwordMode = if (samePassword) {
+                                VoucherPasswordMode.SAME_AS_USERNAME
+                            } else {
+                                VoucherPasswordMode.RANDOM
+                            },
+                            passwordLength = passwordLength.toIntOrNull() ?: 6,
+                            mode = mode,
+                            profile = if (mode == VoucherMode.OFFLINE) {
+                                profile.ifBlank { "offline" }
+                            } else {
+                                profile
+                            },
+                            durationValue = value,
+                            durationUnit = durationUnit,
+                            absoluteExpiryEpochMs = expiry,
+                            limitBytesTotal = dataMb.toLongOrNull()?.times(1024L * 1024L),
+                            branding = VoucherBranding(
+                                networkName = networkName,
+                                supportPhone = supportPhone,
+                                priceEgp = price
+                            )
+                        )
+
+                        val generated = generator.generate(request)
+                        batch = generated
+                        onBatchGenerated(generated)
+                        onClearProvisionResult()
+                        error = null
+
+                        if (connected && mode != VoucherMode.OFFLINE) {
+                            onProvision(generated)
+                        }
+                    } catch (t: Throwable) {
+                        error = t.message ?: "Invalid voucher settings"
+                    }
+                },
+                enabled = !provisioning,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (provisioning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        if (connected && mode != VoucherMode.OFFLINE) {
+                            Icons.Outlined.CloudUpload
+                        } else {
+                            Icons.Outlined.CreditCard
+                        },
+                        contentDescription = null
+                    )
+                }
+
+                Spacer(Modifier.width(8.dp))
+
+                Text(
+                    when {
+                        provisioning ->
+                            if (arabic) "جاري التفعيل على الراوتر..." else "Provisioning..."
+                        connected && mode != VoucherMode.OFFLINE ->
+                            if (arabic) "إنشاء وتفعيل على الراوتر" else "Create & activate on router"
+                        else ->
+                            if (arabic) "إنشاء وحفظ الكروت" else "Create & save vouchers"
+                    }
+                )
+            }
+        }
+
+        provisionResult?.let { result ->
+            item {
+                StatusCard(
+                    result = result,
+                    arabic = arabic,
+                    onDismiss = onClearProvisionResult
+                )
+            }
+        }
+
+        batch?.vouchers?.firstOrNull()?.let { voucher ->
+            item {
+                VoucherPreview(
+                    voucher = voucher,
+                    count = batch?.vouchers?.size ?: 0,
+                    arabic = arabic
+                )
+            }
+        }
+
+        if (batch != null) {
+            item {
+                NeonCard(accent = FgSilverMuted) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                if (arabic) "خيارات متقدمة" else "Advanced options",
+                                color = FgWhite,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (arabic) "التصدير والطباعة فقط" else "Export and printing only",
+                                color = FgSilverMuted,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        OutlinedButton(onClick = { advancedOpen = !advancedOpen }) {
+                            Text(
+                                if (advancedOpen) {
+                                    if (arabic) "إخفاء" else "Hide"
+                                } else {
+                                    if (arabic) "فتح" else "Open"
+                                }
+                            )
+                        }
+                    }
+
+                    if (advancedOpen) {
+                        val generated = batch!!
+
+                        HorizontalDivider(color = FgSilverMuted.copy(alpha = 0.3f))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
                         ) {
                             OutlinedButton(
                                 onClick = {
                                     VoucherShareManager.shareTextFile(
-                                        context = context,
-                                        fileName = "vouchers.rsc",
-                                        content = exporter.export(generated),
-                                        mimeType = "text/plain"
+                                        context,
+                                        "vouchers.rsc",
+                                        scriptExporter.export(generated),
+                                        "text/plain"
                                     )
                                 }
-                            ) {
-                                Text("RSC")
-                            }
+                            ) { Text("RSC") }
+
                             OutlinedButton(
                                 onClick = {
                                     VoucherShareManager.shareTextFile(
-                                        context = context,
-                                        fileName = "vouchers.csv",
-                                        content = csvExporter.export(generated),
-                                        mimeType = "text/csv"
+                                        context,
+                                        "vouchers.csv",
+                                        csvExporter.export(generated),
+                                        "text/csv"
                                     )
                                 }
-                            ) {
-                                Text("CSV")
-                            }
+                            ) { Text("CSV") }
+
                             OutlinedButton(
                                 onClick = {
                                     VoucherShareManager.shareTextFile(
-                                        context = context,
-                                        fileName = "vouchers.html",
-                                        content = htmlExporter.export(generated),
-                                        mimeType = "text/html"
+                                        context,
+                                        "vouchers.html",
+                                        htmlExporter.export(generated),
+                                        "text/html"
                                     )
                                 }
                             ) {
-                                Text(if (arabic) "HTML للطباعة" else "Print HTML")
+                                Icon(Icons.Outlined.Print, contentDescription = null)
+                                Spacer(Modifier.width(5.dp))
+                                Text("HTML")
                             }
+
                             OutlinedButton(
                                 onClick = {
-                                    coroutineScope.launch {
+                                    scope.launch {
                                         pdfExporting = true
                                         runCatching {
-                                            pdfExporter.export(
-                                                context = context,
-                                                batch = generated,
-                                                fileName = "vouchers.pdf"
-                                            )
+                                            pdfExporter.export(context, generated, "vouchers.pdf")
                                         }.onSuccess { file ->
                                             VoucherShareManager.shareFile(
-                                                context = context,
-                                                file = file,
-                                                mimeType = "application/pdf"
+                                                context,
+                                                file,
+                                                "application/pdf"
                                             )
-                                        }.onFailure { throwable ->
-                                            error = throwable.message ?: "PDF export failed"
+                                        }.onFailure {
+                                            error = it.message ?: "PDF export failed"
                                         }
                                         pdfExporting = false
                                     }
@@ -667,12 +700,12 @@ fun VoucherStudioScreen(
                             ) {
                                 if (pdfExporting) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.width(16.dp).height(16.dp),
+                                        modifier = Modifier.size(15.dp),
                                         strokeWidth = 2.dp
                                     )
-                                    Spacer(Modifier.width(6.dp))
+                                } else {
+                                    Text("PDF")
                                 }
-                                Text("PDF")
                             }
                         }
                     }
@@ -680,60 +713,107 @@ fun VoucherStudioScreen(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        if (historyCount > 0) {
+            item {
+                Text(
+                    if (arabic) {
+                        "الدفعات المحفوظة مشفّرة على الهاتف: ${historyCount}"
+                    } else {
+                        "Encrypted saved batches on phone: ${historyCount}"
+                    },
+                    color = FgSilverMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
+        item { Spacer(Modifier.height(12.dp)) }
     }
 }
 
 @Composable
-private fun HeroHeader(arabic: Boolean) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.horizontalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.28f),
-                        MaterialTheme.colorScheme.surface,
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.20f)
-                    )
-                ),
-                shape = RoundedCornerShape(22.dp)
-            )
-            .padding(18.dp)
+private fun NeonCard(
+    accent: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = FgPanel),
+        border = BorderStroke(1.25.dp, accent.copy(alpha = 0.85f)),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun StatusCard(
+    result: VoucherProvisionSummary,
+    arabic: Boolean,
+    onDismiss: () -> Unit
+) {
+    val ok = result.failed == 0
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (ok) {
+                FgMint.copy(alpha = 0.10f)
+            } else {
+                MaterialTheme.colorScheme.errorContainer
+            }
+        ),
+        border = BorderStroke(
+            1.4.dp,
+            if (ok) FgMint else MaterialTheme.colorScheme.error
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                        RoundedCornerShape(16.dp)
-                    )
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Outlined.CreditCard,
+                    Icons.Outlined.CheckCircle,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (ok) FgMint else MaterialTheme.colorScheme.error
                 )
-            }
-            Column {
                 Text(
-                    text = if (arabic) "استوديو كروت ميكروتيك" else "MikroTik Voucher Studio",
-                    style = MaterialTheme.typography.headlineSmall,
+                    if (arabic) "نتيجة التفعيل" else "Activation result",
+                    color = FgWhite,
                     fontWeight = FontWeight.Black
                 )
+            }
+
+            Text(
+                if (arabic) {
+                    "تم تفعيل ${result.created} • مكرر ${result.duplicates} • فشل ${result.failed}"
+                } else {
+                    "Activated ${result.created} • duplicates ${result.duplicates} • failed ${result.failed}"
+                },
+                color = FgSilver
+            )
+
+            result.items.firstOrNull { it.status.name == "FAILED" }?.let {
                 Text(
-                    text = if (arabic) {
-                        "HotSpot • User Manager • PPPoE • Offline"
-                    } else {
-                        "HotSpot • User Manager • PPPoE • Offline"
-                    },
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    it.username + ": " + it.message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
                 )
+            }
+
+            OutlinedButton(onClick = onDismiss) {
+                Text(if (arabic) "إغلاق" else "Dismiss")
             }
         }
     }
@@ -741,182 +821,125 @@ private fun HeroHeader(arabic: Boolean) {
 
 @Composable
 private fun VoucherPreview(
-    arabic: Boolean,
-    networkName: String,
-    username: String,
-    password: String,
-    profile: String,
-    uptime: String,
-    price: String,
-    supportPhone: String,
-    count: Int
+    voucher: com.fgmachines.mikrotikmanager.voucher.VoucherDraft,
+    count: Int,
+    arabic: Boolean
 ) {
-    val qrBitmap = remember(username, password, networkName, profile, supportPhone) {
-        val previewVoucher = com.fgmachines.mikrotikmanager.voucher.VoucherDraft(
-            username = username,
-            password = password,
-            profile = profile,
-            server = "all",
-            comment = "",
-            limitUptime = uptime.ifBlank { null },
-            limitBytesTotal = null,
-            branding = VoucherBranding(
-                networkName = networkName,
-                supportPhone = supportPhone,
-                priceText = price
-            )
-        )
+    val qrBitmap = remember(voucher) {
         VoucherQrCodeFactory.create(
-            VoucherQrPayloadBuilder.build(previewVoucher),
-            size = 260
+            VoucherQrPayloadBuilder.build(voucher),
+            size = 240
         )
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF111A22)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f)),
-        shape = RoundedCornerShape(20.dp)
+        colors = CardDefaults.cardColors(containerColor = FgDeepNavy),
+        border = BorderStroke(1.4.dp, FgCyan),
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            Color(0xFF0C1319),
-                            Color(0xFF17232E),
-                            Color(0xFF0F171E)
-                        )
-                    )
-                )
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        networkName.ifBlank {
-                            if (arabic) "شبكة WiFi" else "WiFi Network"
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        if (arabic) "معاينة الكارت • عدد الدفعة $count"
-                        else "Card preview • batch $count",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    Icons.Outlined.Wifi,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CredentialBox(
-                    modifier = Modifier.weight(1f),
-                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
-                    label = if (arabic) "اسم المستخدم" else "Username",
-                    value = username
-                )
-                CredentialBox(
-                    modifier = Modifier.weight(1f),
-                    icon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
-                    label = if (arabic) "كلمة المرور" else "Password",
-                    value = password
-                )
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    (if (arabic) "الباقة: " else "Plan: ") + profile,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                if (uptime.isNotBlank()) {
+                Column {
                     Text(
-                        (if (arabic) "المدة: " else "Time: ") + uptime,
-                        color = MaterialTheme.colorScheme.secondary
+                        voucher.branding.networkName.ifBlank { "WiFi" },
+                        color = FgWhite,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        if (arabic) "معاينة الكارت • الدفعة ${count}"
+                        else "Voucher preview • batch ${count}",
+                        color = FgSilverMuted,
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
+
+                Icon(
+                    Icons.Outlined.Wifi,
+                    contentDescription = null,
+                    tint = FgMint
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PreviewValue(
+                    modifier = Modifier.weight(1f),
+                    label = if (arabic) "الكود" else "Username",
+                    value = voucher.username
+                )
+                PreviewValue(
+                    modifier = Modifier.weight(1f),
+                    label = if (arabic) "الباسورد" else "Password",
+                    value = voucher.password
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PreviewValue(
+                    modifier = Modifier.weight(1f),
+                    label = if (arabic) "المدة" else "Duration",
+                    value = voucher.displayDuration(arabic)
+                )
+                PreviewValue(
+                    modifier = Modifier.weight(1f),
+                    label = if (arabic) "السعر" else "Price",
+                    value = voucher.branding.priceEgp?.let {
+                        if (arabic) {
+                            DecimalFormat("0.##").format(it) + " جنيه"
+                        } else {
+                            DecimalFormat("0.##").format(it) + " EGP"
+                        }
+                    } ?: "—"
+                )
+            }
+
+            voucher.absoluteExpiryEpochMs?.let { expiry ->
+                PreviewValue(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = if (arabic) "ينتهي في" else "Expires",
+                    value = formatExpiry(expiry, arabic)
+                )
             }
 
             Image(
                 bitmap = qrBitmap.asImageBitmap(),
-                contentDescription = if (arabic) "رمز QR للكارت" else "Voucher QR code",
+                contentDescription = "QR",
                 modifier = Modifier
-                    .size(132.dp)
+                    .size(126.dp)
                     .align(Alignment.CenterHorizontally)
             )
-            Text(
-                if (arabic) "امسح QR لعرض بيانات الكارت" else "Scan QR to view voucher credentials",
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            if (price.isNotBlank() || supportPhone.isNotBlank()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    if (price.isNotBlank()) {
-                        Text(
-                            price,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    if (supportPhone.isNotBlank()) {
-                        Text(
-                            supportPhone,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun CredentialBox(
+private fun PreviewValue(
     modifier: Modifier,
-    icon: @Composable () -> Unit,
     label: String,
     value: String
 ) {
     Column(
         modifier = modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                RoundedCornerShape(14.dp)
-            )
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .background(FgPanel, RoundedCornerShape(12.dp))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            icon()
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            label,
+            color = FgSilverMuted,
+            style = MaterialTheme.typography.labelSmall
+        )
         Text(
             value,
-            style = MaterialTheme.typography.titleMedium,
+            color = FgWhite,
             fontWeight = FontWeight.Bold
         )
     }
@@ -929,3 +952,15 @@ private fun modeLabel(mode: VoucherMode, arabic: Boolean): String =
         VoucherMode.PPPOE -> "PPPoE"
         VoucherMode.OFFLINE -> if (arabic) "بدون راوتر" else "Offline"
     }
+
+private fun timeUnitLabel(unit: VoucherTimeUnit, arabic: Boolean): String =
+    when (unit) {
+        VoucherTimeUnit.MINUTES -> if (arabic) "دقيقة" else "Min"
+        VoucherTimeUnit.HOURS -> if (arabic) "ساعة" else "Hour"
+        VoucherTimeUnit.DAYS -> if (arabic) "يوم" else "Day"
+    }
+
+private fun formatExpiry(epochMs: Long, arabic: Boolean): String {
+    val locale = if (arabic) Locale("ar") else Locale.ENGLISH
+    return SimpleDateFormat("dd/MM/yyyy  hh:mm a", locale).format(Date(epochMs))
+}
