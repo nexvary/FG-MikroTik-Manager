@@ -33,10 +33,13 @@ class VoucherGenerator(
                 profile = request.profile,
                 server = request.server,
                 comment = request.comment,
-                limitUptime = request.limitUptime,
+                limitUptime = request.routerOsDuration(),
                 limitBytesTotal = request.limitBytesTotal,
                 mode = request.mode,
-                branding = request.branding
+                branding = request.branding,
+                durationValue = request.durationValue,
+                durationUnit = request.durationUnit,
+                absoluteExpiryEpochMs = request.absoluteExpiryEpochMs
             )
         }
 
