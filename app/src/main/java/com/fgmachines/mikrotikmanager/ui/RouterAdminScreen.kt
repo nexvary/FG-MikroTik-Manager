@@ -48,6 +48,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,6 +68,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.fgmachines.mikrotikmanager.data.RouterAdminGroup
 import com.fgmachines.mikrotikmanager.data.RouterAdminModule
@@ -689,7 +692,14 @@ private fun RouterItemEditorDialog(
     var values by remember(module, existing) {
         mutableStateOf(
             specs.associate { spec ->
-                spec.key to existing?.get(spec.key).orEmpty()
+                spec.key to (
+                    existing?.get(spec.key)
+                        ?: if (module == RouterAdminModule.USERS && spec.key == "group") {
+                            "full"
+                        } else {
+                            ""
+                        }
+                    )
             }
         )
     }
@@ -742,17 +752,58 @@ private fun RouterItemEditorDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(specs) { spec ->
-                    OutlinedTextField(
-                        value = values[spec.key].orEmpty(),
-                        onValueChange = { newValue ->
-                            values = values + (spec.key to newValue)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = {
-                            Text(if (arabic) spec.ar else spec.en)
-                        },
-                        singleLine = spec.singleLine
-                    )
+                    if (module == RouterAdminModule.USERS && spec.key == "group") {
+                        Text(
+                            if (arabic) "صلاحية الحساب" else "Account permissions",
+                            color = FgSilver,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("full", "write", "read").forEach { group ->
+                                FilterChip(
+                                    selected = values["group"].orEmpty()
+                                        .ifBlank { "full" } == group,
+                                    onClick = {
+                                        values = values + ("group" to group)
+                                    },
+                                    label = {
+                                        Text(
+                                            when (group) {
+                                                "full" -> if (arabic) "كامل Full" else "Full"
+                                                "write" -> if (arabic) "تعديل Write" else "Write"
+                                                else -> if (arabic) "قراءة Read" else "Read"
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = values[spec.key].orEmpty(),
+                            onValueChange = { newValue ->
+                                values = values + (spec.key to newValue)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = {
+                                Text(if (arabic) spec.ar else spec.en)
+                            },
+                            visualTransformation = if (
+                                module == RouterAdminModule.USERS &&
+                                spec.key == "password"
+                            ) {
+                                PasswordVisualTransformation()
+                            } else {
+                                VisualTransformation.None
+                            },
+                            singleLine = spec.singleLine
+                        )
+                    }
                 }
 
                 item {
