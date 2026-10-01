@@ -4,6 +4,7 @@ import com.fgmachines.mikrotikmanager.network.ApiRouterOsTransport
 import com.fgmachines.mikrotikmanager.network.AutoRouterOsTransport
 import com.fgmachines.mikrotikmanager.network.RestRouterOsTransport
 import com.fgmachines.mikrotikmanager.network.RouterOsTransport
+import com.fgmachines.mikrotikmanager.network.RouterOsException
 import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
 import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherMode
