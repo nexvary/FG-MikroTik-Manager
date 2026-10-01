@@ -54,4 +54,27 @@ class RouterOsScriptExporterTest {
         assertFalse(script.contains("/ip hotspot user"))
         assertFalse(script.contains("/ppp secret"))
     }
+
+    @Test
+    fun friendlyDurationAndExpiryProduceRouterOsLimitsAndScheduler() {
+        val expiry = System.currentTimeMillis() + 86_400_000L
+        val request = VoucherBatchRequest(
+            quantity = 1,
+            usernameLength = 6,
+            profile = "default",
+            durationValue = 30,
+            durationUnit = VoucherTimeUnit.MINUTES,
+            absoluteExpiryEpochMs = expiry,
+            branding = VoucherBranding(priceEgp = 5.0)
+        )
+        val batch = VoucherGenerator(RandomSource { 1 }).generate(request)
+
+        val script = RouterOsScriptExporter().export(batch)
+
+        assertTrue(script.contains("limit-uptime=\"30m\""))
+        assertTrue(script.contains("/system scheduler add"))
+        assertTrue(script.contains("FG MTM voucher expiry"))
+        assertTrue(script.contains("# Price: 5.0 EGP"))
+    }
+
 }
