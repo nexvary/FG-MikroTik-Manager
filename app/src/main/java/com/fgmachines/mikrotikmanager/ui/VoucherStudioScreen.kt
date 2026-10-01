@@ -40,6 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,10 +62,12 @@ import com.fgmachines.mikrotikmanager.voucher.VoucherMode
 import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
 import com.fgmachines.mikrotikmanager.voucher.SavedVoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherPasswordMode
+import com.fgmachines.mikrotikmanager.voucher.VoucherPdfExporter
 import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionSummary
 import com.fgmachines.mikrotikmanager.voucher.VoucherQrCodeFactory
 import com.fgmachines.mikrotikmanager.voucher.VoucherQrPayloadBuilder
 import com.fgmachines.mikrotikmanager.voucher.VoucherShareManager
+import kotlinx.coroutines.launch
 
 @Composable
 fun VoucherStudioScreen(
@@ -83,10 +86,12 @@ fun VoucherStudioScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val generator = remember { VoucherGenerator() }
     val exporter = remember { RouterOsScriptExporter() }
     val csvExporter = remember { CsvVoucherExporter() }
     val htmlExporter = remember { HtmlVoucherExporter() }
+    val pdfExporter = remember { VoucherPdfExporter() }
 
     var mode by remember { mutableStateOf(VoucherMode.HOTSPOT) }
     var quantity by remember { mutableStateOf("10") }
@@ -102,6 +107,7 @@ fun VoucherStudioScreen(
     var batch by remember { mutableStateOf<VoucherBatch?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var scriptPreview by remember { mutableStateOf("") }
+    var pdfExporting by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -634,6 +640,39 @@ fun VoucherStudioScreen(
                                 }
                             ) {
                                 Text(if (arabic) "HTML للطباعة" else "Print HTML")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        pdfExporting = true
+                                        runCatching {
+                                            pdfExporter.export(
+                                                context = context,
+                                                batch = generated,
+                                                fileName = "vouchers.pdf"
+                                            )
+                                        }.onSuccess { file ->
+                                            VoucherShareManager.shareFile(
+                                                context = context,
+                                                file = file,
+                                                mimeType = "application/pdf"
+                                            )
+                                        }.onFailure { throwable ->
+                                            error = throwable.message ?: "PDF export failed"
+                                        }
+                                        pdfExporting = false
+                                    }
+                                },
+                                enabled = !pdfExporting
+                            ) {
+                                if (pdfExporting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.width(16.dp).height(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                }
+                                Text("PDF")
                             }
                         }
                     }
