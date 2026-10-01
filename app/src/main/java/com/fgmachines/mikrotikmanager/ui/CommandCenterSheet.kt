@@ -81,6 +81,13 @@ fun CommandCenterSheet(
     var input by rememberSaveable { mutableStateOf(initialText) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var dangerousConfirmed by rememberSaveable { mutableStateOf(false) }
+    val clipboardCandidate = remember {
+        clipboard.getText()?.text
+            ?.takeIf { text ->
+                text.lineSequence().any { it.trim().startsWith("/") }
+            }
+            .orEmpty()
+    }
 
     val parsed = remember(input) {
         RouterCommandParser.parseScript(input)
@@ -150,6 +157,30 @@ fun CommandCenterSheet(
             }
 
             Spacer(Modifier.height(10.dp))
+
+            if (input.isBlank() && clipboardCandidate.isNotBlank()) {
+                OutlinedButton(
+                    onClick = { input = clipboardCandidate },
+                    modifier = Modifier.fillMaxWidth(),
+                    border = BorderStroke(1.2.dp, FgMint)
+                ) {
+                    Icon(
+                        Icons.Outlined.ContentPaste,
+                        contentDescription = null,
+                        tint = FgMint
+                    )
+                    Spacer(Modifier.width(7.dp))
+                    Text(
+                        if (arabic) {
+                            "وجدت أوامر RouterOS في الحافظة — لصق الآن"
+                        } else {
+                            "RouterOS commands found in clipboard — paste now"
+                        },
+                        color = FgMint
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
 
             if (showHistory && history.isNotEmpty()) {
                 Card(
