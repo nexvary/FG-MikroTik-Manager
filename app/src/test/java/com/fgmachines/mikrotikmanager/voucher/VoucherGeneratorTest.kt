@@ -8,9 +8,9 @@ class VoucherGeneratorTest {
 
     @Test
     fun generatesRequestedNumberOfUniqueVouchers() {
-        var cursor = 0
+        val seeded = java.util.Random(42L)
         val source = RandomSource { bound ->
-            (cursor++ % bound)
+            seeded.nextInt(bound)
         }
 
         val batch = VoucherGenerator(source).generate(
@@ -31,11 +31,9 @@ class VoucherGeneratorTest {
 
     @Test
     fun generatesSeparateRandomPasswords() {
-        var cursor = 3
+        val seeded = java.util.Random(1337L)
         val source = RandomSource { bound ->
-            val result = cursor % bound
-            cursor += 7
-            result
+            seeded.nextInt(bound)
         }
 
         val batch = VoucherGenerator(source).generate(
