@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
+import com.fgmachines.mikrotikmanager.data.RouterAdminModule
+import com.fgmachines.mikrotikmanager.data.RouterMenuSnapshot
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
 import com.fgmachines.mikrotikmanager.data.RouterRepository
@@ -22,8 +24,8 @@ import kotlinx.coroutines.launch
 
 enum class AppSection(val title: String) {
     DASHBOARD("Dashboard"),
+    WINBOX("WinBox"),
     VOUCHERS("Vouchers"),
-    INTERFACES("Interfaces"),
     ABOUT("About")
 }
 
@@ -42,7 +44,11 @@ data class RouterUiState(
     val voucherHistoryCount: Int = 0,
     val recentVoucherBatches: List<SavedVoucherBatch> = emptyList(),
     val discoveringRouters: Boolean = false,
-    val discoveredRouters: List<DiscoveredRouter> = emptyList()
+    val discoveredRouters: List<DiscoveredRouter> = emptyList(),
+    val adminLoading: Boolean = false,
+    val adminModule: RouterAdminModule? = null,
+    val adminSnapshot: RouterMenuSnapshot? = null,
+    val adminError: String? = null
 )
 
 class RouterViewModel(application: Application) : AndroidViewModel(application) {
@@ -150,6 +156,47 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
         ) {
             refreshVoucherProfiles(VoucherMode.HOTSPOT)
         }
+    }
+
+    fun openAdminModule(module: RouterAdminModule) {
+        val repo = repository ?: return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                adminLoading = true,
+                adminModule = module,
+                adminSnapshot = null,
+                adminError = null
+            )
+            runCatching {
+                repo.loadAdminModule(module)
+            }.onSuccess { snapshot ->
+                _state.value = _state.value.copy(
+                    adminLoading = false,
+                    adminSnapshot = snapshot,
+                    adminError = null
+                )
+            }.onFailure { throwable ->
+                _state.value = _state.value.copy(
+                    adminLoading = false,
+                    adminSnapshot = null,
+                    adminError = throwable.message ?: "Unable to open RouterOS menu"
+                )
+            }
+        }
+    }
+
+    fun refreshAdminModule() {
+        _state.value.adminModule?.let(::openAdminModule)
+    }
+
+    fun closeAdminModule() {
+        _state.value = _state.value.copy(
+            adminModule = null,
+            adminSnapshot = null,
+            adminError = null,
+            adminLoading = false
+        )
     }
 
     fun refreshVoucherProfiles(mode: VoucherMode) {
