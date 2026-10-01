@@ -196,6 +196,9 @@ class RouterRepository private constructor(
             }
             return RouterRepository(transport)
         }
+
+        internal fun forTesting(transport: RouterOsTransport): RouterRepository =
+            RouterRepository(transport)
     }
 }
 
