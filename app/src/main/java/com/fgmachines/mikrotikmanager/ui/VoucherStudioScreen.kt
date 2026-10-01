@@ -191,72 +191,107 @@ fun VoucherStudioScreen(
         }
 
         item {
-            NeonCard(accent = FgMint) {
+            NeonCard(accent = FgBlue) {
                 Text(
                     if (arabic) "إعدادات الكروت" else "Voucher settings",
-                    color = FgWhite,
-                    fontWeight = FontWeight.Bold
+                    color = FgBlue,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     OutlinedTextField(
                         value = quantity,
                         onValueChange = { quantity = it.filter(Char::isDigit).take(4) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "عدد الكروت" else "Quantity") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        label = {
+                            Text(
+                                if (arabic) "العدد" else "Quantity",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = usernameLength,
                         onValueChange = { usernameLength = it.filter(Char::isDigit).take(2) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "طول الكود" else "Code length") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        label = {
+                            Text(
+                                if (arabic) "طول الكود" else "Code length",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
                 }
 
-                Text(
-                    if (arabic) "مدة الاستخدام" else "Usage duration",
-                    color = FgSilver,
-                    style = MaterialTheme.typography.labelLarge
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
                     OutlinedTextField(
                         value = durationValue,
                         onValueChange = { durationValue = it.filter(Char::isDigit).take(5) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "المدة" else "Duration") },
+                        modifier = Modifier
+                            .weight(0.8f)
+                            .height(52.dp),
+                        label = {
+                            Text(
+                                if (arabic) "المدة" else "Duration",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
 
                     Row(
                         modifier = Modifier
-                            .weight(1.7f)
+                            .weight(1.8f)
                             .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         VoucherTimeUnit.entries.forEach { unit ->
                             FilterChip(
                                 selected = durationUnit == unit,
                                 onClick = { durationUnit = unit },
-                                label = { Text(timeUnitLabel(unit, arabic)) }
+                                label = {
+                                    Text(
+                                        timeUnitLabel(unit, arabic),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                             )
                         }
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     OutlinedTextField(
                         value = priceEgp,
                         onValueChange = {
                             priceEgp = it.filter { ch -> ch.isDigit() || ch == '.' }.take(9)
                         },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "السعر بالجنيه" else "Price EGP") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        label = {
+                            Text(
+                                if (arabic) "السعر جنيه" else "Price EGP",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true
                     )
@@ -264,8 +299,16 @@ fun VoucherStudioScreen(
                     OutlinedTextField(
                         value = dataMb,
                         onValueChange = { dataMb = it.filter(Char::isDigit).take(8) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text(if (arabic) "البيانات MB" else "Data MB") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        label = {
+                            Text(
+                                if (arabic) "البيانات MB" else "Data MB",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -278,15 +321,16 @@ fun VoucherStudioScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            if (arabic) "وقت انتهاء فعلي" else "Absolute expiry",
+                            if (arabic) "انتهاء الكارت" else "Voucher expiry",
                             color = FgWhite,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             if (expiryEnabled) formatExpiry(expiryEpochMs, arabic)
                             else if (arabic) "بدون موعد انتهاء" else "No absolute expiry",
                             color = if (expiryEnabled) FgAmber else FgSilverMuted,
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.labelSmall
                         )
                     }
 
@@ -299,38 +343,48 @@ fun VoucherStudioScreen(
                 if (expiryEnabled) {
                     OutlinedButton(
                         onClick = { chooseExpiry() },
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.2.dp, FgAmber)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp),
+                        border = BorderStroke(1.2.dp, FgBlue)
                     ) {
                         Icon(
                             Icons.Outlined.Schedule,
                             contentDescription = null,
-                            tint = FgAmber
+                            tint = FgBlue,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            if (arabic) "اختيار تاريخ ووقت الانتهاء" else "Choose expiry date & time",
-                            color = FgAmber
+                            if (arabic) "تاريخ ووقت الانتهاء" else "Expiry date & time",
+                            color = FgBlue,
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     FilterChip(
                         selected = samePassword,
                         onClick = { samePassword = true },
                         label = {
-                            Text(if (arabic) "الكود = الباسورد" else "Code = password")
+                            Text(
+                                if (arabic) "الكود = الباسورد" else "Code = password",
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
                     )
                     FilterChip(
                         selected = !samePassword,
                         onClick = { samePassword = false },
                         label = {
-                            Text(if (arabic) "باسورد مختلف" else "Separate password")
+                            Text(
+                                if (arabic) "باسورد مختلف" else "Separate password",
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
                     )
                 }
@@ -339,10 +393,16 @@ fun VoucherStudioScreen(
                     OutlinedTextField(
                         value = passwordLength,
                         onValueChange = { passwordLength = it.filter(Char::isDigit).take(2) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
                         label = {
-                            Text(if (arabic) "طول كلمة المرور" else "Password length")
+                            Text(
+                                if (arabic) "طول كلمة المرور" else "Password length",
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -352,7 +412,7 @@ fun VoucherStudioScreen(
 
         if (mode != VoucherMode.OFFLINE) {
             item {
-                NeonCard(accent = FgCyan) {
+                NeonCard(accent = FgBlue) {
                     Text(
                         if (arabic) "الباقة على الراوتر" else "Router profile",
                         color = FgWhite,
@@ -410,7 +470,7 @@ fun VoucherStudioScreen(
         }
 
         item {
-            NeonCard(accent = FgPurple) {
+            NeonCard(accent = FgBlue) {
                 Text(
                     if (arabic) "بيانات تظهر على الكارت" else "Printed card details",
                     color = FgWhite,
@@ -566,7 +626,7 @@ fun VoucherStudioScreen(
 
         if (batch != null) {
             item {
-                NeonCard(accent = FgSilverMuted) {
+                NeonCard(accent = FgBlue) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -707,7 +767,7 @@ private fun VoucherStudioHero(
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.6.dp, FgBlue),
-        shape = RoundedCornerShape(22.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier
@@ -721,20 +781,20 @@ private fun VoucherStudioHero(
                         )
                     )
                 )
-                .padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp)
+                .padding(horizontal = 11.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(11.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(40.dp)
                         .background(
-                            Brush.linearGradient(listOf(FgPurple, FgBlue, FgMint)),
-                            RoundedCornerShape(15.dp)
+                            Brush.linearGradient(listOf(FgBlue, FgMint)),
+                            RoundedCornerShape(11.dp)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -742,79 +802,125 @@ private fun VoucherStudioHero(
                         Icons.Outlined.CreditCard,
                         contentDescription = null,
                         tint = FgBlack,
-                        modifier = Modifier.size(31.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         if (arabic) "استوديو الكروت" else "Voucher Studio",
-                        color = FgWhite,
-                        style = MaterialTheme.typography.titleLarge,
+                        color = FgBlue,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        if (arabic) {
-                            "إنشاء • تفعيل • طباعة • QR"
-                        } else {
-                            "Create • activate • print • QR"
-                        },
-                        color = FgCyan,
-                        style = MaterialTheme.typography.bodySmall
+                        if (arabic) "إنشاء • تفعيل • طباعة • QR"
+                        else "Create • activate • print • QR",
+                        color = FgSilver,
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .background(
-                            if (connected) FgMint.copy(alpha = 0.12f)
-                            else FgAmber.copy(alpha = 0.12f),
-                            RoundedCornerShape(10.dp)
-                        )
-                        .padding(horizontal = 9.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        if (connected) {
-                            if (arabic) "الراوتر متصل" else "Router online"
-                        } else {
-                            if (arabic) "بدون راوتر" else "Offline"
-                        },
-                        color = if (connected) FgMint else FgAmber,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Text(
+                    if (connected) {
+                        if (arabic) "متصل" else "Online"
+                    } else {
+                        if (arabic) "بدون راوتر" else "Offline"
+                    },
+                    color = if (connected) FgMint else FgAmber,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Text(
-                if (arabic) "اختر نوع الكارت" else "Choose voucher type",
+                if (arabic) "نوع الكارت" else "Voucher type",
                 color = FgSilver,
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.labelSmall
             )
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                VoucherMode.entries.forEach { item ->
-                    FilterChip(
-                        selected = mode == item,
-                        onClick = { onModeChange(item) },
-                        label = {
-                            Text(
-                                modeLabel(item, arabic),
-                                fontWeight = if (mode == item) {
-                                    FontWeight.Bold
-                                } else {
-                                    FontWeight.Medium
-                                }
-                            )
-                        }
-                    )
-                }
+                VoucherModeCard(
+                    mode = VoucherMode.HOTSPOT,
+                    selectedMode = mode,
+                    arabic = arabic,
+                    onModeChange = onModeChange,
+                    modifier = Modifier.weight(1f)
+                )
+                VoucherModeCard(
+                    mode = VoucherMode.USER_MANAGER,
+                    selectedMode = mode,
+                    arabic = arabic,
+                    onModeChange = onModeChange,
+                    modifier = Modifier.weight(1f)
+                )
             }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                VoucherModeCard(
+                    mode = VoucherMode.PPPOE,
+                    selectedMode = mode,
+                    arabic = arabic,
+                    onModeChange = onModeChange,
+                    modifier = Modifier.weight(1f)
+                )
+                VoucherModeCard(
+                    mode = VoucherMode.OFFLINE,
+                    selectedMode = mode,
+                    arabic = arabic,
+                    onModeChange = onModeChange,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoucherModeCard(
+    mode: VoucherMode,
+    selectedMode: VoucherMode,
+    arabic: Boolean,
+    onModeChange: (VoucherMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selected = mode == selectedMode
+
+    Card(
+        modifier = modifier,
+        onClick = { onModeChange(mode) },
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                FgBlue.copy(alpha = 0.18f)
+            } else {
+                FgPanel.copy(alpha = 0.92f)
+            }
+        ),
+        border = BorderStroke(
+            if (selected) 1.8.dp else 1.2.dp,
+            FgBlue
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                modeLabel(mode, arabic),
+                color = if (selected) FgBlue else FgWhite,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold
+            )
         }
     }
 }
@@ -826,14 +932,14 @@ private fun NeonCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = FgPanel),
-        border = BorderStroke(1.25.dp, accent.copy(alpha = 0.85f)),
-        shape = RoundedCornerShape(16.dp)
+        border = BorderStroke(1.5.dp, FgBlue),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(11.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content
         )
     }
@@ -922,8 +1028,8 @@ private fun VoucherPreview(
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = BorderStroke(1.6.dp, FgCyan),
-        shape = RoundedCornerShape(22.dp)
+        border = BorderStroke(1.6.dp, FgBlue),
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(
             modifier = Modifier
