@@ -20,7 +20,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsEthernet
@@ -41,16 +43,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,26 +64,38 @@ import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
 import java.text.DecimalFormat
+import java.util.Locale
 
 @Composable
 fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var arabic by rememberSaveable {
+        mutableStateOf(Locale.getDefault().language.equals("ar", ignoreCase = true))
+    }
 
-    FgMikroTikTheme {
-        if (state.connected) {
-            RouterShell(
-                state = state,
-                onRefresh = viewModel::refresh,
-                onDisconnect = viewModel::disconnect,
-                onSection = viewModel::selectSection
-            )
-        } else {
-            ConnectionScreen(
-                connecting = state.connecting,
-                error = state.error,
-                onConnect = viewModel::connect,
-                onClearError = viewModel::clearError
-            )
+    CompositionLocalProvider(
+        LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr
+    ) {
+        FgMikroTikTheme {
+            if (state.connected) {
+                RouterShell(
+                    state = state,
+                    arabic = arabic,
+                    onLanguageToggle = { arabic = !arabic },
+                    onRefresh = viewModel::refresh,
+                    onDisconnect = viewModel::disconnect,
+                    onSection = viewModel::selectSection
+                )
+            } else {
+                ConnectionScreen(
+                    connecting = state.connecting,
+                    error = state.error,
+                    arabic = arabic,
+                    onLanguageToggle = { arabic = !arabic },
+                    onConnect = viewModel::connect,
+                    onClearError = viewModel::clearError
+                )
+            }
         }
     }
 }
@@ -86,6 +104,8 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 private fun ConnectionScreen(
     connecting: Boolean,
     error: String?,
+    arabic: Boolean,
+    onLanguageToggle: () -> Unit,
     onConnect: (RouterConnectionSettings) -> Unit,
     onClearError: () -> Unit
 ) {
@@ -103,16 +123,28 @@ private fun ConnectionScreen(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text(
-                    text = "FG MikroTik Manager",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "Connect securely to RouterOS 7 over REST/HTTPS.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "FG MikroTik Manager",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (arabic) "إدارة الراوتر والكروت من مكان واحد"
+                                else "Router management and vouchers in one place",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onLanguageToggle) {
+                        Icon(Icons.Outlined.Language, contentDescription = "Language")
+                    }
+                }
 
                 OutlinedTextField(
                     value = host,
@@ -121,7 +153,7 @@ private fun ConnectionScreen(
                         onClearError()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Router IP or hostname") },
+                    label = { Text(if (arabic) "IP الراوتر أو اسم المضيف" else "Router IP or hostname") },
                     singleLine = true
                 )
 
@@ -130,7 +162,7 @@ private fun ConnectionScreen(
                         value = port,
                         onValueChange = { port = it.filter(Char::isDigit) },
                         modifier = Modifier.weight(0.34f),
-                        label = { Text("HTTPS port") },
+                        label = { Text(if (arabic) "منفذ HTTPS" else "HTTPS port") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -138,7 +170,7 @@ private fun ConnectionScreen(
                         value = username,
                         onValueChange = { username = it },
                         modifier = Modifier.weight(0.66f),
-                        label = { Text("Username") },
+                        label = { Text(if (arabic) "اسم المستخدم" else "Username") },
                         singleLine = true
                     )
                 }
@@ -147,7 +179,7 @@ private fun ConnectionScreen(
                     value = password,
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Password") },
+                    label = { Text(if (arabic) "كلمة المرور" else "Password") },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true
                 )
@@ -184,14 +216,14 @@ private fun ConnectionScreen(
                             strokeWidth = 2.dp
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text("Connecting")
+                        Text(if (arabic) "جاري الاتصال" else "Connecting")
                     } else {
-                        Text("Connect")
+                        Text(if (arabic) "اتصال بالراوتر" else "Connect")
                     }
                 }
 
                 Text(
-                    text = "For RouterOS REST, enable www-ssl and use a certificate trusted by Android.",
+                    text = if (arabic) "الاتصال الآمن يستخدم HTTPS. سنضيف API-SSL لتوافق أوسع مع RouterOS." else "Secure connection uses HTTPS. API-SSL support is being added for wider RouterOS compatibility.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -204,6 +236,8 @@ private fun ConnectionScreen(
 @Composable
 private fun RouterShell(
     state: RouterUiState,
+    arabic: Boolean,
+    onLanguageToggle: () -> Unit,
     onRefresh: () -> Unit,
     onDisconnect: () -> Unit,
     onSection: (AppSection) -> Unit
@@ -218,13 +252,16 @@ private fun RouterShell(
                     Column {
                         Text(identity)
                         Text(
-                            text = state.section.title,
+                            text = sectionLabel(state.section, arabic),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
+                    IconButton(onClick = onLanguageToggle) {
+                        Icon(Icons.Outlined.Language, contentDescription = "Language")
+                    }
                     IconButton(onClick = onRefresh, enabled = !state.refreshing) {
                         if (state.refreshing) {
                             CircularProgressIndicator(
@@ -249,7 +286,7 @@ private fun RouterShell(
                             selected = section == state.section,
                             onClick = { onSection(section) },
                             icon = { SectionIcon(section) },
-                            label = { Text(section.title) }
+                            label = { Text(sectionLabel(section, arabic)) }
                         )
                     }
                 }
@@ -268,7 +305,7 @@ private fun RouterShell(
                             selected = section == state.section,
                             onClick = { onSection(section) },
                             icon = { SectionIcon(section) },
-                            label = { Text(section.title) }
+                            label = { Text(sectionLabel(section, arabic)) }
                         )
                     }
                 }
@@ -280,9 +317,11 @@ private fun RouterShell(
             Box(modifier = Modifier.fillMaxSize()) {
                 when (state.section) {
                     AppSection.DASHBOARD ->
-                        DashboardScreen(state.dashboard, state.error)
+                        DashboardScreen(state.dashboard, state.error, arabic)
+                    AppSection.VOUCHERS ->
+                        VoucherStudioScreen(arabic = arabic, modifier = Modifier.fillMaxSize())
                     AppSection.INTERFACES ->
-                        InterfacesScreen(state.interfaces, wide, state.error)
+                        InterfacesScreen(state.interfaces, wide, state.error, arabic)
                 }
             }
         }
@@ -294,6 +333,8 @@ private fun SectionIcon(section: AppSection) {
     when (section) {
         AppSection.DASHBOARD ->
             Icon(Icons.Outlined.Dashboard, contentDescription = null)
+        AppSection.VOUCHERS ->
+            Icon(Icons.Outlined.CreditCard, contentDescription = null)
         AppSection.INTERFACES ->
             Icon(Icons.Outlined.SettingsEthernet, contentDescription = null)
     }
@@ -302,7 +343,8 @@ private fun SectionIcon(section: AppSection) {
 @Composable
 private fun DashboardScreen(
     snapshot: DashboardSnapshot?,
-    error: String?
+    error: String?,
+    arabic: Boolean
 ) {
     if (snapshot == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -326,14 +368,14 @@ private fun DashboardScreen(
 
         items(
             listOf(
-                "Identity" to snapshot.identity,
-                "RouterOS" to snapshot.version.ifBlank { "Unknown" },
-                "Board" to snapshot.boardName.ifBlank { "Unknown" },
-                "Architecture" to snapshot.architecture.ifBlank { "Unknown" },
-                "CPU load" to (snapshot.cpuLoadPercent?.let { it.toString() + "%" } ?: "—"),
-                "Memory free" to formatBytes(snapshot.freeMemoryBytes),
-                "Uptime" to snapshot.uptime.ifBlank { "—" },
-                "Interfaces" to snapshot.interfaces.size.toString()
+                (if (arabic) "اسم الراوتر" else "Identity") to snapshot.identity,
+                "RouterOS" to snapshot.version.ifBlank { if (arabic) "غير معروف" else "Unknown" },
+                (if (arabic) "الموديل" else "Board") to snapshot.boardName.ifBlank { if (arabic) "غير معروف" else "Unknown" },
+                (if (arabic) "المعمارية" else "Architecture") to snapshot.architecture.ifBlank { if (arabic) "غير معروف" else "Unknown" },
+                (if (arabic) "حمل المعالج" else "CPU load") to (snapshot.cpuLoadPercent?.let { it.toString() + "%" } ?: "—"),
+                (if (arabic) "الذاكرة المتاحة" else "Memory free") to formatBytes(snapshot.freeMemoryBytes),
+                (if (arabic) "مدة التشغيل" else "Uptime") to snapshot.uptime.ifBlank { "—" },
+                (if (arabic) "واجهات الشبكة" else "Interfaces") to snapshot.interfaces.size.toString()
             )
         ) { metric ->
             MetricCard(metric.first, metric.second)
@@ -366,7 +408,8 @@ private fun MetricCard(label: String, value: String) {
 private fun InterfacesScreen(
     interfaces: List<RouterInterface>,
     wide: Boolean,
-    error: String?
+    error: String?,
+    arabic: Boolean
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -389,7 +432,7 @@ private fun InterfacesScreen(
                     ) {
                         Text(item.name, modifier = Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold)
                         Text(item.type.ifBlank { "—" }, modifier = Modifier.weight(1f))
-                        Text(if (item.running) "Running" else "Down", modifier = Modifier.weight(0.8f))
+                        Text(if (item.running) { if (arabic) "يعمل" else "Running" } else { if (arabic) "متوقف" else "Down" }, modifier = Modifier.weight(0.8f))
                         Text("RX " + formatBytes(item.rxBytes), modifier = Modifier.weight(1f))
                         Text("TX " + formatBytes(item.txBytes), modifier = Modifier.weight(1f))
                     }
@@ -403,10 +446,10 @@ private fun InterfacesScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(item.name, fontWeight = FontWeight.SemiBold)
-                            Text(if (item.running) "Running" else "Down")
+                            Text(if (item.running) { if (arabic) "يعمل" else "Running" } else { if (arabic) "متوقف" else "Down" })
                         }
                         Text(
-                            item.type.ifBlank { "Unknown type" },
+                            item.type.ifBlank { if (arabic) "نوع غير معروف" else "Unknown type" },
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text("RX " + formatBytes(item.rxBytes) + "   •   TX " + formatBytes(item.txBytes))
@@ -430,3 +473,11 @@ private fun formatBytes(value: Long?): String {
     }
     return DecimalFormat("0.##").format(amount) + " " + units[unitIndex]
 }
+
+
+private fun sectionLabel(section: AppSection, arabic: Boolean): String =
+    when (section) {
+        AppSection.DASHBOARD -> if (arabic) "الرئيسية" else "Dashboard"
+        AppSection.VOUCHERS -> if (arabic) "الكروت" else "Vouchers"
+        AppSection.INTERFACES -> if (arabic) "الواجهات" else "Interfaces"
+    }
