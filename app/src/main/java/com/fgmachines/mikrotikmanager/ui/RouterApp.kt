@@ -141,7 +141,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 fun RouterDemoApp(screen: String) {
     val section = when (screen.lowercase(Locale.ENGLISH)) {
         "dashboard" -> AppSection.DASHBOARD
-        "winbox" -> AppSection.WINBOX
+        "winbox", "commands" -> AppSection.WINBOX
         "vouchers" -> AppSection.VOUCHERS
         "about" -> AppSection.ABOUT
         else -> AppSection.MENU
