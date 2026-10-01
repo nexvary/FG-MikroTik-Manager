@@ -3,6 +3,8 @@ package com.fgmachines.mikrotikmanager.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.fgmachines.mikrotikmanager.command.CommandExecutionResult
+import com.fgmachines.mikrotikmanager.command.ParsedRouterCommand
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
 import com.fgmachines.mikrotikmanager.data.RouterAdminModule
@@ -49,7 +51,10 @@ data class RouterUiState(
     val adminLoading: Boolean = false,
     val adminModule: RouterAdminModule? = null,
     val adminSnapshot: RouterMenuSnapshot? = null,
-    val adminError: String? = null
+    val adminError: String? = null,
+    val commandRunning: Boolean = false,
+    val commandResults: List<CommandExecutionResult> = emptyList(),
+    val commandHistory: List<CommandExecutionResult> = emptyList()
 )
 
 class RouterViewModel(application: Application) : AndroidViewModel(application) {
@@ -198,6 +203,46 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
             adminError = null,
             adminLoading = false
         )
+    }
+
+    fun runCommands(commands: List<ParsedRouterCommand>) {
+        val repo = repository ?: return
+        if (_state.value.commandRunning || commands.isEmpty()) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                commandRunning = true,
+                commandResults = emptyList()
+            )
+
+            val results = mutableListOf<CommandExecutionResult>()
+            for (command in commands) {
+                val result = repo.executeCommand(command)
+                results += result
+                _state.value = _state.value.copy(
+                    commandResults = results.toList()
+                )
+            }
+
+            val newHistory = (results.asReversed() + _state.value.commandHistory)
+                .take(100)
+
+            _state.value = _state.value.copy(
+                commandRunning = false,
+                commandResults = results,
+                commandHistory = newHistory
+            )
+
+            if (_state.value.section == AppSection.WINBOX &&
+                _state.value.adminModule != null
+            ) {
+                refreshAdminModule()
+            }
+        }
+    }
+
+    fun clearCommandResults() {
+        _state.value = _state.value.copy(commandResults = emptyList())
     }
 
     fun refreshVoucherProfiles(mode: VoucherMode) {
