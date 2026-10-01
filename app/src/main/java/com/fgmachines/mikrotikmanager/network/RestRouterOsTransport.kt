@@ -44,23 +44,36 @@ class RestRouterOsTransport(
                 .build()
         )
 
+    override suspend fun create(
+        menu: String,
+        attributes: Map<String, String>
+    ): List<Map<String, String>> =
+        request(
+            Request.Builder()
+                .url(urlFor(menu))
+                .header("Authorization", authorization)
+                .header("Accept", "application/json")
+                .put(jsonPayload(attributes).toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+        )
+
     override suspend fun execute(
         command: String,
         attributes: Map<String, String>
-    ): List<Map<String, String>> {
-        val payload = buildJsonObject {
-            attributes.forEach { (key, value) -> put(key, value) }
-        }.toString()
-
-        return request(
+    ): List<Map<String, String>> =
+        request(
             Request.Builder()
                 .url(urlFor(command))
                 .header("Authorization", authorization)
                 .header("Accept", "application/json")
-                .post(payload.toRequestBody(JSON_MEDIA_TYPE))
+                .post(jsonPayload(attributes).toRequestBody(JSON_MEDIA_TYPE))
                 .build()
         )
-    }
+
+    private fun jsonPayload(attributes: Map<String, String>): String =
+        buildJsonObject {
+            attributes.forEach { (key, value) -> put(key, value) }
+        }.toString()
 
     private suspend fun request(request: Request): List<Map<String, String>> =
         withContext(Dispatchers.IO) {
@@ -69,7 +82,7 @@ class RestRouterOsTransport(
                     val body = response.body?.string().orEmpty()
 
                     if (!response.isSuccessful) {
-                        val detail = body.take(240).ifBlank { response.message }
+                        val detail = body.take(320).ifBlank { response.message }
                         throw RouterOsException(
                             message = "RouterOS returned HTTP " + response.code + ": " + detail,
                             statusCode = response.code
