@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Language
@@ -72,12 +73,19 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     var arabic by rememberSaveable {
         mutableStateOf(Locale.getDefault().language.equals("ar", ignoreCase = true))
     }
+    var offlineStudio by rememberSaveable { mutableStateOf(false) }
 
     CompositionLocalProvider(
         LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     ) {
         FgMikroTikTheme {
-            if (state.connected) {
+            if (offlineStudio) {
+                OfflineVoucherShell(
+                    arabic = arabic,
+                    onLanguageToggle = { arabic = !arabic },
+                    onBack = { offlineStudio = false }
+                )
+            } else if (state.connected) {
                 RouterShell(
                     state = state,
                     arabic = arabic,
@@ -92,6 +100,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     error = state.error,
                     arabic = arabic,
                     onLanguageToggle = { arabic = !arabic },
+                    onOfflineStudio = { offlineStudio = true },
                     onConnect = viewModel::connect,
                     onClearError = viewModel::clearError
                 )
@@ -106,6 +115,7 @@ private fun ConnectionScreen(
     error: String?,
     arabic: Boolean,
     onLanguageToggle: () -> Unit,
+    onOfflineStudio: () -> Unit,
     onConnect: (RouterConnectionSettings) -> Unit,
     onClearError: () -> Unit
 ) {
@@ -220,6 +230,18 @@ private fun ConnectionScreen(
                     } else {
                         Text(if (arabic) "اتصال بالراوتر" else "Connect")
                     }
+                }
+
+                OutlinedButton(
+                    onClick = onOfflineStudio,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Outlined.CreditCard, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (arabic) "إنشاء كروت بدون الاتصال بالراوتر"
+                        else "Create vouchers offline"
+                    )
                 }
 
                 Text(
@@ -481,3 +503,50 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
         AppSection.VOUCHERS -> if (arabic) "الكروت" else "Vouchers"
         AppSection.INTERFACES -> if (arabic) "الواجهات" else "Interfaces"
     }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OfflineVoucherShell(
+    arabic: Boolean,
+    onLanguageToggle: () -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            if (arabic) "وضع الكروت بدون راوتر"
+                            else "Offline Voucher Studio"
+                        )
+                        Text(
+                            if (arabic) "أنشئ وصدّر الكروت ثم ارفعها لاحقًا"
+                            else "Generate and export now, provision later",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onLanguageToggle) {
+                        Icon(Icons.Outlined.Language, contentDescription = "Language")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        VoucherStudioScreen(
+            arabic = arabic,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        )
+    }
+}
