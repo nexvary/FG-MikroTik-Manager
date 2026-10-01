@@ -53,7 +53,8 @@ class HtmlVoucherExporter {
         appendLine(".credentials{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin:6mm 0}")
         appendLine(".credentials div{border:1px solid #bbb;border-radius:7px;padding:4mm;text-align:center}")
         appendLine("small{display:block;color:#666;margin-bottom:2mm}b{font-size:18px;letter-spacing:.5px}")
-        appendLine(".meta,footer{color:#444;font-size:12px}footer{margin-top:4mm;border-top:1px solid #ddd;padding-top:3mm}")\n        appendLine(".qr{text-align:center;margin:4mm 0}.qr svg{width:28mm;height:28mm}")
+        appendLine(".meta,footer{color:#444;font-size:12px}footer{margin-top:4mm;border-top:1px solid #ddd;padding-top:3mm}")
+        appendLine(".qr{text-align:center;margin:4mm 0}.qr svg{width:28mm;height:28mm}")
         appendLine("@media print{body{print-color-adjust:exact}}")
         appendLine("</style></head><body><main class=\"grid\">")
 
