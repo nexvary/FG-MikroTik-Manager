@@ -8,9 +8,18 @@ class VoucherGeneratorTest {
 
     @Test
     fun generatesRequestedNumberOfUniqueVouchers() {
-        var cursor = 0
+        var calls = 0
         val source = RandomSource { bound ->
-            (cursor++ % bound)
+            val token = calls / 4
+            val digit = calls % 4
+            calls++
+            val divisor = when (digit) {
+                0 -> 1
+                1 -> 10
+                2 -> 100
+                else -> 1000
+            }
+            (token / divisor) % bound
         }
 
         val batch = VoucherGenerator(source).generate(
