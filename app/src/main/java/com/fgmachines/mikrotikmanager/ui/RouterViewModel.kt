@@ -8,6 +8,7 @@ import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
 import com.fgmachines.mikrotikmanager.data.RouterRepository
 import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
+import com.fgmachines.mikrotikmanager.voucher.SavedVoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherHistoryStore
 import com.fgmachines.mikrotikmanager.voucher.VoucherMode
@@ -35,7 +36,8 @@ data class RouterUiState(
     val voucherProfilesLoading: Boolean = false,
     val voucherProvisioning: Boolean = false,
     val voucherProvisionResult: VoucherProvisionSummary? = null,
-    val voucherHistoryCount: Int = 0
+    val voucherHistoryCount: Int = 0,
+    val recentVoucherBatches: List<SavedVoucherBatch> = emptyList()
 )
 
 class RouterViewModel(application: Application) : AndroidViewModel(application) {
@@ -48,7 +50,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch {
             _state.value = _state.value.copy(
-                voucherHistoryCount = voucherHistory.count()
+                voucherHistoryCount = voucherHistory.count(),
+                recentVoucherBatches = voucherHistory.recent()
             )
         }
     }
@@ -67,7 +70,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                     connected = true,
                     dashboard = dashboard,
                     interfaces = dashboard.interfaces,
-                    voucherHistoryCount = voucherHistory.count()
+                    voucherHistoryCount = voucherHistory.count(),
+                    recentVoucherBatches = voucherHistory.recent()
                 )
                 refreshVoucherProfiles(VoucherMode.HOTSPOT)
             } catch (t: Throwable) {
@@ -75,7 +79,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 repository = null
                 _state.value = RouterUiState(
                     error = t.message ?: "Connection failed",
-                    voucherHistoryCount = voucherHistory.count()
+                    voucherHistoryCount = voucherHistory.count(),
+                    recentVoucherBatches = voucherHistory.recent()
                 )
             }
         }
@@ -141,7 +146,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             runCatching { voucherHistory.save(batch) }
             _state.value = _state.value.copy(
-                voucherHistoryCount = voucherHistory.count()
+                voucherHistoryCount = voucherHistory.count(),
+                recentVoucherBatches = voucherHistory.recent()
             )
         }
     }
@@ -163,13 +169,15 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 _state.value = _state.value.copy(
                     voucherProvisioning = false,
                     voucherProvisionResult = summary,
-                    voucherHistoryCount = voucherHistory.count()
+                    voucherHistoryCount = voucherHistory.count(),
+                    recentVoucherBatches = voucherHistory.recent()
                 )
             }.onFailure { throwable ->
                 _state.value = _state.value.copy(
                     voucherProvisioning = false,
                     error = throwable.message ?: "Voucher provisioning failed",
-                    voucherHistoryCount = voucherHistory.count()
+                    voucherHistoryCount = voucherHistory.count(),
+                    recentVoucherBatches = voucherHistory.recent()
                 )
             }
         }
@@ -182,8 +190,11 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     fun disconnect() {
         repository?.close()
         repository = null
-        val historyCount = _state.value.voucherHistoryCount
-        _state.value = RouterUiState(voucherHistoryCount = historyCount)
+        val previous = _state.value
+        _state.value = RouterUiState(
+            voucherHistoryCount = previous.voucherHistoryCount,
+            recentVoucherBatches = previous.recentVoucherBatches
+        )
     }
 
     fun clearError() {
