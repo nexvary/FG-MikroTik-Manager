@@ -70,6 +70,118 @@ class RouterRepository private constructor(
         )
     }
 
+    suspend fun createAdminItem(
+        menuPath: String,
+        attributes: Map<String, String>
+    ): RouterAdminActionResult =
+        runCatching {
+            transport.create(menuPath, attributes)
+        }.fold(
+            onSuccess = {
+                RouterAdminActionResult(
+                    success = true,
+                    message = "Created successfully"
+                )
+            },
+            onFailure = {
+                RouterAdminActionResult(
+                    success = false,
+                    message = it.message ?: "Create failed"
+                )
+            }
+        )
+
+    suspend fun updateAdminItem(
+        menuPath: String,
+        rowId: String?,
+        attributes: Map<String, String>
+    ): RouterAdminActionResult =
+        runCatching {
+            val args = buildMap {
+                if (!rowId.isNullOrBlank()) put(".id", rowId)
+                putAll(attributes)
+            }
+            transport.execute("/" + menuPath.trim('/') + "/set", args)
+        }.fold(
+            onSuccess = {
+                RouterAdminActionResult(
+                    success = true,
+                    message = "Updated successfully"
+                )
+            },
+            onFailure = {
+                RouterAdminActionResult(
+                    success = false,
+                    message = it.message ?: "Update failed"
+                )
+            }
+        )
+
+    suspend fun removeAdminItem(
+        menuPath: String,
+        rowId: String
+    ): RouterAdminActionResult =
+        runCatching {
+            transport.execute(
+                "/" + menuPath.trim('/') + "/remove",
+                mapOf(".id" to rowId)
+            )
+        }.fold(
+            onSuccess = {
+                RouterAdminActionResult(
+                    success = true,
+                    message = "Deleted successfully"
+                )
+            },
+            onFailure = {
+                RouterAdminActionResult(
+                    success = false,
+                    message = it.message ?: "Delete failed"
+                )
+            }
+        )
+
+    suspend fun setAdminItemEnabled(
+        menuPath: String,
+        rowId: String,
+        enabled: Boolean
+    ): RouterAdminActionResult =
+        runCatching {
+            transport.execute(
+                "/" + menuPath.trim('/') + "/" + if (enabled) "enable" else "disable",
+                mapOf(".id" to rowId)
+            )
+        }.fold(
+            onSuccess = {
+                RouterAdminActionResult(
+                    success = true,
+                    message = if (enabled) "Enabled" else "Disabled"
+                )
+            },
+            onFailure = {
+                RouterAdminActionResult(
+                    success = false,
+                    message = it.message ?: "State change failed"
+                )
+            }
+        )
+
+    suspend fun createRouterAdmin(
+        username: String,
+        password: String,
+        group: String = "full",
+        comment: String = "Created by FG MTM"
+    ): RouterAdminActionResult =
+        createAdminItem(
+            "user",
+            buildMap {
+                put("name", username)
+                put("password", password)
+                put("group", group)
+                if (comment.isNotBlank()) put("comment", comment)
+            }
+        )
+
     suspend fun executeCommand(command: ParsedRouterCommand): CommandExecutionResult {
         if (!command.supported) {
             return CommandExecutionResult(
