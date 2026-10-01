@@ -117,9 +117,14 @@ jobs:
             sleep 3
             adb exec-out screencap -p > ui-proof/03-vouchers.png
 
+            adb shell am force-stop com.fgmachines.mikrotikmanager
+            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen commands
+            sleep 3
+            adb exec-out screencap -p > ui-proof/04-command-center.png
+
       - name: Upload UI proof
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.3.1-ui-proof
+          name: FG-MTM-0.4.0-ui-proof
           path: ui-proof/*.png
           if-no-files-found: error
