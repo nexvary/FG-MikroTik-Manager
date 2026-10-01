@@ -9,6 +9,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class VoucherPdfExporter {
     suspend fun export(
@@ -106,8 +110,11 @@ class VoucherPdfExporter {
         val network = voucher.branding.networkName.ifBlank { "WiFi" }.take(28)
 
         canvas.drawText(network, left, top + 14f, title)
-        if (voucher.branding.priceText.isNotBlank()) {
-            val price = voucher.branding.priceText.take(18)
+        val priceLabel = voucher.branding.priceEgp?.let {
+            DecimalFormat("0.##").format(it) + " EGP"
+        } ?: voucher.branding.priceText
+        if (priceLabel.isNotBlank()) {
+            val price = priceLabel.take(18)
             canvas.drawText(
                 price,
                 bounds.right - pad - value.measureText(price),
@@ -134,12 +141,22 @@ class VoucherPdfExporter {
         )
         canvas.drawBitmap(qr, null, qrRect, null)
 
-        val metaY = bounds.bottom - 28f
+        val metaY = bounds.bottom - 38f
         val plan = voucher.profile.ifBlank { "—" }.take(22)
-        val time = voucher.limitUptime.orEmpty().take(16)
+        val duration = voucher.displayDuration(arabic = false).take(18)
         canvas.drawText("Plan: " + plan, left, metaY, small)
-        if (time.isNotBlank()) {
-            canvas.drawText("Time: " + time, left, metaY + 12f, small)
+        canvas.drawText("Duration: " + duration, left, metaY + 11f, small)
+        voucher.absoluteExpiryEpochMs?.let { expiry ->
+            val expiryText = SimpleDateFormat(
+                "dd/MM/yyyy HH:mm",
+                Locale.ENGLISH
+            ).format(Date(expiry))
+            canvas.drawText(
+                "Expires: " + expiryText.take(20),
+                left,
+                metaY + 22f,
+                small
+            )
         }
 
         if (voucher.branding.supportPhone.isNotBlank()) {
