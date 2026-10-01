@@ -3,6 +3,11 @@ package com.fgmachines.mikrotikmanager.network
 interface RouterOsTransport : AutoCloseable {
     suspend fun read(menu: String): List<Map<String, String>>
 
+    suspend fun create(
+        menu: String,
+        attributes: Map<String, String>
+    ): List<Map<String, String>>
+
     suspend fun execute(
         command: String,
         attributes: Map<String, String> = emptyMap()

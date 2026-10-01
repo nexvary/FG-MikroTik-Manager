@@ -44,13 +44,27 @@ class RestRouterOsTransport(
                 .build()
         )
 
+    override suspend fun create(
+        menu: String,
+        attributes: Map<String, String>
+    ): List<Map<String, String>> {
+        val payload = jsonPayload(attributes)
+
+        return request(
+            Request.Builder()
+                .url(urlFor(menu))
+                .header("Authorization", authorization)
+                .header("Accept", "application/json")
+                .put(payload.toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+        )
+    }
+
     override suspend fun execute(
         command: String,
         attributes: Map<String, String>
     ): List<Map<String, String>> {
-        val payload = buildJsonObject {
-            attributes.forEach { (key, value) -> put(key, value) }
-        }.toString()
+        val payload = jsonPayload(attributes)
 
         return request(
             Request.Builder()
@@ -61,6 +75,11 @@ class RestRouterOsTransport(
                 .build()
         )
     }
+
+    private fun jsonPayload(attributes: Map<String, String>): String =
+        buildJsonObject {
+            attributes.forEach { (key, value) -> put(key, value) }
+        }.toString()
 
     private suspend fun request(request: Request): List<Map<String, String>> =
         withContext(Dispatchers.IO) {

@@ -49,8 +49,8 @@ class RouterRepository private constructor(
 
         commands.forEachIndexed { index, command ->
             try {
-                transport.execute(
-                    command = command.path,
+                transport.create(
+                    menu = command.path,
                     attributes = command.attributes
                 )
                 succeeded++
