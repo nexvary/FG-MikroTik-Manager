@@ -66,7 +66,7 @@ object WcgExporter {
         appendLine("<style>")
         appendLine("@page{size:A4;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;color:#111}")
         appendLine(".grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7mm}.card{border:1px solid #222;border-radius:12px;padding:12px;break-inside:avoid;text-align:center}")
-        appendLine(".network{font-size:18px;font-weight:700}.code{font:700 22px monospace;letter-spacing:1px}.meta{font-size:12px;margin-top:6px}.qr{font-size:10px;overflow-wrap:anywhere;border:1px dashed #999;padding:5px;margin-top:8px}")
+        appendLine(".network{font-size:18px;font-weight:700}.code{font:700 22px monospace;letter-spacing:1px}.meta{font-size:12px;margin-top:6px}.qr{width:92px;height:92px;margin:8px auto 0}.qr svg{width:100%;height:100%;display:block}")
         appendLine("@media print{body{print-color-adjust:exact}.card{page-break-inside:avoid}}")
         appendLine("</style></head><body><div class=\"grid\">")
 
@@ -77,7 +77,7 @@ object WcgExporter {
             appendLine("<div class=\"meta\">كارت رقم ${index + 1}</div>")
             appendLine("<div class=\"meta\">اسم المستخدم</div>")
             appendLine("<div class=\"code\">${escape(voucher.username)}</div>")
-            if (voucher.password != voucher.username) {
+            if (voucher.password.isNotBlank() && voucher.password != voucher.username) {
                 appendLine("<div class=\"meta\">كلمة المرور</div>")
                 appendLine("<div class=\"code\">${escape(voucher.password)}</div>")
             }
@@ -91,7 +91,9 @@ object WcgExporter {
                 appendLine("<div class=\"meta\">الدعم: ${escape(it)}</div>")
             }
             if (qrPayload.isNotBlank()) {
-                appendLine("<div class=\"qr\">QR DATA: ${escape(qrPayload)}</div>")
+                appendLine("<div class=\"qr\">")
+                appendLine(QrSvg.encode(qrPayload))
+                appendLine("</div>")
             }
             appendLine("</section>")
         }
@@ -105,10 +107,15 @@ object WcgExporter {
     ): String {
         if (loginUrl.isBlank()) return ""
         val separator = if ('?' in loginUrl) '&' else '?'
-        return loginUrl.trim() +
+        val base = loginUrl.trim() +
             separator +
-            "username=" + urlEncode(voucher.username) +
-            "&password=" + urlEncode(voucher.password)
+            "username=" + urlEncode(voucher.username)
+
+        return if (voucher.password.isBlank()) {
+            base
+        } else {
+            base + "&password=" + urlEncode(voucher.password)
+        }
     }
 
     private fun hotspotLine(voucher: VoucherDraft): String =
