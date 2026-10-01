@@ -42,6 +42,25 @@ class RouterRepository private constructor(
     suspend fun loadInterfaces(): List<RouterInterface> =
         transport.read("interface").map { it.toRouterInterface() }
 
+    suspend fun loadAdminModule(module: RouterAdminModule): RouterMenuSnapshot {
+        var lastError: Throwable? = null
+        for (menu in module.menuCandidates) {
+            try {
+                return RouterMenuSnapshot(
+                    module = module,
+                    menuPath = menu,
+                    rows = transport.read(menu)
+                )
+            } catch (t: Throwable) {
+                lastError = t
+            }
+        }
+        throw RouterOsException(
+            message = "RouterOS menu is not available: " + module.name,
+            cause = lastError
+        )
+    }
+
     suspend fun loadVoucherProfiles(mode: VoucherMode): List<RouterVoucherProfile> {
         val menu = when (mode) {
             VoucherMode.HOTSPOT -> "ip/hotspot/user/profile"
