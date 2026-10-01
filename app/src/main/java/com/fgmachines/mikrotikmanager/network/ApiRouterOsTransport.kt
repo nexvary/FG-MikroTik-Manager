@@ -226,14 +226,14 @@ internal object RouterOsApiCodec {
         if (first < 0) throw EOFException("RouterOS API connection closed")
 
         return when {
-            first and 0x80 == 0 -> first
-            first and 0xC0 == 0x80 ->
+            (first and 0x80) == 0 -> first
+            (first and 0xC0) == 0x80 ->
                 ((first and 0x3F) shl 8) or readByte(input)
-            first and 0xE0 == 0xC0 ->
+            (first and 0xE0) == 0xC0 ->
                 ((first and 0x1F) shl 16) or
                     (readByte(input) shl 8) or
                     readByte(input)
-            first and 0xF0 == 0xE0 ->
+            (first and 0xF0) == 0xE0 ->
                 ((first and 0x0F) shl 24) or
                     (readByte(input) shl 16) or
                     (readByte(input) shl 8) or
