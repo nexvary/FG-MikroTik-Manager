@@ -3,6 +3,7 @@ package com.fgmachines.mikrotikmanager.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,13 +17,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,11 +52,23 @@ import com.fgmachines.mikrotikmanager.voucher.VoucherBatchRequest
 import com.fgmachines.mikrotikmanager.voucher.VoucherBranding
 import com.fgmachines.mikrotikmanager.voucher.VoucherGenerator
 import com.fgmachines.mikrotikmanager.voucher.VoucherMode
+import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
 import com.fgmachines.mikrotikmanager.voucher.VoucherPasswordMode
+import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionSummary
 
 @Composable
 fun VoucherStudioScreen(
     arabic: Boolean,
+    connected: Boolean = false,
+    profiles: Map<VoucherMode, List<RouterVoucherProfile>> = emptyMap(),
+    profilesLoading: Boolean = false,
+    provisioning: Boolean = false,
+    provisionResult: VoucherProvisionSummary? = null,
+    historyCount: Int = 0,
+    onModeSelected: (VoucherMode) -> Unit = {},
+    onBatchGenerated: (VoucherBatch) -> Unit = {},
+    onProvision: (VoucherBatch) -> Unit = {},
+    onClearProvisionResult: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val generator = remember { VoucherGenerator() }
@@ -75,6 +92,7 @@ fun VoucherStudioScreen(
     Column(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -93,6 +111,11 @@ fun VoucherStudioScreen(
                         mode = item
                         batch = null
                         scriptPreview = ""
+                        onClearProvisionResult()
+                        onModeSelected(item)
+                        profiles[item]?.firstOrNull()?.let { selected ->
+                            profile = selected.name
+                        }
                     },
                     label = { Text(modeLabel(item, arabic)) },
                     leadingIcon = {
@@ -107,6 +130,51 @@ fun VoucherStudioScreen(
                         )
                     }
                 )
+            }
+        }
+
+        val currentProfiles = profiles[mode].orEmpty()
+        if (profilesLoading && mode != VoucherMode.OFFLINE) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.width(18.dp).height(18.dp),
+                    strokeWidth = 2.dp
+                )
+                Text(
+                    if (arabic) "جاري قراءة الباقات من الراوتر..."
+                    else "Loading profiles from router...",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (currentProfiles.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    if (arabic) "الباقات الموجودة على الراوتر" else "Router profiles",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    currentProfiles.forEach { item ->
+                        FilterChip(
+                            selected = profile == item.name,
+                            onClick = { profile = item.name },
+                            label = {
+                                Text(
+                                    if (item.rateLimit.isBlank()) item.name
+                                    else item.name + " • " + item.rateLimit
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -276,6 +344,8 @@ fun VoucherStudioScreen(
                             val generated = generator.generate(request)
                             batch = generated
                             scriptPreview = exporter.export(generated)
+                            onBatchGenerated(generated)
+                            onClearProvisionResult()
                             error = null
                         } catch (t: Throwable) {
                             error = t.message ?: "Invalid voucher settings"
@@ -309,6 +379,133 @@ fun VoucherStudioScreen(
                     supportPhone = first.branding.supportPhone,
                     count = generated.vouchers.size
                 )
+            }
+        }
+
+        batch?.let { generated ->
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
+                ),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Outlined.History, contentDescription = null)
+                            Text(
+                                if (arabic) "دفعات محفوظة: ${historyCount}"
+                                else "Saved batches: ${historyCount}",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Text(
+                            if (arabic) "الحفظ مشفّر" else "Encrypted",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+
+                    if (connected && generated.request.mode != VoucherMode.OFFLINE) {
+                        Button(
+                            onClick = { onProvision(generated) },
+                            enabled = !provisioning,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (provisioning) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.width(18.dp).height(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(Icons.Outlined.CloudUpload, contentDescription = null)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (arabic) {
+                                    if (provisioning) "جاري رفع الكروت..." else "رفع ${generated.vouchers.size} كارت إلى الراوتر"
+                                } else {
+                                    if (provisioning) "Provisioning vouchers..." else "Provision ${generated.vouchers.size} vouchers to router"
+                                }
+                            )
+                        }
+                    } else {
+                        Text(
+                            if (arabic) {
+                                "تم حفظ الدفعة محليًا ويمكن تصديرها أو رفعها لاحقًا."
+                            } else {
+                                "Batch saved locally and can be exported or provisioned later."
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        provisionResult?.let { result ->
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (result.failed == 0) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
+                    }
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    if (result.failed == 0) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error
+                ),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Outlined.CheckCircle, contentDescription = null)
+                        Text(
+                            if (arabic) "نتيجة الرفع" else "Provision result",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        if (arabic) {
+                            "تم إنشاء ${result.created} • مكرر ${result.duplicates} • فشل ${result.failed}"
+                        } else {
+                            "Created ${result.created} • duplicates ${result.duplicates} • failed ${result.failed}"
+                        }
+                    )
+                    result.items.firstOrNull { it.status.name == "FAILED" }?.let { failed ->
+                        Text(
+                            failed.username + ": " + failed.message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    OutlinedButton(onClick = onClearProvisionResult) {
+                        Text(if (arabic) "إغلاق النتيجة" else "Dismiss")
+                    }
+                }
             }
         }
 
