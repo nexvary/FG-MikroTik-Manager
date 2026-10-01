@@ -225,8 +225,15 @@ private fun Map<String, String>.toRouterInterface(): RouterInterface =
         id = this[".id"].orEmpty(),
         name = this["name"].orEmpty(),
         type = this["type"].orEmpty(),
-        running = this["running"].toBoolean(),
-        disabled = this["disabled"].toBoolean(),
+        running = this["running"].routerBoolean(),
+        disabled = this["disabled"].routerBoolean(),
         rxBytes = this["rx-byte"]?.toLongOrNull(),
         txBytes = this["tx-byte"]?.toLongOrNull()
     )
+
+
+private fun String?.routerBoolean(): Boolean =
+    when (this?.trim()?.lowercase()) {
+        "true", "yes", "1", "on" -> true
+        else -> false
+    }
