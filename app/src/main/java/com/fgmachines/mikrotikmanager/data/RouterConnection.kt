@@ -1,6 +1,7 @@
 package com.fgmachines.mikrotikmanager.data
 
 enum class RouterProtocol {
+    REST_HTTP,
     REST_HTTPS,
     API_SSL,
     API
@@ -25,6 +26,11 @@ data class RouterConnectionSettings(
             .removePrefix("http://")
             .trimEnd('/')
 
-    fun restBaseUrl(): String =
-        "https://" + normalizedHost() + ":" + port + "/rest"
+    fun restBaseUrl(): String {
+        val scheme = when (protocol) {
+            RouterProtocol.REST_HTTP -> "http"
+            else -> "https"
+        }
+        return scheme + "://" + normalizedHost() + ":" + port + "/rest"
+    }
 }
