@@ -1,119 +1,137 @@
-# Smart Creator-style Voucher Scope
+# Voucher Studio
 
-FG MikroTik Manager will include a first-class Voucher Studio for MikroTik HotSpot and, when available, RouterOS User Manager.
+FG MikroTik Manager includes a first-class Voucher Studio for MikroTik
+HotSpot, RouterOS User Manager v7 and PPPoE.
 
-The objective is feature parity in workflow, not copying Smart Creator source code or visual assets.
+The implementation target is the complete workflow observed in the
+user-supplied WiFi Cards Generator v7.6 application, combined with a safer,
+native Android architecture.
 
-## Confirmed Smart Creator-style capabilities
+See `REFERENCE_WIFI_CARDS_GENERATOR_V7_6.md` for the verified behavioral
+reference.
 
-### Voucher generation
+## Generator
+
 - Single voucher or batch generation.
-- Up to 5,000 vouchers in one batch.
-- Numeric or alphanumeric codes.
+- Up to 5,000 vouchers per batch.
+- HotSpot, User Manager v7 and PPPoE.
+- Numeric, letters-only or alphanumeric usernames.
+- Recharge Card mode.
 - Prefix and suffix.
-- Username only or username + password workflows.
-- Same username/password or independent random password.
-- Select HotSpot profile/package.
-- Select HotSpot server.
-- Comment/batch label.
-- Uptime and traffic limits.
-- Preview before writing to RouterOS.
+- No password, same-as-username or independent random password.
+- Profile and server/service selection.
+- Uptime and byte quotas.
+- Validity/expiry metadata.
+- Wi-Fi name, support number, server URL, price and currency.
+- Preview before any router mutation.
 
-### Router integration
-- HotSpot users: create, edit, enable, disable, reset counters and delete.
-- Active HotSpot sessions.
-- Hosts / callers / connected clients.
-- HotSpot user profiles and package management.
-- RouterOS User Manager when the package is available.
-- Capability detection so unsupported menus are hidden rather than failing.
+## Router integration
 
-### Voucher database
-Every generated voucher is stored locally in the Android app before/while it is written to the router.
+### HotSpot
 
-This allows:
-- Search by voucher code.
-- Retain sales/history after a voucher is removed from RouterOS.
-- Batch history.
-- Used / unused / active / expired state.
-- First use and last use when data is available.
-- Uploaded/downloaded bytes.
-- Associated router, profile, point of sale and operator.
+- Load HotSpot user profiles.
+- Load HotSpot servers.
+- Create/edit/disable/delete users.
+- Active sessions and hosts.
+- Reset counters.
+- Authority/rate presets.
+- Expired/quota-exhausted cleanup.
 
-Secrets will be encrypted at rest with Android Keystore-backed storage.
+### User Manager v7
 
-### Packages and pricing
-- Package name.
-- Selling price and optional cost.
-- Speed/rate profile mapping.
-- Validity.
-- Uptime quota.
-- Data quota.
-- Shared users.
-- RouterOS profile mapping.
-- Sales reporting by package.
+- Detect User Manager package/version.
+- Load User Manager profiles.
+- Create users.
+- Assign profiles.
 
-### Printing and design
-- Built-in voucher templates.
-- Visual template editor.
-- Logo, network name, contact number and custom text.
-- Username, password, serial, price, validity and QR/barcode fields.
-- A4 grid printing.
-- Bluetooth/USB thermal printing where Android printer APIs/SDKs allow it.
-- PDF export.
-- Reprint by batch or selected vouchers.
+### PPPoE
 
-### Reporting
-- Daily, weekly and monthly sales.
-- Voucher counts by package.
-- Used / unused / expired.
-- Active sessions.
-- Download/upload totals.
-- Router health summary.
-- PDF/CSV export.
+- Detect active PPPoE service.
+- Load PPP profiles.
+- Create PPP secrets.
 
-## Architecture decision
+## Connection transports
 
-Voucher generation is a domain module and does not depend on the RouterOS transport.
+The reference Windows app uses SSH on port 22. FG MikroTik Manager will support
+SSH in addition to the structured RouterOS REST/API transports.
 
-Flow:
+Transport selection remains isolated from the voucher domain:
 
 ```
-Voucher Studio UI
+Voucher Studio
       |
 VoucherGenerator
       |
 VoucherBatch
       |
+RouterOsVoucherScriptBuilder
+      |
 VoucherService
-   /       \
-Local DB   RouterRepository
-              |
-      REST / API-SSL / API
+   /        \
+Local DB    RouterRepository
+               |
+       REST / API-SSL / API / SSH
 ```
 
-This keeps generation, local history and printing functional even when the router is temporarily unreachable.
+## Voucher database
 
-## RouterOS mapping
+Every generated voucher is stored locally before/while it is written to the
+router.
 
-HotSpot vouchers map to `/ip/hotspot/user`.
+Tracked information includes:
 
-Important RouterOS fields include:
-- `name`
-- `password`
-- `profile`
-- `server`
-- `limit-uptime`
-- `limit-bytes-in`
-- `limit-bytes-out`
-- `limit-bytes-total`
+- Batch ID.
+- Router.
+- Backend (HotSpot/User Manager/PPPoE).
+- Username.
+- Encrypted password where retention is enabled.
+- Profile/package.
+- Price/currency.
+- Generated/used/active/expired state.
+- First and last use where available.
+- Uploaded/downloaded bytes.
+- Operator/device.
+- Reprint history.
 
-RouterOS User Manager will be implemented as a separate adapter because it is an optional package and its model differs from local HotSpot users.
+## Printing and design
 
-## Safety
+- Classic template.
+- Custom template.
+- Logo/background image.
+- Wi-Fi name.
+- Support number.
+- Card serial.
+- Username/password.
+- Price/currency.
+- Time limit.
+- Validity.
+- Data quota.
+- Local QR-code generation.
+- A4 grid PDF.
+- Direct Android printing.
+- Bluetooth/USB thermal printing through supported printer protocols/SDKs.
 
-- Generated credentials are never written to logs.
-- Batch creation shows a summary before router mutation.
-- Large batches run with progress, cancellation and partial-failure reporting.
-- Duplicate username checks happen locally and against the target router before commit when practical.
-- A failed router write does not destroy the locally generated batch.
-- Destructive bulk actions require explicit confirmation.
+## HotSpot authority presets
+
+Compatibility presets mirror the reference application:
+
+- 1 Mbps: 1M/1M.
+- 2 Mbps: 1M/2M.
+- 3 Mbps: 1M/3M.
+- 5 Mbps: 2M/5M.
+- 10 Mbps: 3M/10M.
+
+The Android UI uses Mbps terminology even where the legacy reference calls
+these profiles "MB".
+
+## Safety and reliability
+
+- Generated credentials are never logged.
+- QR generation is local; login credentials are not sent to a QR web service.
+- RouterOS values are escaped before script generation.
+- Large batches expose progress, cancel and partial-failure state.
+- Duplicate checks occur locally and against the target router when practical.
+- Failed router writes do not destroy the local batch.
+- Destructive bulk actions require confirmation.
+- Scripts are previewable/exportable before execution.
+- RouterOS capabilities are detected before exposing version-specific features.
