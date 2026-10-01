@@ -1,5 +1,7 @@
 package com.fgmachines.mikrotikmanager.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,55 +13,58 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Wifi
-import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -68,14 +73,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
-import com.fgmachines.mikrotikmanager.data.RouterInterface
 import com.fgmachines.mikrotikmanager.data.RouterProtocol
-import java.text.DecimalFormat
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
 fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
     var arabic by rememberSaveable {
         mutableStateOf(Locale.getDefault().language.equals("ar", ignoreCase = true))
     }
@@ -85,41 +90,50 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
         LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     ) {
         FgMikroTikTheme {
-            if (offlineStudio) {
-                OfflineVoucherShell(
-                    arabic = arabic,
-                    historyCount = state.voucherHistoryCount,
-                    recentBatches = state.recentVoucherBatches,
-                    onLanguageToggle = { arabic = !arabic },
-                    onBatchGenerated = viewModel::saveGeneratedBatch,
-                    onBack = { offlineStudio = false }
-                )
-            } else if (state.connected) {
-                RouterShell(
-                    state = state,
-                    arabic = arabic,
-                    onLanguageToggle = { arabic = !arabic },
-                    onRefresh = viewModel::refresh,
-                    onDisconnect = viewModel::disconnect,
-                    onSection = viewModel::selectSection,
-                    onVoucherModeSelected = viewModel::refreshVoucherProfiles,
-                    onVoucherBatchGenerated = viewModel::saveGeneratedBatch,
-                    onProvisionVouchers = viewModel::provisionVouchers,
-                    onClearVoucherResult = viewModel::clearVoucherProvisionResult
-                )
-            } else {
-                ConnectionScreen(
-                    connecting = state.connecting,
-                    discovering = state.discoveringRouters,
-                    discoveredRouters = state.discoveredRouters,
-                    error = state.error,
-                    arabic = arabic,
-                    onLanguageToggle = { arabic = !arabic },
-                    onDiscover = viewModel::discoverRouters,
-                    onOfflineStudio = { offlineStudio = true },
-                    onConnect = viewModel::connect,
-                    onClearError = viewModel::clearError
-                )
+            when {
+                offlineStudio -> {
+                    OfflineVoucherShell(
+                        arabic = arabic,
+                        historyCount = state.voucherHistoryCount,
+                        recentBatches = state.recentVoucherBatches,
+                        onLanguageToggle = { arabic = !arabic },
+                        onBatchGenerated = viewModel::saveGeneratedBatch,
+                        onBack = { offlineStudio = false }
+                    )
+                }
+
+                state.connected -> {
+                    RouterShell(
+                        state = state,
+                        arabic = arabic,
+                        onLanguageToggle = { arabic = !arabic },
+                        onRefresh = viewModel::refresh,
+                        onDisconnect = viewModel::disconnect,
+                        onSection = viewModel::selectSection,
+                        onOpenAdminModule = viewModel::openAdminModule,
+                        onRefreshAdminModule = viewModel::refreshAdminModule,
+                        onCloseAdminModule = viewModel::closeAdminModule,
+                        onVoucherModeSelected = viewModel::refreshVoucherProfiles,
+                        onVoucherBatchGenerated = viewModel::saveGeneratedBatch,
+                        onProvisionVouchers = viewModel::provisionVouchers,
+                        onClearVoucherResult = viewModel::clearVoucherProvisionResult
+                    )
+                }
+
+                else -> {
+                    ConnectionScreen(
+                        connecting = state.connecting,
+                        discovering = state.discoveringRouters,
+                        discoveredRouters = state.discoveredRouters,
+                        error = state.error,
+                        arabic = arabic,
+                        onLanguageToggle = { arabic = !arabic },
+                        onDiscover = viewModel::discoverRouters,
+                        onOfflineStudio = { offlineStudio = true },
+                        onConnect = viewModel::connect,
+                        onClearError = viewModel::clearError
+                    )
+                }
             }
         }
     }
@@ -153,39 +167,75 @@ private fun ConnectionScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().padding(18.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FgBlack)
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Card(modifier = Modifier.fillMaxWidth().widthIn(max = 620.dp)) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 620.dp),
+            colors = CardDefaults.cardColors(containerColor = FgDeepNavy),
+            border = BorderStroke(1.5.dp, FgBlue),
+            shape = RoundedCornerShape(22.dp)
+        ) {
             Column(
-                modifier = Modifier.padding(22.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .background(FgBlue.copy(alpha = 0.13f), RoundedCornerShape(15.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Router,
+                            contentDescription = null,
+                            tint = FgMint,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "FG MikroTik Manager",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
+                            "FG MTM",
+                            color = FgMint,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Black
                         )
                         Text(
-                            text = if (arabic) {
-                                "اكتشف الراوتر واختره — التطبيق يتولى الإعدادات التقنية"
-                            } else {
-                                "Find your router and select it — technical settings are automatic"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            "FG MikroTik Manager",
+                            color = FgWhite,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
+
                     IconButton(onClick = onLanguageToggle) {
-                        Icon(Icons.Outlined.Language, contentDescription = "Language")
+                        Icon(
+                            Icons.Outlined.Language,
+                            contentDescription = "Language",
+                            tint = FgCyan
+                        )
                     }
                 }
+
+                Text(
+                    if (arabic) {
+                        "التطبيق يبحث عن MikroTik تلقائيًا. اختر الراوتر ثم اكتب كلمة المرور فقط."
+                    } else {
+                        "The app finds MikroTik routers automatically. Select yours, then enter the password."
+                    },
+                    color = FgSilver
+                )
 
                 Button(
                     onClick = onDiscover,
@@ -194,7 +244,7 @@ private fun ConnectionScreen(
                 ) {
                     if (discovering) {
                         CircularProgressIndicator(
-                            modifier = Modifier.width(19.dp).height(19.dp),
+                            modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -203,72 +253,61 @@ private fun ConnectionScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         if (discovering) {
-                            if (arabic) "جاري البحث عن أجهزة MikroTik..." else "Searching for MikroTik routers..."
+                            if (arabic) "جاري البحث..." else "Searching..."
                         } else {
-                            if (arabic) "اكتشاف الراوترات تلقائيًا" else "Find MikroTik routers automatically"
+                            if (arabic) "اكتشاف الراوترات" else "Find routers"
                         }
                     )
                 }
 
                 if (discoveredRouters.isNotEmpty()) {
-                    Text(
-                        if (arabic) "اختر الراوتر" else "Select your router",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text(
+                            if (arabic) "الراوترات الموجودة" else "Discovered routers",
+                            color = FgMint,
+                            fontWeight = FontWeight.Bold
+                        )
 
-                    discoveredRouters.take(8).forEach { router ->
-                        OutlinedButton(
-                            onClick = {
-                                host = router.ipAddress
-                                onClearError()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Outlined.Wifi,
-                                contentDescription = null,
-                                tint = if (host == router.ipAddress) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                horizontalAlignment = Alignment.Start
+                        discoveredRouters.take(6).forEach { router ->
+                            OutlinedButton(
+                                onClick = {
+                                    host = router.ipAddress
+                                    onClearError()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                border = BorderStroke(
+                                    1.2.dp,
+                                    if (host == router.ipAddress) FgMint else FgSilverMuted
+                                )
                             ) {
-                                Text(
-                                    router.identity.ifBlank { "MikroTik" },
-                                    fontWeight = FontWeight.Bold
+                                Icon(
+                                    Icons.Outlined.Wifi,
+                                    contentDescription = null,
+                                    tint = if (host == router.ipAddress) FgMint else FgBlue
                                 )
-                                Text(
-                                    buildString {
-                                        if (router.boardName.isNotBlank()) append(router.boardName)
-                                        if (router.boardName.isNotBlank() && router.ipAddress.isNotBlank()) append(" • ")
-                                        append(router.ipAddress)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (router.macAddress.isNotBlank()) {
+                                Spacer(Modifier.width(10.dp))
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.Start
+                                ) {
                                     Text(
-                                        router.macAddress,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        router.identity.ifBlank { "MikroTik" },
+                                        color = FgWhite,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        listOfNotNull(
+                                            router.boardName.takeIf { it.isNotBlank() },
+                                            router.ipAddress.takeIf { it.isNotBlank() }
+                                        ).joinToString(" • "),
+                                        color = FgSilverMuted,
+                                        style = MaterialTheme.typography.bodySmall
                                     )
                                 }
                             }
                         }
                     }
                 }
-
-                Text(
-                    if (arabic) "أو اكتب IP يدويًا" else "Or enter the IP manually",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
 
                 OutlinedTextField(
                     value = host,
@@ -277,9 +316,7 @@ private fun ConnectionScreen(
                         onClearError()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text(if (arabic) "IP الراوتر" else "Router IP")
-                    },
+                    label = { Text(if (arabic) "IP الراوتر" else "Router IP") },
                     placeholder = { Text("192.168.88.1") },
                     singleLine = true
                 )
@@ -291,9 +328,7 @@ private fun ConnectionScreen(
                         onClearError()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text(if (arabic) "اسم المستخدم" else "Username")
-                    },
+                    label = { Text(if (arabic) "اسم المستخدم" else "Username") },
                     singleLine = true
                 )
 
@@ -313,7 +348,7 @@ private fun ConnectionScreen(
 
                 if (error != null) {
                     Text(
-                        text = error,
+                        error,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -331,42 +366,34 @@ private fun ConnectionScreen(
                             )
                         )
                     },
-                    enabled = !connecting &&
-                        host.isNotBlank() &&
-                        username.isNotBlank(),
+                    enabled = !connecting && host.isNotBlank() && username.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (connecting) {
                         CircularProgressIndicator(
-                            modifier = Modifier.width(18.dp).height(18.dp),
+                            modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp
                         )
-                        Spacer(Modifier.width(10.dp))
-                        Text(if (arabic) "جاري الاتصال تلقائيًا..." else "Connecting automatically...")
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (arabic) "جاري الاتصال..." else "Connecting...")
                     } else {
-                        Text(if (arabic) "اتصال بالراوتر" else "Connect to router")
+                        Text(if (arabic) "اتصال بالراوتر" else "Connect")
                     }
                 }
 
-                Text(
-                    text = if (arabic) {
-                        "لا تحتاج لمعرفة رقم المنفذ أو نوع البروتوكول. التطبيق يختار الإعداد المناسب تلقائيًا."
-                    } else {
-                        "No port or protocol knowledge is required. The app selects the connection method automatically."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
                 OutlinedButton(
                     onClick = onOfflineStudio,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    border = BorderStroke(1.2.dp, FgPurple)
                 ) {
-                    Icon(Icons.Outlined.CreditCard, contentDescription = null)
+                    Icon(
+                        Icons.Outlined.CreditCard,
+                        contentDescription = null,
+                        tint = FgPurple
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (arabic) "إنشاء كروت بدون راوتر"
-                        else "Create vouchers without a router"
+                        if (arabic) "إنشاء كروت بدون راوتر" else "Create vouchers offline"
                     )
                 }
             }
@@ -383,120 +410,294 @@ private fun RouterShell(
     onRefresh: () -> Unit,
     onDisconnect: () -> Unit,
     onSection: (AppSection) -> Unit,
+    onOpenAdminModule: (com.fgmachines.mikrotikmanager.data.RouterAdminModule) -> Unit,
+    onRefreshAdminModule: () -> Unit,
+    onCloseAdminModule: () -> Unit,
     onVoucherModeSelected: (com.fgmachines.mikrotikmanager.voucher.VoucherMode) -> Unit,
     onVoucherBatchGenerated: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
     onProvisionVouchers: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
     onClearVoucherResult: () -> Unit
 ) {
     val wide = LocalConfiguration.current.screenWidthDp >= 840
-    val identity = state.dashboard?.identity ?: "RouterOS"
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(identity)
-                        Text(
-                            text = sectionLabel(state.section, arabic),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onLanguageToggle) {
-                        Icon(Icons.Outlined.Language, contentDescription = "Language")
-                    }
-                    IconButton(onClick = onRefresh, enabled = !state.refreshing) {
-                        if (state.refreshing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.width(20.dp).height(20.dp),
-                                strokeWidth = 2.dp
+    val content: @Composable () -> Unit = {
+        Scaffold(
+            containerColor = FgBlack,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                "FG MikroTik Manager",
+                                color = FgWhite,
+                                fontWeight = FontWeight.Black
                             )
-                        } else {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                            Text(
+                                sectionLabel(state.section, arabic),
+                                color = FgMint,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        if (!wide) {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(
+                                    Icons.Outlined.Menu,
+                                    contentDescription = "Menu",
+                                    tint = FgBlue
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onLanguageToggle) {
+                            Icon(
+                                Icons.Outlined.Language,
+                                contentDescription = "Language",
+                                tint = FgCyan
+                            )
+                        }
+
+                        if (state.section == AppSection.DASHBOARD) {
+                            IconButton(onClick = onRefresh, enabled = !state.refreshing) {
+                                if (state.refreshing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(19.dp),
+                                        strokeWidth = 2.dp,
+                                        color = FgMint
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Outlined.Refresh,
+                                        contentDescription = "Refresh",
+                                        tint = FgMint
+                                    )
+                                }
+                            }
                         }
                     }
-                    IconButton(onClick = onDisconnect) {
-                        Icon(Icons.Outlined.Logout, contentDescription = "Disconnect")
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            if (!wide) {
-                NavigationBar {
-                    AppSection.entries.forEach { section ->
-                        NavigationBarItem(
-                            selected = section == state.section,
-                            onClick = { onSection(section) },
-                            icon = { SectionIcon(section) },
-                            label = { Text(sectionLabel(section, arabic)) }
-                        )
-                    }
-                }
+                )
             }
+        ) { padding ->
+            RouterSectionContent(
+                state = state,
+                arabic = arabic,
+                onOpenAdminModule = onOpenAdminModule,
+                onRefreshAdminModule = onRefreshAdminModule,
+                onCloseAdminModule = onCloseAdminModule,
+                onVoucherModeSelected = onVoucherModeSelected,
+                onVoucherBatchGenerated = onVoucherBatchGenerated,
+                onProvisionVouchers = onProvisionVouchers,
+                onClearVoucherResult = onClearVoucherResult,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            )
         }
-    ) { padding ->
+    }
+
+    if (wide) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .background(FgBlack)
         ) {
-            if (wide) {
-                NavigationRail {
-                    AppSection.entries.forEach { section ->
-                        NavigationRailItem(
-                            selected = section == state.section,
-                            onClick = { onSection(section) },
-                            icon = { SectionIcon(section) },
-                            label = { Text(sectionLabel(section, arabic)) }
-                        )
-                    }
-                }
-                VerticalDivider(
-                    modifier = Modifier.fillMaxHeight()
-                )
-            }
+            AppMenuContent(
+                state = state,
+                arabic = arabic,
+                onSection = onSection,
+                onDisconnect = onDisconnect,
+                modifier = Modifier
+                    .width(280.dp)
+                    .fillMaxHeight()
+            )
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (state.section) {
-                    AppSection.DASHBOARD ->
-                        DashboardScreen(state.dashboard, state.error, arabic)
-                    AppSection.VOUCHERS ->
-                        VoucherStudioScreen(
-                            arabic = arabic,
-                            connected = true,
-                            profiles = state.voucherProfiles,
-                            profilesLoading = state.voucherProfilesLoading,
-                            provisioning = state.voucherProvisioning,
-                            provisionResult = state.voucherProvisionResult,
-                            historyCount = state.voucherHistoryCount,
-                            recentBatches = state.recentVoucherBatches,
-                            onModeSelected = onVoucherModeSelected,
-                            onBatchGenerated = onVoucherBatchGenerated,
-                            onProvision = onProvisionVouchers,
-                            onClearProvisionResult = onClearVoucherResult,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    AppSection.INTERFACES ->
-                        InterfacesScreen(state.interfaces, wide, state.error, arabic)
-                }
+            VerticalDivider(color = FgBlue.copy(alpha = 0.45f))
+
+            Box(modifier = Modifier.weight(1f)) {
+                content()
             }
+        }
+    } else {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    drawerContainerColor = FgDeepNavy,
+                    drawerContentColor = FgWhite
+                ) {
+                    AppMenuContent(
+                        state = state,
+                        arabic = arabic,
+                        onSection = { section ->
+                            onSection(section)
+                            scope.launch { drawerState.close() }
+                        },
+                        onDisconnect = {
+                            onDisconnect()
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier
+                            .width(300.dp)
+                            .fillMaxHeight()
+                    )
+                }
+            },
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun AppMenuContent(
+    state: RouterUiState,
+    arabic: Boolean,
+    onSection: (AppSection) -> Unit,
+    onDisconnect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(FgDeepNavy)
+            .padding(horizontal = 12.dp, vertical = 16.dp)
+    ) {
+        Text(
+            "FG MTM",
+            color = FgMint,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black
+        )
+        Text(
+            "FG MikroTik Manager",
+            color = FgSilver,
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        state.dashboard?.let { snapshot ->
+            Text(
+                snapshot.identity,
+                modifier = Modifier.padding(top = 5.dp),
+                color = FgCyan,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 14.dp),
+            color = FgSilverMuted.copy(alpha = 0.32f)
+        )
+
+        AppSection.entries.forEach { section ->
+            val accent = sectionAccent(section)
+            NavigationDrawerItem(
+                selected = state.section == section,
+                onClick = { onSection(section) },
+                icon = {
+                    Icon(
+                        sectionIcon(section),
+                        contentDescription = null,
+                        tint = accent
+                    )
+                },
+                label = {
+                    Text(
+                        sectionLabel(section, arabic),
+                        fontWeight = if (state.section == section) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Medium
+                        }
+                    )
+                },
+                modifier = Modifier.padding(vertical = 3.dp)
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        OutlinedButton(
+            onClick = onDisconnect,
+            modifier = Modifier.fillMaxWidth(),
+            border = BorderStroke(1.2.dp, FgAmber)
+        ) {
+            Icon(
+                Icons.Outlined.Logout,
+                contentDescription = null,
+                tint = FgAmber
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (arabic) "قطع الاتصال" else "Disconnect",
+                color = FgAmber
+            )
         }
     }
 }
 
 @Composable
-private fun SectionIcon(section: AppSection) {
-    when (section) {
-        AppSection.DASHBOARD ->
-            Icon(Icons.Outlined.Dashboard, contentDescription = null)
-        AppSection.VOUCHERS ->
-            Icon(Icons.Outlined.CreditCard, contentDescription = null)
-        AppSection.INTERFACES ->
-            Icon(Icons.Outlined.SettingsEthernet, contentDescription = null)
+private fun RouterSectionContent(
+    state: RouterUiState,
+    arabic: Boolean,
+    onOpenAdminModule: (com.fgmachines.mikrotikmanager.data.RouterAdminModule) -> Unit,
+    onRefreshAdminModule: () -> Unit,
+    onCloseAdminModule: () -> Unit,
+    onVoucherModeSelected: (com.fgmachines.mikrotikmanager.voucher.VoucherMode) -> Unit,
+    onVoucherBatchGenerated: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
+    onProvisionVouchers: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
+    onClearVoucherResult: () -> Unit,
+    modifier: Modifier
+) {
+    when (state.section) {
+        AppSection.DASHBOARD -> {
+            DashboardScreen(
+                snapshot = state.dashboard,
+                error = state.error,
+                arabic = arabic,
+                modifier = modifier
+            )
+        }
+
+        AppSection.WINBOX -> {
+            RouterAdminScreen(
+                arabic = arabic,
+                loading = state.adminLoading,
+                selectedModule = state.adminModule,
+                snapshot = state.adminSnapshot,
+                error = state.adminError,
+                onOpenModule = onOpenAdminModule,
+                onRefresh = onRefreshAdminModule,
+                onBack = onCloseAdminModule,
+                modifier = modifier
+            )
+        }
+
+        AppSection.VOUCHERS -> {
+            VoucherStudioScreen(
+                arabic = arabic,
+                connected = true,
+                profiles = state.voucherProfiles,
+                profilesLoading = state.voucherProfilesLoading,
+                provisioning = state.voucherProvisioning,
+                provisionResult = state.voucherProvisionResult,
+                historyCount = state.voucherHistoryCount,
+                recentBatches = state.recentVoucherBatches,
+                onModeSelected = onVoucherModeSelected,
+                onBatchGenerated = onVoucherBatchGenerated,
+                onProvision = onProvisionVouchers,
+                onClearProvisionResult = onClearVoucherResult,
+                modifier = modifier
+            )
+        }
+
+        AppSection.ABOUT -> {
+            AboutDeveloperScreen(
+                arabic = arabic,
+                modifier = modifier
+            )
+        }
     }
 }
 
@@ -504,144 +705,85 @@ private fun SectionIcon(section: AppSection) {
 private fun DashboardScreen(
     snapshot: DashboardSnapshot?,
     error: String?,
-    arabic: Boolean
+    arabic: Boolean,
+    modifier: Modifier
 ) {
     if (snapshot == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = FgMint)
         }
         return
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(180.dp),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(18.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        if (error != null) {
-            item {
-                MetricCard("Last error", error)
-            }
-        }
+    val metrics = listOf(
+        (if (arabic) "اسم الراوتر" else "Router identity") to snapshot.identity,
+        "RouterOS" to snapshot.version.ifBlank { "—" },
+        (if (arabic) "الموديل" else "Board") to snapshot.boardName.ifBlank { "—" },
+        (if (arabic) "المعمارية" else "Architecture") to snapshot.architecture.ifBlank { "—" },
+        (if (arabic) "حمل المعالج" else "CPU load") to
+            (snapshot.cpuLoadPercent?.let { "$it%" } ?: "—"),
+        (if (arabic) "مدة التشغيل" else "Uptime") to snapshot.uptime.ifBlank { "—" },
+        (if (arabic) "عدد الواجهات" else "Interfaces") to snapshot.interfaces.size.toString()
+    )
 
-        items(
-            listOf(
-                (if (arabic) "اسم الراوتر" else "Identity") to snapshot.identity,
-                "RouterOS" to snapshot.version.ifBlank { if (arabic) "غير معروف" else "Unknown" },
-                (if (arabic) "الموديل" else "Board") to snapshot.boardName.ifBlank { if (arabic) "غير معروف" else "Unknown" },
-                (if (arabic) "المعمارية" else "Architecture") to snapshot.architecture.ifBlank { if (arabic) "غير معروف" else "Unknown" },
-                (if (arabic) "حمل المعالج" else "CPU load") to (snapshot.cpuLoadPercent?.let { it.toString() + "%" } ?: "—"),
-                (if (arabic) "الذاكرة المتاحة" else "Memory free") to formatBytes(snapshot.freeMemoryBytes),
-                (if (arabic) "مدة التشغيل" else "Uptime") to snapshot.uptime.ifBlank { "—" },
-                (if (arabic) "واجهات الشبكة" else "Interfaces") to snapshot.interfaces.size.toString()
-            )
-        ) { metric ->
-            MetricCard(metric.first, metric.second)
-        }
-    }
-}
-
-@Composable
-private fun MetricCard(label: String, value: String) {
-    Card {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-@Composable
-private fun InterfacesScreen(
-    interfaces: List<RouterInterface>,
-    wide: Boolean,
-    error: String?,
-    arabic: Boolean
-) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .background(FgBlack),
+        contentPadding = PaddingValues(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item {
+            Text(
+                if (arabic) "حالة الراوتر" else "Router status",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                color = FgMint
+            )
+        }
+
         if (error != null) {
             item {
-                Text(error, color = MaterialTheme.colorScheme.error)
+                Text(
+                    error,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
 
-        items(interfaces, key = { it.id.ifBlank { it.name } }) { item ->
-            Card {
-                if (wide) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(item.name, modifier = Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold)
-                        Text(item.type.ifBlank { "—" }, modifier = Modifier.weight(1f))
-                        Text(if (item.running) { if (arabic) "يعمل" else "Running" } else { if (arabic) "متوقف" else "Down" }, modifier = Modifier.weight(0.8f))
-                        Text("RX " + formatBytes(item.rxBytes), modifier = Modifier.weight(1f))
-                        Text("TX " + formatBytes(item.txBytes), modifier = Modifier.weight(1f))
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(item.name, fontWeight = FontWeight.SemiBold)
-                            Text(if (item.running) { if (arabic) "يعمل" else "Running" } else { if (arabic) "متوقف" else "Down" })
-                        }
-                        Text(
-                            item.type.ifBlank { if (arabic) "نوع غير معروف" else "Unknown type" },
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text("RX " + formatBytes(item.rxBytes) + "   •   TX " + formatBytes(item.txBytes))
-                    }
+        items(metrics) { metric ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = FgPanel),
+                border = BorderStroke(1.dp, FgBlue.copy(alpha = 0.45f)),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 15.dp, vertical = 13.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        metric.first,
+                        color = FgSilver,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        metric.second,
+                        color = FgWhite,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
+
+        item { Spacer(Modifier.height(10.dp)) }
     }
 }
-
-private fun formatBytes(value: Long?): String {
-    if (value == null) return "—"
-    if (value < 1024) return value.toString() + " B"
-
-    val units = arrayOf("KB", "MB", "GB", "TB")
-    var amount = value.toDouble()
-    var unitIndex = -1
-    while (amount >= 1024 && unitIndex < units.lastIndex) {
-        amount /= 1024
-        unitIndex++
-    }
-    return DecimalFormat("0.##").format(amount) + " " + units[unitIndex]
-}
-
-
-private fun sectionLabel(section: AppSection, arabic: Boolean): String =
-    when (section) {
-        AppSection.DASHBOARD -> if (arabic) "الرئيسية" else "Dashboard"
-        AppSection.VOUCHERS -> if (arabic) "الكروت" else "Vouchers"
-        AppSection.INTERFACES -> if (arabic) "الواجهات" else "Interfaces"
-    }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -654,30 +796,39 @@ private fun OfflineVoucherShell(
     onBack: () -> Unit
 ) {
     Scaffold(
+        containerColor = FgBlack,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
-                            if (arabic) "وضع الكروت بدون راوتر"
-                            else "Offline Voucher Studio"
+                            "FG MikroTik Manager",
+                            color = FgWhite,
+                            fontWeight = FontWeight.Black
                         )
                         Text(
-                            if (arabic) "أنشئ وصدّر الكروت ثم ارفعها لاحقًا"
-                            else "Generate and export now, provision later",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            if (arabic) "الكروت بدون راوتر" else "Offline vouchers",
+                            color = FgMint,
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Outlined.ArrowBack,
+                            contentDescription = "Back",
+                            tint = FgMint
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = onLanguageToggle) {
-                        Icon(Icons.Outlined.Language, contentDescription = "Language")
+                        Icon(
+                            Icons.Outlined.Language,
+                            contentDescription = "Language",
+                            tint = FgCyan
+                        )
                     }
                 }
             )
@@ -695,3 +846,27 @@ private fun OfflineVoucherShell(
         )
     }
 }
+
+private fun sectionLabel(section: AppSection, arabic: Boolean): String =
+    when (section) {
+        AppSection.DASHBOARD -> if (arabic) "الرئيسية" else "Home"
+        AppSection.WINBOX -> if (arabic) "إدارة الراوتر" else "Router Manager"
+        AppSection.VOUCHERS -> if (arabic) "الكروت" else "Vouchers"
+        AppSection.ABOUT -> if (arabic) "عن المطور" else "About developer"
+    }
+
+private fun sectionIcon(section: AppSection) =
+    when (section) {
+        AppSection.DASHBOARD -> Icons.Outlined.Dashboard
+        AppSection.WINBOX -> Icons.Outlined.Router
+        AppSection.VOUCHERS -> Icons.Outlined.CreditCard
+        AppSection.ABOUT -> Icons.Outlined.Info
+    }
+
+private fun sectionAccent(section: AppSection) =
+    when (section) {
+        AppSection.DASHBOARD -> FgBlue
+        AppSection.WINBOX -> FgMint
+        AppSection.VOUCHERS -> FgPurple
+        AppSection.ABOUT -> FgCyan
+    }
