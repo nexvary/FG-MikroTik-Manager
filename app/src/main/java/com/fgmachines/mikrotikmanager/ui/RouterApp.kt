@@ -60,6 +60,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
+import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
+import com.fgmachines.mikrotikmanager.voucher.WcgCardSettings
 import java.text.DecimalFormat
 
 @Composable
@@ -74,7 +76,8 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     state = state,
                     onRefresh = viewModel::refresh,
                     onDisconnect = viewModel::disconnect,
-                    onSection = viewModel::selectSection
+                    onSection = viewModel::selectSection,
+                    onUploadVouchers = viewModel::uploadVouchers
                 )
             }
             offlineCards -> {
@@ -263,7 +266,8 @@ private fun RouterShell(
     state: RouterUiState,
     onRefresh: () -> Unit,
     onDisconnect: () -> Unit,
-    onSection: (AppSection) -> Unit
+    onSection: (AppSection) -> Unit,
+    onUploadVouchers: (WcgCardSettings, VoucherBatch) -> Unit
 ) {
     val wide = LocalConfiguration.current.screenWidthDp >= 840
     val identity = state.dashboard?.identity ?: "RouterOS"
@@ -340,7 +344,10 @@ private fun RouterShell(
                         DashboardScreen(state.dashboard, state.error)
                     AppSection.CARDS ->
                         VoucherStudioScreen(
-                            modifier = Modifier.padding(18.dp)
+                            modifier = Modifier.padding(18.dp),
+                            uploading = state.uploadingVouchers,
+                            uploadMessage = state.voucherUploadMessage,
+                            onUpload = onUploadVouchers
                         )
                     AppSection.INTERFACES ->
                         InterfacesScreen(state.interfaces, wide, state.error)
