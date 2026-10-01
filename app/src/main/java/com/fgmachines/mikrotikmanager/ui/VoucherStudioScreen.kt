@@ -21,9 +21,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.fgmachines.mikrotikmanager.export.VoucherAndroidExporter
+import com.fgmachines.mikrotikmanager.export.VoucherSavedFiles
 import com.fgmachines.mikrotikmanager.voucher.VoucherAccessMode
 import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherCharacterSet
@@ -60,7 +63,10 @@ fun VoucherStudioScreen(
     var export by remember { mutableStateOf<VoucherExportBundle?>(null) }
     var generatedSettings by remember { mutableStateOf<WcgCardSettings?>(null) }
     var generatedBatch by remember { mutableStateOf<VoucherBatch?>(null) }
+    var savedFiles by remember { mutableStateOf<VoucherSavedFiles?>(null) }
+    var exportMessage by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
     val generator = remember { VoucherGenerator() }
 
     LazyColumn(
@@ -326,6 +332,8 @@ fun VoucherStudioScreen(
                 onClick = {
                     error = null
                     export = null
+                    savedFiles = null
+                    exportMessage = null
                     try {
                         val bytes = dataLimitGb
                             .toDoubleOrNull()
@@ -401,6 +409,65 @@ fun VoucherStudioScreen(
                         }
 
                         uploadMessage?.let {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    try {
+                                        val saved = VoucherAndroidExporter.saveBundle(
+                                            context = context,
+                                            bundle = bundle,
+                                            label = comment.ifBlank { networkName }
+                                        )
+                                        savedFiles = saved
+                                        exportMessage =
+                                            "تم حفظ RSC وCSV وHTML داخل مجلد التطبيق."
+                                    } catch (t: Throwable) {
+                                        exportMessage = t.message ?: "تعذر حفظ الملفات"
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("حفظ الملفات")
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    VoucherAndroidExporter.printHtml(
+                                        context = context,
+                                        html = bundle.html,
+                                        jobName = networkName.ifBlank { "FG MikroTik Cards" }
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("طباعة / PDF")
+                            }
+                        }
+
+                        savedFiles?.let { saved ->
+                            OutlinedButton(
+                                onClick = {
+                                    VoucherAndroidExporter.shareFiles(
+                                        context = context,
+                                        files = saved.all()
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("مشاركة RSC + CSV + HTML")
+                            }
+                        }
+
+                        exportMessage?.let {
                             Text(
                                 text = it,
                                 color = MaterialTheme.colorScheme.primary
