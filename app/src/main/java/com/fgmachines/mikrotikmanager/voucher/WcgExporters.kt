@@ -115,7 +115,9 @@ object WcgExporter {
         buildString {
             append("/ip hotspot user add")
             append(" name=").append(quote(voucher.username))
-            append(" password=").append(quote(voucher.password))
+            voucher.password.takeIf { it.isNotBlank() }?.let {
+                append(" password=").append(quote(it))
+            }
             append(" profile=").append(quote(voucher.profile))
             append(" server=").append(quote(voucher.server))
             voucher.limitUptime?.takeIf { it.isNotBlank() }?.let {
@@ -133,7 +135,9 @@ object WcgExporter {
         buildString {
             append("/user-manager user add")
             append(" name=").append(quote(voucher.username))
-            append(" password=").append(quote(voucher.password))
+            voucher.password.takeIf { it.isNotBlank() }?.let {
+                append(" password=").append(quote(it))
+            }
             voucher.comment.takeIf { it.isNotBlank() }?.let {
                 append(" comment=").append(quote(it))
             }
@@ -143,7 +147,9 @@ object WcgExporter {
         buildString {
             append("/ppp secret add")
             append(" name=").append(quote(voucher.username))
-            append(" password=").append(quote(voucher.password))
+            voucher.password.takeIf { it.isNotBlank() }?.let {
+                append(" password=").append(quote(it))
+            }
             append(" service=pppoe")
             append(" profile=").append(quote(voucher.profile))
             voucher.limitBytesTotal?.let {
