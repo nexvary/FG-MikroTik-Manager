@@ -1,5 +1,8 @@
 package com.fgmachines.mikrotikmanager.voucher
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class VoucherMode {
     HOTSPOT,
     USER_MANAGER,
@@ -7,22 +10,26 @@ enum class VoucherMode {
     OFFLINE
 }
 
+@Serializable
 enum class VoucherCharacterSet {
     NUMERIC,
     ALPHANUMERIC
 }
 
+@Serializable
 enum class VoucherPasswordMode {
     SAME_AS_USERNAME,
     RANDOM
 }
 
+@Serializable
 data class VoucherBranding(
     val networkName: String = "",
     val supportPhone: String = "",
     val priceText: String = ""
 )
 
+@Serializable
 data class VoucherBatchRequest(
     val quantity: Int,
     val usernameLength: Int,
@@ -53,6 +60,7 @@ data class VoucherBatchRequest(
     }
 }
 
+@Serializable
 data class VoucherDraft(
     val username: String,
     val password: String,
@@ -65,6 +73,7 @@ data class VoucherDraft(
     val branding: VoucherBranding = VoucherBranding()
 )
 
+@Serializable
 data class VoucherBatch(
     val request: VoucherBatchRequest,
     val vouchers: List<VoucherDraft>
