@@ -24,7 +24,19 @@ enum class RouterAdminModule(
         canCreate = false
     ),
     BRIDGE(listOf("interface/bridge"), RouterAdminGroup.NETWORK),
+    VLAN(listOf("interface/vlan"), RouterAdminGroup.NETWORK),
+    WIREGUARD(listOf("interface/wireguard"), RouterAdminGroup.NETWORK),
+    ZEROTIER(listOf("zerotier/interface"), RouterAdminGroup.NETWORK),
     IP_ADDRESSES(listOf("ip/address"), RouterAdminGroup.NETWORK),
+    ARP(listOf("ip/arp"), RouterAdminGroup.NETWORK),
+    NEIGHBORS(
+        listOf("ip/neighbor"),
+        RouterAdminGroup.NETWORK,
+        canCreate = false,
+        canEdit = false,
+        canToggle = false,
+        canDelete = false
+    ),
     DHCP(listOf("ip/dhcp-server", "ip/dhcp-client"), RouterAdminGroup.NETWORK),
     DNS(
         listOf("ip/dns"),
@@ -43,6 +55,31 @@ enum class RouterAdminModule(
         listOf("ip/service"),
         RouterAdminGroup.SYSTEM,
         canCreate = false,
+        canDelete = false
+    ),
+    IDENTITY(
+        listOf("system/identity"),
+        RouterAdminGroup.SYSTEM,
+        canCreate = false,
+        canToggle = false,
+        canDelete = false
+    ),
+    CLOCK(
+        listOf("system/clock"),
+        RouterAdminGroup.SYSTEM,
+        canCreate = false,
+        canToggle = false,
+        canDelete = false
+    ),
+    SCHEDULER(listOf("system/scheduler"), RouterAdminGroup.SYSTEM),
+    SCRIPTS(listOf("system/script"), RouterAdminGroup.SYSTEM),
+    CERTIFICATES(listOf("certificate"), RouterAdminGroup.SYSTEM),
+    PACKAGES(
+        listOf("system/package"),
+        RouterAdminGroup.SYSTEM,
+        canCreate = false,
+        canEdit = false,
+        canToggle = false,
         canDelete = false
     ),
     FILES(
