@@ -23,6 +23,7 @@ class VoucherGenerator(
             if (!usernames.add(username)) continue
 
             val password = when (request.passwordMode) {
+                VoucherPasswordMode.NONE -> ""
                 VoucherPasswordMode.SAME_AS_USERNAME -> username
                 VoucherPasswordMode.RANDOM ->
                     randomToken(request.passwordLength, request.characterSet)
@@ -51,6 +52,7 @@ class VoucherGenerator(
     ): String {
         val alphabet = when (characterSet) {
             VoucherCharacterSet.NUMERIC -> NUMERIC
+            VoucherCharacterSet.LETTERS -> LETTERS
             VoucherCharacterSet.ALPHANUMERIC -> ALPHANUMERIC
         }
 
@@ -62,11 +64,9 @@ class VoucherGenerator(
     }
 
     private companion object {
-        const val NUMERIC = "0123456789"
-
-        // Ambiguous characters 0/O and 1/I/L are intentionally excluded.
-        const val ALPHANUMERIC =
-            "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
+        const val NUMERIC = "123456789"
+        const val LETTERS = "abcdefghijkmnopqrstuvwxyz"
+        const val ALPHANUMERIC = NUMERIC + LETTERS
     }
 }
 
