@@ -75,6 +75,8 @@ import com.fgmachines.mikrotikmanager.command.ParsedRouterCommand
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
 import com.fgmachines.mikrotikmanager.data.RouterAdminGroup
+import com.fgmachines.mikrotikmanager.data.RouterAdminModule
+import com.fgmachines.mikrotikmanager.data.RouterMenuSnapshot
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
 import com.fgmachines.mikrotikmanager.data.RouterProtocol
@@ -150,7 +152,7 @@ fun RouterDemoApp(screen: String) {
     val section = when (screen.lowercase(Locale.ENGLISH)) {
         "dashboard" -> AppSection.DASHBOARD
         "winbox", "network" -> AppSection.NETWORK
-        "system", "commands" -> AppSection.SYSTEM
+        "system", "commands", "admin-users" -> AppSection.SYSTEM
         "vouchers" -> AppSection.VOUCHERS
         "about" -> AppSection.ABOUT
         else -> AppSection.MENU
@@ -172,11 +174,37 @@ fun RouterDemoApp(screen: String) {
         )
     )
 
+    val demoUsers = screen.equals("admin-users", ignoreCase = true)
     val demoState = RouterUiState(
         connected = true,
         dashboard = dashboard,
         interfaces = dashboard.interfaces,
         section = section,
+        adminModule = if (demoUsers) RouterAdminModule.USERS else null,
+        adminSnapshot = if (demoUsers) {
+            RouterMenuSnapshot(
+                module = RouterAdminModule.USERS,
+                menuPath = "user",
+                rows = listOf(
+                    mapOf(
+                        ".id" to "*1",
+                        "name" to "admin",
+                        "group" to "full",
+                        "disabled" to "false",
+                        "comment" to "Main administrator"
+                    ),
+                    mapOf(
+                        ".id" to "*2",
+                        "name" to "support",
+                        "group" to "read",
+                        "disabled" to "true",
+                        "comment" to "Support account"
+                    )
+                )
+            )
+        } else {
+            null
+        },
         voucherProfiles = mapOf(
             VoucherMode.HOTSPOT to listOf(
                 RouterVoucherProfile("default"),
