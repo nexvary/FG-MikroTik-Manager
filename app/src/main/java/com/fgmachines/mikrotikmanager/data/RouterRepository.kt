@@ -1,5 +1,8 @@
 package com.fgmachines.mikrotikmanager.data
 
+import com.fgmachines.mikrotikmanager.command.CommandExecutionResult
+import com.fgmachines.mikrotikmanager.command.CommandExecutionStatus
+import com.fgmachines.mikrotikmanager.command.ParsedRouterCommand
 import com.fgmachines.mikrotikmanager.network.ApiRouterOsTransport
 import com.fgmachines.mikrotikmanager.network.AutoRouterOsTransport
 import com.fgmachines.mikrotikmanager.network.RestRouterOsTransport
@@ -65,6 +68,74 @@ class RouterRepository private constructor(
             message = "RouterOS menu is not available: " + module.name,
             cause = lastError
         )
+    }
+
+    suspend fun executeCommand(command: ParsedRouterCommand): CommandExecutionResult {
+        if (!command.supported) {
+            return CommandExecutionResult(
+                command = command,
+                status = CommandExecutionStatus.SKIPPED,
+                message = "Unsupported command"
+            )
+        }
+
+        return try {
+            val rows = when (command.action) {
+                "print" -> transport.read(command.menu)
+                "add" -> transport.create(command.menu, command.attributes)
+                "set", "enable", "disable", "remove" -> {
+                    val id = resolveCommandTarget(command)
+                    val attrs = buildMap {
+                        put(".id", id)
+                        putAll(command.attributes)
+                    }
+                    transport.execute(
+                        "/" + command.menu.trim('/') + "/" + command.action,
+                        attrs
+                    )
+                }
+                else -> error("Unsupported RouterOS action")
+            }
+
+            CommandExecutionResult(
+                command = command,
+                status = CommandExecutionStatus.SUCCESS,
+                message = when (command.action) {
+                    "print" -> "Read " + rows.size + " item(s)"
+                    else -> "Completed"
+                },
+                rows = rows
+            )
+        } catch (t: Throwable) {
+            CommandExecutionResult(
+                command = command,
+                status = CommandExecutionStatus.FAILED,
+                message = t.message ?: "RouterOS command failed"
+            )
+        }
+    }
+
+    private suspend fun resolveCommandTarget(command: ParsedRouterCommand): String {
+        val selector = command.selector
+            ?: command.attributes[".id"]
+            ?: command.attributes["numbers"]
+            ?: throw RouterOsException("This command needs a target item")
+
+        if (selector.startsWith("*")) return selector
+
+        val rows = transport.read(command.menu)
+        val matching = rows.firstOrNull { row ->
+            row[".id"] == selector ||
+                row["name"] == selector ||
+                row["number"] == selector ||
+                row["address"] == selector ||
+                row["user"] == selector
+        } ?: throw RouterOsException(
+            "Could not find '" + selector + "' in /" + command.menu
+        )
+
+        return matching[".id"]
+            ?: throw RouterOsException("RouterOS item has no .id")
     }
 
     suspend fun loadVoucherProfiles(mode: VoucherMode): List<RouterVoucherProfile> {
