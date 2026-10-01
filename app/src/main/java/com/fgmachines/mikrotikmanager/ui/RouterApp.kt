@@ -26,6 +26,8 @@ import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -63,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
+import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
 import com.fgmachines.mikrotikmanager.data.RouterProtocol
@@ -106,9 +109,12 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
             } else {
                 ConnectionScreen(
                     connecting = state.connecting,
+                    discovering = state.discoveringRouters,
+                    discoveredRouters = state.discoveredRouters,
                     error = state.error,
                     arabic = arabic,
                     onLanguageToggle = { arabic = !arabic },
+                    onDiscover = viewModel::discoverRouters,
                     onOfflineStudio = { offlineStudio = true },
                     onConnect = viewModel::connect,
                     onClearError = viewModel::clearError
@@ -121,26 +127,27 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 @Composable
 private fun ConnectionScreen(
     connecting: Boolean,
+    discovering: Boolean,
+    discoveredRouters: List<DiscoveredRouter>,
     error: String?,
     arabic: Boolean,
     onLanguageToggle: () -> Unit,
+    onDiscover: () -> Unit,
     onOfflineStudio: () -> Unit,
     onConnect: (RouterConnectionSettings) -> Unit,
     onClearError: () -> Unit
 ) {
-    var lanTest by remember { mutableStateOf(true) }
-    var host by remember { mutableStateOf("192.168.1.110") }
-    var port by remember { mutableStateOf("80") }
-    var username by remember { mutableStateOf("admin") }
-    var password by remember { mutableStateOf("") }
+    var host by rememberSaveable { mutableStateOf("") }
+    var username by rememberSaveable { mutableStateOf("admin") }
+    var password by rememberSaveable { mutableStateOf("") }
 
     Box(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(18.dp),
         contentAlignment = Alignment.Center
     ) {
-        Card(modifier = Modifier.fillMaxWidth().widthIn(max = 560.dp)) {
+        Card(modifier = Modifier.fillMaxWidth().widthIn(max = 620.dp)) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(22.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(
@@ -148,15 +155,18 @@ private fun ConnectionScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "FG MikroTik Manager",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (arabic) "إدارة الراوتر والكروت من مكان واحد"
-                                else "Router management and vouchers in one place",
+                            text = if (arabic) {
+                                "اكتشف الراوتر واختره — التطبيق يتولى الإعدادات التقنية"
+                            } else {
+                                "Find your router and select it — technical settings are automatic"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -166,46 +176,87 @@ private fun ConnectionScreen(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                Button(
+                    onClick = onDiscover,
+                    enabled = !discovering && !connecting,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = {
-                            lanTest = true
-                            port = "80"
-                            if (host.isBlank() || host == "192.168.88.1") {
-                                host = "192.168.1.110"
-                            }
-                            onClearError()
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (arabic) "تجربة LAN" else "LAN Test")
+                    if (discovering) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.width(19.dp).height(19.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Outlined.Search, contentDescription = null)
                     }
-                    OutlinedButton(
-                        onClick = {
-                            lanTest = false
-                            port = "443"
-                            onClearError()
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (arabic) "HTTPS آمن" else "Secure HTTPS")
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (discovering) {
+                            if (arabic) "جاري البحث عن أجهزة MikroTik..." else "Searching for MikroTik routers..."
+                        } else {
+                            if (arabic) "اكتشاف الراوترات تلقائيًا" else "Find MikroTik routers automatically"
+                        }
+                    )
+                }
+
+                if (discoveredRouters.isNotEmpty()) {
+                    Text(
+                        if (arabic) "اختر الراوتر" else "Select your router",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    discoveredRouters.take(8).forEach { router ->
+                        OutlinedButton(
+                            onClick = {
+                                host = router.ipAddress
+                                onClearError()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Outlined.Wifi,
+                                contentDescription = null,
+                                tint = if (host == router.ipAddress) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                Text(
+                                    router.identity.ifBlank { "MikroTik" },
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    buildString {
+                                        if (router.boardName.isNotBlank()) append(router.boardName)
+                                        if (router.boardName.isNotBlank() && router.ipAddress.isNotBlank()) append(" • ")
+                                        append(router.ipAddress)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (router.macAddress.isNotBlank()) {
+                                    Text(
+                                        router.macAddress,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
                 Text(
-                    text = if (lanTest) {
-                        if (arabic) "وضع اختبار داخل الشبكة المحلية فقط — الاتصال غير مشفّر."
-                        else "Local-network test mode only — traffic is not encrypted."
-                    } else {
-                        if (arabic) "اتصال HTTPS المشفّر."
-                        else "Encrypted HTTPS connection."
-                    },
-                    color = if (lanTest) MaterialTheme.colorScheme.tertiary
-                    else MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodySmall
+                    if (arabic) "أو اكتب IP يدويًا" else "Or enter the IP manually",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 OutlinedTextField(
@@ -215,41 +266,36 @@ private fun ConnectionScreen(
                         onClearError()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (arabic) "IP الراوتر أو اسم المضيف" else "Router IP or hostname") },
+                    label = {
+                        Text(if (arabic) "IP الراوتر" else "Router IP")
+                    },
+                    placeholder = { Text("192.168.88.1") },
                     singleLine = true
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = port,
-                        onValueChange = { port = it.filter(Char::isDigit) },
-                        modifier = Modifier.weight(0.34f),
-                        label = {
-                            Text(
-                                if (lanTest) {
-                                    if (arabic) "منفذ HTTP" else "HTTP port"
-                                } else {
-                                    if (arabic) "منفذ HTTPS" else "HTTPS port"
-                                }
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        modifier = Modifier.weight(0.66f),
-                        label = { Text(if (arabic) "اسم المستخدم" else "Username") },
-                        singleLine = true
-                    )
-                }
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = {
+                        username = it
+                        onClearError()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(if (arabic) "اسم المستخدم" else "Username")
+                    },
+                    singleLine = true
+                )
 
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = {
+                        password = it
+                        onClearError()
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (arabic) "كلمة المرور" else "Password") },
+                    label = {
+                        Text(if (arabic) "كلمة مرور MikroTik" else "MikroTik password")
+                    },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true
                 )
@@ -264,25 +310,19 @@ private fun ConnectionScreen(
 
                 Button(
                     onClick = {
-                        val parsedPort = port.toIntOrNull() ?: if (lanTest) 80 else 443
                         onConnect(
                             RouterConnectionSettings(
                                 host = host,
-                                port = parsedPort,
+                                port = 8728,
                                 username = username,
                                 password = password,
-                                protocol = if (lanTest) {
-                                    RouterProtocol.REST_HTTP
-                                } else {
-                                    RouterProtocol.REST_HTTPS
-                                }
+                                protocol = RouterProtocol.AUTO
                             )
                         )
                     },
                     enabled = !connecting &&
                         host.isNotBlank() &&
-                        username.isNotBlank() &&
-                        (port.toIntOrNull()?.let { it in 1..65535 } == true),
+                        username.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (connecting) {
@@ -291,11 +331,21 @@ private fun ConnectionScreen(
                             strokeWidth = 2.dp
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text(if (arabic) "جاري الاتصال" else "Connecting")
+                        Text(if (arabic) "جاري الاتصال تلقائيًا..." else "Connecting automatically...")
                     } else {
-                        Text(if (arabic) "اتصال بالراوتر" else "Connect")
+                        Text(if (arabic) "اتصال بالراوتر" else "Connect to router")
                     }
                 }
+
+                Text(
+                    text = if (arabic) {
+                        "لا تحتاج لمعرفة رقم المنفذ أو نوع البروتوكول. التطبيق يختار الإعداد المناسب تلقائيًا."
+                    } else {
+                        "No port or protocol knowledge is required. The app selects the connection method automatically."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
 
                 OutlinedButton(
                     onClick = onOfflineStudio,
@@ -304,20 +354,10 @@ private fun ConnectionScreen(
                     Icon(Icons.Outlined.CreditCard, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (arabic) "إنشاء كروت بدون الاتصال بالراوتر"
-                        else "Create vouchers offline"
+                        if (arabic) "إنشاء كروت بدون راوتر"
+                        else "Create vouchers without a router"
                     )
                 }
-
-                Text(
-                    text = if (arabic) {
-                        "بعد الاختبار استخدم HTTPS أو API-SSL في التشغيل الدائم."
-                    } else {
-                        "After testing, use HTTPS or API-SSL for normal operation."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
