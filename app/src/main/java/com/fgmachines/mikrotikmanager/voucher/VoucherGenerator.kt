@@ -19,11 +19,9 @@ class VoucherGenerator(
 
             val rawUsername = randomToken(request.usernameLength, request.characterSet)
             val username = request.prefix + rawUsername + request.suffix
-
             if (!usernames.add(username)) continue
 
             val password = when (request.passwordMode) {
-                VoucherPasswordMode.NONE -> ""
                 VoucherPasswordMode.SAME_AS_USERNAME -> username
                 VoucherPasswordMode.RANDOM ->
                     randomToken(request.passwordLength, request.characterSet)
@@ -36,37 +34,29 @@ class VoucherGenerator(
                 server = request.server,
                 comment = request.comment,
                 limitUptime = request.limitUptime,
-                limitBytesTotal = request.limitBytesTotal
+                limitBytesTotal = request.limitBytesTotal,
+                mode = request.mode,
+                branding = request.branding
             )
         }
 
-        return VoucherBatch(
-            request = request,
-            vouchers = vouchers
-        )
+        return VoucherBatch(request, vouchers)
     }
 
-    private fun randomToken(
-        length: Int,
-        characterSet: VoucherCharacterSet
-    ): String {
+    private fun randomToken(length: Int, characterSet: VoucherCharacterSet): String {
         val alphabet = when (characterSet) {
             VoucherCharacterSet.NUMERIC -> NUMERIC
-            VoucherCharacterSet.LETTERS -> LETTERS
             VoucherCharacterSet.ALPHANUMERIC -> ALPHANUMERIC
         }
-
         return buildString(length) {
-            repeat(length) {
-                append(alphabet[random.nextInt(alphabet.length)])
-            }
+            repeat(length) { append(alphabet[random.nextInt(alphabet.length)]) }
         }
     }
 
     private companion object {
-        const val NUMERIC = "123456789"
-        const val LETTERS = "abcdefghijkmnopqrstuvwxyz"
-        const val ALPHANUMERIC = NUMERIC + LETTERS
+        const val NUMERIC = "0123456789"
+        const val ALPHANUMERIC =
+            "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
     }
 }
 
@@ -76,6 +66,5 @@ fun interface RandomSource {
 
 private class SecureRandomSource : RandomSource {
     private val secureRandom = SecureRandom()
-
     override fun nextInt(bound: Int): Int = secureRandom.nextInt(bound)
 }
