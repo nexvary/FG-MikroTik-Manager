@@ -27,7 +27,8 @@ import kotlinx.coroutines.launch
 enum class AppSection(val title: String) {
     MENU("Menu"),
     DASHBOARD("Dashboard"),
-    WINBOX("WinBox"),
+    NETWORK("Network"),
+    SYSTEM("System"),
     VOUCHERS("Vouchers"),
     ABOUT("About")
 }
@@ -52,6 +53,8 @@ data class RouterUiState(
     val adminModule: RouterAdminModule? = null,
     val adminSnapshot: RouterMenuSnapshot? = null,
     val adminError: String? = null,
+    val adminActionRunning: Boolean = false,
+    val adminActionMessage: String? = null,
     val commandRunning: Boolean = false,
     val commandResults: List<CommandExecutionResult> = emptyList(),
     val commandHistory: List<CommandExecutionResult> = emptyList()
@@ -156,7 +159,13 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectSection(section: AppSection) {
-        _state.value = _state.value.copy(section = section)
+        _state.value = _state.value.copy(
+            section = section,
+            adminModule = null,
+            adminSnapshot = null,
+            adminError = null,
+            adminActionMessage = null
+        )
         if (section == AppSection.VOUCHERS &&
             _state.value.voucherProfiles[VoucherMode.HOTSPOT].isNullOrEmpty()
         ) {
@@ -205,6 +214,130 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    fun createAdminItem(
+        attributes: Map<String, String>
+    ) {
+        val repo = repository ?: return
+        val snapshot = _state.value.adminSnapshot ?: return
+        if (_state.value.adminActionRunning) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                adminActionRunning = true,
+                adminActionMessage = null
+            )
+            val result = repo.createAdminItem(snapshot.menuPath, attributes)
+            _state.value = _state.value.copy(
+                adminActionRunning = false,
+                adminActionMessage = result.message
+            )
+            if (result.success) refreshAdminModule()
+        }
+    }
+
+    fun createRouterAdmin(
+        username: String,
+        password: String,
+        group: String,
+        comment: String
+    ) {
+        val repo = repository ?: return
+        if (_state.value.adminActionRunning) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                adminActionRunning = true,
+                adminActionMessage = null
+            )
+            val result = repo.createRouterAdmin(
+                username = username,
+                password = password,
+                group = group,
+                comment = comment
+            )
+            _state.value = _state.value.copy(
+                adminActionRunning = false,
+                adminActionMessage = result.message
+            )
+            if (result.success) refreshAdminModule()
+        }
+    }
+
+    fun updateAdminItem(
+        rowId: String?,
+        attributes: Map<String, String>
+    ) {
+        val repo = repository ?: return
+        val snapshot = _state.value.adminSnapshot ?: return
+        if (_state.value.adminActionRunning) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                adminActionRunning = true,
+                adminActionMessage = null
+            )
+            val result = repo.updateAdminItem(
+                snapshot.menuPath,
+                rowId,
+                attributes
+            )
+            _state.value = _state.value.copy(
+                adminActionRunning = false,
+                adminActionMessage = result.message
+            )
+            if (result.success) refreshAdminModule()
+        }
+    }
+
+    fun removeAdminItem(rowId: String) {
+        val repo = repository ?: return
+        val snapshot = _state.value.adminSnapshot ?: return
+        if (_state.value.adminActionRunning) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                adminActionRunning = true,
+                adminActionMessage = null
+            )
+            val result = repo.removeAdminItem(snapshot.menuPath, rowId)
+            _state.value = _state.value.copy(
+                adminActionRunning = false,
+                adminActionMessage = result.message
+            )
+            if (result.success) refreshAdminModule()
+        }
+    }
+
+    fun setAdminItemEnabled(
+        rowId: String,
+        enabled: Boolean
+    ) {
+        val repo = repository ?: return
+        val snapshot = _state.value.adminSnapshot ?: return
+        if (_state.value.adminActionRunning) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                adminActionRunning = true,
+                adminActionMessage = null
+            )
+            val result = repo.setAdminItemEnabled(
+                snapshot.menuPath,
+                rowId,
+                enabled
+            )
+            _state.value = _state.value.copy(
+                adminActionRunning = false,
+                adminActionMessage = result.message
+            )
+            if (result.success) refreshAdminModule()
+        }
+    }
+
+    fun clearAdminActionMessage() {
+        _state.value = _state.value.copy(adminActionMessage = null)
+    }
+
     fun runCommands(commands: List<ParsedRouterCommand>) {
         val repo = repository ?: return
         if (_state.value.commandRunning || commands.isEmpty()) return
@@ -233,7 +366,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 commandHistory = newHistory
             )
 
-            if (_state.value.section == AppSection.WINBOX &&
+            if ((_state.value.section == AppSection.NETWORK ||
+                    _state.value.section == AppSection.SYSTEM) &&
                 _state.value.adminModule != null
             ) {
                 refreshAdminModule()
