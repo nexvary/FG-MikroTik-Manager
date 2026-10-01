@@ -84,6 +84,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                 OfflineVoucherShell(
                     arabic = arabic,
                     historyCount = state.voucherHistoryCount,
+                    recentBatches = state.recentVoucherBatches,
                     onLanguageToggle = { arabic = !arabic },
                     onBatchGenerated = viewModel::saveGeneratedBatch,
                     onBack = { offlineStudio = false }
@@ -360,6 +361,7 @@ private fun RouterShell(
                             provisioning = state.voucherProvisioning,
                             provisionResult = state.voucherProvisionResult,
                             historyCount = state.voucherHistoryCount,
+                            recentBatches = state.recentVoucherBatches,
                             onModeSelected = onVoucherModeSelected,
                             onBatchGenerated = onVoucherBatchGenerated,
                             onProvision = onProvisionVouchers,
@@ -534,6 +536,7 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
 private fun OfflineVoucherShell(
     arabic: Boolean,
     historyCount: Int,
+    recentBatches: List<com.fgmachines.mikrotikmanager.voucher.SavedVoucherBatch>,
     onLanguageToggle: () -> Unit,
     onBatchGenerated: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
     onBack: () -> Unit
@@ -572,6 +575,7 @@ private fun OfflineVoucherShell(
             arabic = arabic,
             connected = false,
             historyCount = historyCount,
+            recentBatches = recentBatches,
             onBatchGenerated = onBatchGenerated,
             modifier = Modifier
                 .fillMaxSize()
