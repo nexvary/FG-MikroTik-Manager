@@ -74,7 +74,7 @@ class RouterOsVoucherScriptBuilder {
         if (voucher.password.isNotEmpty()) {
             append(" password=").append(routerOsString(voucher.password))
         }
-        append(" service=pppoe")
+        append(" service=").append(routerOsString("pppoe"))
         append(" profile=").append(routerOsString(voucher.profile))
         if (voucher.comment.isNotEmpty()) {
             append(" comment=").append(routerOsString(voucher.comment))
