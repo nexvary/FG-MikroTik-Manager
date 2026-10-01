@@ -158,7 +158,6 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
             )
 
             runCatching {
-                voucherHistory.save(batch)
                 repo.provisionVoucherBatch(batch)
             }.onSuccess { summary ->
                 _state.value = _state.value.copy(
