@@ -33,7 +33,9 @@ object RouterVoucherMapper {
                         path = "ip/hotspot/user",
                         attributes = buildMap {
                             put("name", voucher.username)
-                            put("password", voucher.password)
+                            voucher.password.takeIf { it.isNotBlank() }?.let {
+                                put("password", it)
+                            }
                             put("profile", voucher.profile)
                             put("server", voucher.server)
                             voucher.limitUptime?.takeIf { it.isNotBlank() }?.let {
@@ -55,7 +57,9 @@ object RouterVoucherMapper {
                             path = "user-manager/user",
                             attributes = buildMap {
                                 put("name", voucher.username)
-                                put("password", voucher.password)
+                                voucher.password.takeIf { it.isNotBlank() }?.let {
+                                    put("password", it)
+                                }
                                 voucher.comment.takeIf { it.isNotBlank() }?.let {
                                     put("comment", it)
                                 }
@@ -80,7 +84,9 @@ object RouterVoucherMapper {
                         path = "ppp/secret",
                         attributes = buildMap {
                             put("name", voucher.username)
-                            put("password", voucher.password)
+                            voucher.password.takeIf { it.isNotBlank() }?.let {
+                                put("password", it)
+                            }
                             put("service", "pppoe")
                             put("profile", voucher.profile)
                             voucher.limitBytesTotal?.let {
