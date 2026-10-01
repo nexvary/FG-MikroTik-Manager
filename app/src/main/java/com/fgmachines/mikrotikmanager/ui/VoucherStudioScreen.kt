@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.fgmachines.mikrotikmanager.voucher.VoucherAccessMode
+import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherCharacterSet
 import com.fgmachines.mikrotikmanager.voucher.VoucherGenerator
 import com.fgmachines.mikrotikmanager.voucher.VoucherPasswordMode
@@ -34,7 +35,10 @@ import com.fgmachines.mikrotikmanager.voucher.WcgExporter
 
 @Composable
 fun VoucherStudioScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    uploading: Boolean = false,
+    uploadMessage: String? = null,
+    onUpload: ((WcgCardSettings, VoucherBatch) -> Unit)? = null
 ) {
     var mode by remember { mutableStateOf(VoucherAccessMode.HOTSPOT) }
     var quantity by remember { mutableStateOf("20") }
@@ -54,6 +58,8 @@ fun VoucherStudioScreen(
     var loginUrl by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var export by remember { mutableStateOf<VoucherExportBundle?>(null) }
+    var generatedSettings by remember { mutableStateOf<WcgCardSettings?>(null) }
+    var generatedBatch by remember { mutableStateOf<VoucherBatch?>(null) }
 
     val generator = remember { VoucherGenerator() }
 
@@ -318,6 +324,8 @@ fun VoucherStudioScreen(
                         )
 
                         val batch = generator.generate(settings.toBatchRequest())
+                        generatedSettings = settings
+                        generatedBatch = batch
                         export = WcgExporter.export(settings, batch)
                     } catch (t: Throwable) {
                         error = t.message ?: "تعذر إنشاء الكروت"
@@ -351,6 +359,26 @@ fun VoucherStudioScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text("RSC وCSV وHTML جاهزة داخل محرك التصدير.")
+
+                        val readySettings = generatedSettings
+                        val readyBatch = generatedBatch
+                        if (onUpload != null && readySettings != null && readyBatch != null) {
+                            Button(
+                                onClick = { onUpload(readySettings, readyBatch) },
+                                enabled = !uploading,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(if (uploading) "جاري الرفع..." else "رفع الدفعة إلى MikroTik")
+                            }
+                        }
+
+                        uploadMessage?.let {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
                         Text(
                             text = bundle.rsc.lineSequence().take(8).joinToString("\n"),
                             style = MaterialTheme.typography.bodySmall
