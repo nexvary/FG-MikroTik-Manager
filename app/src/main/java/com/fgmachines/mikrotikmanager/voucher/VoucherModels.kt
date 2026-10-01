@@ -1,6 +1,10 @@
 package com.fgmachines.mikrotikmanager.voucher
 
 import kotlinx.serialization.Serializable
+import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Serializable
 enum class VoucherMode {
@@ -23,11 +27,26 @@ enum class VoucherPasswordMode {
 }
 
 @Serializable
+enum class VoucherTimeUnit {
+    MINUTES,
+    HOURS,
+    DAYS
+}
+
+@Serializable
 data class VoucherBranding(
     val networkName: String = "",
     val supportPhone: String = "",
-    val priceText: String = ""
-)
+    val priceText: String = "",
+    val priceEgp: Double? = null
+) {
+    fun formattedPrice(): String =
+        when {
+            priceEgp != null -> DecimalFormat("0.##").format(priceEgp) + " EGP"
+            priceText.isNotBlank() -> priceText
+            else -> ""
+        }
+}
 
 @Serializable
 data class VoucherBatchRequest(
@@ -42,7 +61,10 @@ data class VoucherBatchRequest(
     val profile: String,
     val server: String = "all",
     val comment: String = "",
+    val durationValue: Int = 60,
+    val durationUnit: VoucherTimeUnit = VoucherTimeUnit.MINUTES,
     val limitUptime: String? = null,
+    val absoluteExpiryEpochMs: Long? = null,
     val limitBytesTotal: Long? = null,
     val branding: VoucherBranding = VoucherBranding()
 ) {
@@ -50,6 +72,7 @@ data class VoucherBatchRequest(
         require(quantity in 1..5000) { "Quantity must be between 1 and 5000" }
         require(usernameLength in 4..16) { "Username length must be between 4 and 16" }
         require(passwordLength in 4..16) { "Password length must be between 4 and 16" }
+        require(durationValue in 1..100000) { "Duration must be greater than zero" }
         require(profile.isNotBlank() || mode == VoucherMode.OFFLINE) {
             "A profile is required for online provisioning"
         }
@@ -58,6 +81,14 @@ data class VoucherBatchRequest(
             "Traffic limit must be greater than zero"
         }
     }
+
+    fun routerOsDuration(): String =
+        limitUptime?.takeIf { it.isNotBlank() }
+            ?: when (durationUnit) {
+                VoucherTimeUnit.MINUTES -> durationValue.toString() + "m"
+                VoucherTimeUnit.HOURS -> durationValue.toString() + "h"
+                VoucherTimeUnit.DAYS -> durationValue.toString() + "d"
+            }
 }
 
 @Serializable
@@ -70,8 +101,27 @@ data class VoucherDraft(
     val limitUptime: String?,
     val limitBytesTotal: Long?,
     val mode: VoucherMode = VoucherMode.HOTSPOT,
-    val branding: VoucherBranding = VoucherBranding()
-)
+    val branding: VoucherBranding = VoucherBranding(),
+    val durationValue: Int = 60,
+    val durationUnit: VoucherTimeUnit = VoucherTimeUnit.MINUTES,
+    val absoluteExpiryEpochMs: Long? = null
+) {
+    fun displayDuration(arabic: Boolean): String =
+        when (durationUnit) {
+            VoucherTimeUnit.MINUTES ->
+                if (arabic) "$durationValue دقيقة" else "$durationValue min"
+            VoucherTimeUnit.HOURS ->
+                if (arabic) "$durationValue ساعة" else "$durationValue h"
+            VoucherTimeUnit.DAYS ->
+                if (arabic) "$durationValue يوم" else "$durationValue day"
+        }
+
+    fun displayExpiry(arabic: Boolean): String? =
+        absoluteExpiryEpochMs?.let { epoch ->
+            val locale = if (arabic) Locale("ar") else Locale.ENGLISH
+            SimpleDateFormat("dd/MM/yyyy  HH:mm", locale).format(Date(epoch))
+        }
+}
 
 @Serializable
 data class VoucherBatch(
