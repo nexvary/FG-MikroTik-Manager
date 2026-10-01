@@ -1,18 +1,19 @@
 package com.fgmachines.mikrotikmanager.data
 
 enum class RouterProtocol {
-    REST_HTTP,
-    REST_HTTPS,
+    AUTO,
+    API,
     API_SSL,
-    API
+    REST_HTTPS,
+    REST_HTTP
 }
 
 data class RouterConnectionSettings(
     val host: String,
-    val port: Int = 443,
+    val port: Int = 8728,
     val username: String,
     val password: String,
-    val protocol: RouterProtocol = RouterProtocol.REST_HTTPS
+    val protocol: RouterProtocol = RouterProtocol.AUTO
 ) {
     init {
         require(host.isNotBlank()) { "Router host is required" }
@@ -34,3 +35,12 @@ data class RouterConnectionSettings(
         return scheme + "://" + normalizedHost() + ":" + port + "/rest"
     }
 }
+
+data class DiscoveredRouter(
+    val identity: String,
+    val ipAddress: String,
+    val macAddress: String = "",
+    val boardName: String = "",
+    val version: String = "",
+    val interfaceName: String = ""
+)
