@@ -61,8 +61,8 @@ data class VoucherDraft(
     val comment: String,
     val limitUptime: String?,
     val limitBytesTotal: Long?,
-    val mode: VoucherMode,
-    val branding: VoucherBranding
+    val mode: VoucherMode = VoucherMode.HOTSPOT,
+    val branding: VoucherBranding = VoucherBranding()
 )
 
 data class VoucherBatch(
