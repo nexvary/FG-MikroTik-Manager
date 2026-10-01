@@ -2,7 +2,8 @@ package com.fgmachines.mikrotikmanager.command
 
 object RouterCommandParser {
     private val actions = setOf(
-        "print", "add", "set", "remove", "enable", "disable"
+        "print", "add", "set", "remove", "enable", "disable",
+        "reboot", "save", "run", "renew", "release"
     )
 
     fun parseScript(text: String): List<ParsedRouterCommand> =
@@ -98,6 +99,7 @@ object RouterCommandParser {
 
     private fun classify(menu: String, action: String): CommandRisk {
         if (action == "print") return CommandRisk.SAFE
+        if (action == "reboot" || action == "remove") return CommandRisk.DANGEROUS
 
         val dangerousMenu = menu.startsWith("system/reset") ||
             menu.startsWith("system/routerboard") ||
@@ -105,7 +107,7 @@ object RouterCommandParser {
             menu.startsWith("disk") ||
             menu.startsWith("ip/firewall")
 
-        if (action == "remove" || dangerousMenu) return CommandRisk.DANGEROUS
+        if (dangerousMenu) return CommandRisk.DANGEROUS
         return CommandRisk.CHANGE
     }
 
@@ -124,6 +126,11 @@ object RouterCommandParser {
                 "enable" -> "سيُفعّل العنصر$subject داخل /$menu."
                 "disable" -> "سيُعطّل العنصر$subject داخل /$menu."
                 "remove" -> "سيحذف العنصر$subject من /$menu."
+                "reboot" -> "سيعيد تشغيل الراوتر."
+                "save" -> "سيحفظ البيانات أو النسخة الاحتياطية داخل /$menu."
+                "run" -> "سيشغّل الإجراء داخل /$menu."
+                "renew" -> "سيطلب تجديد الإعداد داخل /$menu."
+                "release" -> "سيحرر الإعداد داخل /$menu."
                 else -> "أمر RouterOS داخل /$menu."
             }
         } else {
@@ -134,6 +141,11 @@ object RouterCommandParser {
                 "enable" -> "Enables$subject under /$menu."
                 "disable" -> "Disables$subject under /$menu."
                 "remove" -> "Removes$subject from /$menu."
+                "reboot" -> "Reboots the router."
+                "save" -> "Saves data or a backup under /$menu."
+                "run" -> "Runs the action under /$menu."
+                "renew" -> "Renews the selected item under /$menu."
+                "release" -> "Releases the selected item under /$menu."
                 else -> "RouterOS command under /$menu."
             }
         }
