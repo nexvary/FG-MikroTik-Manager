@@ -173,7 +173,7 @@ private fun ConnectionScreen(
                     enabled = !connecting &&
                         host.isNotBlank() &&
                         username.isNotBlank() &&
-                        (port.toIntOrNull() in 1..65535),
+                        (port.toIntOrNull()?.let { it in 1..65535 } == true),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (connecting) {
