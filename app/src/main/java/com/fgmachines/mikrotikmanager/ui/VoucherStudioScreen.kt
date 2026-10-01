@@ -59,6 +59,7 @@ import com.fgmachines.mikrotikmanager.voucher.VoucherBranding
 import com.fgmachines.mikrotikmanager.voucher.VoucherGenerator
 import com.fgmachines.mikrotikmanager.voucher.VoucherMode
 import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
+import com.fgmachines.mikrotikmanager.voucher.SavedVoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherPasswordMode
 import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionSummary
 import com.fgmachines.mikrotikmanager.voucher.VoucherQrCodeFactory
@@ -74,6 +75,7 @@ fun VoucherStudioScreen(
     provisioning: Boolean = false,
     provisionResult: VoucherProvisionSummary? = null,
     historyCount: Int = 0,
+    recentBatches: List<SavedVoucherBatch> = emptyList(),
     onModeSelected: (VoucherMode) -> Unit = {},
     onBatchGenerated: (VoucherBatch) -> Unit = {},
     onProvision: (VoucherBatch) -> Unit = {},
@@ -109,6 +111,46 @@ fun VoucherStudioScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         HeroHeader(arabic)
+
+        if (recentBatches.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(
+                    if (arabic) "آخر الدفعات المحفوظة" else "Recent saved batches",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    recentBatches.take(12).forEach { saved ->
+                        val savedProfile = saved.batch.request.profile.ifBlank { "—" }
+                        FilterChip(
+                            selected = false,
+                            onClick = {
+                                batch = saved.batch
+                                mode = saved.batch.request.mode
+                                profile = saved.batch.request.profile
+                                scriptPreview = exporter.export(saved.batch)
+                                onClearProvisionResult()
+                            },
+                            label = {
+                                Text(
+                                    modeLabel(saved.batch.request.mode, arabic) +
+                                        " • " + saved.batch.vouchers.size +
+                                        " • " + savedProfile
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.History, contentDescription = null)
+                            }
+                        )
+                    }
+                }
+            }
+        }
 
         Row(
             modifier = Modifier
