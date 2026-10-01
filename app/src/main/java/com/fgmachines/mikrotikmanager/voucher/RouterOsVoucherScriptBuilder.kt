@@ -3,23 +3,22 @@ package com.fgmachines.mikrotikmanager.voucher
 /**
  * Builds RouterOS CLI commands for voucher batches.
  *
- * This class does not execute commands. Execution belongs to the RouterOS
- * transport layer so generated scripts can be previewed, exported and audited
- * before any router mutation.
+ * This builder is kept for command-by-command provisioning, while
+ * RouterOsScriptExporter is used for downloadable .rsc output.
  */
 class RouterOsVoucherScriptBuilder {
 
     fun build(batch: VoucherBatch): String = buildString {
         appendLine("/log info \"FG MikroTik Manager: starting voucher batch\"")
         batch.vouchers.forEach { voucher ->
-            when (batch.request.backend) {
-                VoucherBackend.HOTSPOT ->
+            when (batch.request.mode) {
+                VoucherMode.HOTSPOT ->
                     appendLine(buildHotspotUser(voucher))
-                VoucherBackend.USER_MANAGER_V7 -> {
+                VoucherMode.USER_MANAGER ->
                     buildUserManagerCommands(voucher).forEach(::appendLine)
-                }
-                VoucherBackend.PPPOE ->
-                    appendLine(buildPppoeSecret(voucher, batch.request.pppService))
+                VoucherMode.PPPOE ->
+                    appendLine(buildPppoeSecret(voucher))
+                VoucherMode.OFFLINE -> Unit
             }
         }
         appendLine("/log info \"FG MikroTik Manager: voucher batch completed\"")
@@ -69,16 +68,13 @@ class RouterOsVoucherScriptBuilder {
         return listOf(createUser, assignProfile)
     }
 
-    fun buildPppoeSecret(
-        voucher: VoucherDraft,
-        service: String = "pppoe"
-    ): String = buildString {
+    fun buildPppoeSecret(voucher: VoucherDraft): String = buildString {
         append("/ppp secret add")
         append(" name=").append(routerOsString(voucher.username))
         if (voucher.password.isNotEmpty()) {
             append(" password=").append(routerOsString(voucher.password))
         }
-        append(" service=").append(routerOsString(service))
+        append(" service=pppoe")
         append(" profile=").append(routerOsString(voucher.profile))
         if (voucher.comment.isNotEmpty()) {
             append(" comment=").append(routerOsString(voucher.comment))
