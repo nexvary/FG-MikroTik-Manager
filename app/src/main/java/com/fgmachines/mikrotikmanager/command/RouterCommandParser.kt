@@ -205,6 +205,30 @@ object CommandTemplates {
             titleEn = "Disable Telnet",
             command = "/ip service disable telnet",
             risk = CommandRisk.CHANGE
+        ),
+        CommandTemplate(
+            titleAr = "نسخة احتياطية",
+            titleEn = "Save backup",
+            command = "/system backup save name=fg-mtm-backup",
+            risk = CommandRisk.CHANGE
+        ),
+        CommandTemplate(
+            titleAr = "معلومات النظام",
+            titleEn = "System resources",
+            command = "/system resource print",
+            risk = CommandRisk.SAFE
+        ),
+        CommandTemplate(
+            titleAr = "اسم الراوتر",
+            titleEn = "Router identity",
+            command = "/system identity print",
+            risk = CommandRisk.SAFE
+        ),
+        CommandTemplate(
+            titleAr = "إعادة تشغيل الراوتر",
+            titleEn = "Reboot router",
+            command = "/system reboot",
+            risk = CommandRisk.DANGEROUS
         )
     )
 }
