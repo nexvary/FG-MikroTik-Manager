@@ -273,27 +273,11 @@ private fun ConnectionScreen(
     Scaffold(
         containerColor = FgBlack,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = FgDeepNavy),
-                title = {
-                    Column {
-                        Text(
-                            "FG MikroTik Manager",
-                            color = FgWhite,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            "FG MTM",
-                            color = FgMint,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onLanguageToggle) {
-                        Icon(Icons.Outlined.Language, contentDescription = "Language", tint = FgCyan)
-                    }
-                }
+            CompactAppHeader(
+                subtitle = if (arabic) "اتصال بالراوتر" else "Connect",
+                showBack = false,
+                onBack = {},
+                onLanguageToggle = onLanguageToggle
             )
         }
     ) { padding ->
@@ -610,51 +594,14 @@ private fun RouterShell(
             }
         },
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = FgDeepNavy),
-                title = {
-                    Column {
-                        Text(
-                            "FG MikroTik Manager",
-                            color = FgWhite,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            sectionLabel(state.section, arabic),
-                            color = FgMint,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                },
-                navigationIcon = {
-                    if (state.section != AppSection.MENU || state.adminModule != null) {
-                        IconButton(onClick = goBack) {
-                            Icon(
-                                Icons.Outlined.ArrowBack,
-                                contentDescription = "Back",
-                                tint = FgMint
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    if (state.section == AppSection.DASHBOARD) {
-                        IconButton(onClick = onRefresh, enabled = !state.refreshing) {
-                            if (state.refreshing) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
-                                    color = FgMint
-                                )
-                            } else {
-                                Icon(Icons.Outlined.Refresh, contentDescription = "Refresh", tint = FgBlue)
-                            }
-                        }
-                    }
-                    IconButton(onClick = onLanguageToggle) {
-                        Icon(Icons.Outlined.Language, contentDescription = "Language", tint = FgCyan)
-                    }
-                }
+            CompactAppHeader(
+                subtitle = sectionLabel(state.section, arabic),
+                showBack = state.section != AppSection.MENU || state.adminModule != null,
+                onBack = goBack,
+                onLanguageToggle = onLanguageToggle,
+                showRefresh = state.section == AppSection.DASHBOARD,
+                refreshing = state.refreshing,
+                onRefresh = onRefresh
             )
         }
     ) { padding ->
@@ -1075,28 +1022,11 @@ private fun OfflineVoucherShell(
     Scaffold(
         containerColor = FgBlack,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = FgDeepNavy),
-                title = {
-                    Column {
-                        Text("FG MikroTik Manager", color = FgWhite, fontWeight = FontWeight.Black)
-                        Text(
-                            if (arabic) "الكروت بدون راوتر" else "Offline vouchers",
-                            color = FgMint,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = FgMint)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onLanguageToggle) {
-                        Icon(Icons.Outlined.Language, contentDescription = "Language", tint = FgCyan)
-                    }
-                }
+            CompactAppHeader(
+                subtitle = if (arabic) "الكروت بدون راوتر" else "Offline vouchers",
+                showBack = true,
+                onBack = onBack,
+                onLanguageToggle = onLanguageToggle
             )
         }
     ) { padding ->
@@ -1110,6 +1040,92 @@ private fun OfflineVoucherShell(
                 .fillMaxSize()
                 .padding(padding)
         )
+    }
+}
+
+@Composable
+private fun CompactAppHeader(
+    subtitle: String,
+    showBack: Boolean,
+    onBack: () -> Unit,
+    onLanguageToggle: () -> Unit,
+    showRefresh: Boolean = false,
+    refreshing: Boolean = false,
+    onRefresh: () -> Unit = {}
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .background(FgDeepNavy)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(42.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    tint = FgMint
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 6.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "FG MTM",
+                color = FgBlue,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                subtitle,
+                color = FgMint,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1
+            )
+        }
+
+        if (showRefresh) {
+            IconButton(
+                onClick = onRefresh,
+                enabled = !refreshing,
+                modifier = Modifier.size(42.dp)
+            ) {
+                if (refreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = FgBlue
+                    )
+                } else {
+                    Icon(
+                        Icons.Outlined.Refresh,
+                        contentDescription = "Refresh",
+                        tint = FgBlue
+                    )
+                }
+            }
+        }
+
+        IconButton(
+            onClick = onLanguageToggle,
+            modifier = Modifier.size(42.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Language,
+                contentDescription = "Language",
+                tint = FgCyan
+            )
+        }
     }
 }
 
