@@ -17,6 +17,14 @@ object VoucherShareManager {
         val file = File(directory, safeName)
         file.writeText(content, Charsets.UTF_8)
 
+        shareFile(context, file, mimeType)
+    }
+
+    fun shareFile(
+        context: Context,
+        file: File,
+        mimeType: String
+    ) {
         val uri = FileProvider.getUriForFile(
             context,
             context.packageName + ".fileprovider",
