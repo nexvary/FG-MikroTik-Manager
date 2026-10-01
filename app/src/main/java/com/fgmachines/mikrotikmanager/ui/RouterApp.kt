@@ -65,6 +65,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
+import com.fgmachines.mikrotikmanager.data.RouterProtocol
 import java.text.DecimalFormat
 import java.util.Locale
 
@@ -127,8 +128,9 @@ private fun ConnectionScreen(
     onConnect: (RouterConnectionSettings) -> Unit,
     onClearError: () -> Unit
 ) {
-    var host by remember { mutableStateOf("192.168.88.1") }
-    var port by remember { mutableStateOf("443") }
+    var lanTest by remember { mutableStateOf(true) }
+    var host by remember { mutableStateOf("192.168.1.110") }
+    var port by remember { mutableStateOf("80") }
     var username by remember { mutableStateOf("admin") }
     var password by remember { mutableStateOf("") }
 
@@ -164,6 +166,48 @@ private fun ConnectionScreen(
                     }
                 }
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            lanTest = true
+                            port = "80"
+                            if (host.isBlank() || host == "192.168.88.1") {
+                                host = "192.168.1.110"
+                            }
+                            onClearError()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (arabic) "تجربة LAN" else "LAN Test")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            lanTest = false
+                            port = "443"
+                            onClearError()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (arabic) "HTTPS آمن" else "Secure HTTPS")
+                    }
+                }
+
+                Text(
+                    text = if (lanTest) {
+                        if (arabic) "وضع اختبار داخل الشبكة المحلية فقط — الاتصال غير مشفّر."
+                        else "Local-network test mode only — traffic is not encrypted."
+                    } else {
+                        if (arabic) "اتصال HTTPS المشفّر."
+                        else "Encrypted HTTPS connection."
+                    },
+                    color = if (lanTest) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+
                 OutlinedTextField(
                     value = host,
                     onValueChange = {
@@ -180,7 +224,15 @@ private fun ConnectionScreen(
                         value = port,
                         onValueChange = { port = it.filter(Char::isDigit) },
                         modifier = Modifier.weight(0.34f),
-                        label = { Text(if (arabic) "منفذ HTTPS" else "HTTPS port") },
+                        label = {
+                            Text(
+                                if (lanTest) {
+                                    if (arabic) "منفذ HTTP" else "HTTP port"
+                                } else {
+                                    if (arabic) "منفذ HTTPS" else "HTTPS port"
+                                }
+                            )
+                        },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -212,13 +264,18 @@ private fun ConnectionScreen(
 
                 Button(
                     onClick = {
-                        val parsedPort = port.toIntOrNull() ?: 443
+                        val parsedPort = port.toIntOrNull() ?: if (lanTest) 80 else 443
                         onConnect(
                             RouterConnectionSettings(
                                 host = host,
                                 port = parsedPort,
                                 username = username,
-                                password = password
+                                password = password,
+                                protocol = if (lanTest) {
+                                    RouterProtocol.REST_HTTP
+                                } else {
+                                    RouterProtocol.REST_HTTPS
+                                }
                             )
                         )
                     },
@@ -253,7 +310,11 @@ private fun ConnectionScreen(
                 }
 
                 Text(
-                    text = if (arabic) "الاتصال الآمن يستخدم HTTPS. سنضيف API-SSL لتوافق أوسع مع RouterOS." else "Secure connection uses HTTPS. API-SSL support is being added for wider RouterOS compatibility.",
+                    text = if (arabic) {
+                        "بعد الاختبار استخدم HTTPS أو API-SSL في التشغيل الدائم."
+                    } else {
+                        "After testing, use HTTPS or API-SSL for normal operation."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
