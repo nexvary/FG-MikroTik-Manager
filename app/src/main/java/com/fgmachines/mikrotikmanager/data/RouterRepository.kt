@@ -83,7 +83,7 @@ class RouterRepository private constructor(
             val rows = when (command.action) {
                 "print" -> transport.read(command.menu)
                 "add" -> transport.create(command.menu, command.attributes)
-                "set", "enable", "disable", "remove" -> {
+                "set", "enable", "disable", "remove", "renew", "release" -> {
                     val id = resolveCommandTarget(command)
                     val attrs = buildMap {
                         put(".id", id)
@@ -94,6 +94,11 @@ class RouterRepository private constructor(
                         attrs
                     )
                 }
+                "reboot", "save", "run" ->
+                    transport.execute(
+                        "/" + command.menu.trim('/') + "/" + command.action,
+                        command.attributes
+                    )
                 else -> error("Unsupported RouterOS action")
             }
 
