@@ -46,4 +46,25 @@ class RouterCommandParserTest {
         assertFalse(parsed.supported)
         assertEquals(CommandRisk.UNSUPPORTED, parsed.risk)
     }
+
+    @Test
+    fun rebootRequiresDangerousConfirmationClassification() {
+        val parsed = RouterCommandParser.parseLine("/system reboot")
+        assertTrue(parsed.supported)
+        assertEquals("system", parsed.menu)
+        assertEquals("reboot", parsed.action)
+        assertEquals(CommandRisk.DANGEROUS, parsed.risk)
+    }
+
+    @Test
+    fun backupSaveParsesAttributes() {
+        val parsed = RouterCommandParser.parseLine(
+            "/system backup save name=before-change"
+        )
+        assertTrue(parsed.supported)
+        assertEquals("system/backup", parsed.menu)
+        assertEquals("save", parsed.action)
+        assertEquals("before-change", parsed.attributes["name"])
+    }
+
 }
