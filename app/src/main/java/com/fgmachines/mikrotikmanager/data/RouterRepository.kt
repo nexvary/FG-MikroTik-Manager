@@ -148,7 +148,7 @@ class RouterRepository private constructor(
     ): RouterAdminActionResult =
         runCatching {
             transport.execute(
-                "/" + menuPath.trim('/') + "/" + if (enabled) "enable" else "disable",
+                "/" + menuPath.trim('/') + "/" + (if (enabled) "enable" else "disable"),
                 mapOf(".id" to rowId)
             )
         }.fold(
