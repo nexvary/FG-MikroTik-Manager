@@ -32,14 +32,18 @@ class CsvVoucherExporter {
     }
 
     private fun csvCell(value: String): String {
-        val escaped = value.replace(""", """")
+        val quote = 34.toChar()
+        val escaped = value.replace(
+            quote.toString(),
+            quote.toString() + quote
+        )
         return if (
             escaped.contains(',') ||
-            escaped.contains('"') ||
+            escaped.contains(quote) ||
             escaped.contains('\n') ||
             escaped.contains('\r')
         ) {
-            """ + escaped + """
+            quote + escaped + quote
         } else {
             escaped
         }
@@ -49,8 +53,8 @@ class CsvVoucherExporter {
 class HtmlVoucherExporter {
     fun export(batch: VoucherBatch): String = buildString {
         appendLine("<!doctype html>")
-        appendLine("<html lang="ar" dir="rtl"><head><meta charset="utf-8">")
-        appendLine("<meta name="viewport" content="width=device-width,initial-scale=1">")
+        appendLine("<html lang='ar' dir='rtl'><head><meta charset='utf-8'>")
+        appendLine("<meta name='viewport' content='width=device-width,initial-scale=1'>")
         appendLine("<title>FG MTM Vouchers</title>")
         appendLine("<style>")
         appendLine("@page{size:A4;margin:8mm}*{box-sizing:border-box}")
@@ -67,17 +71,17 @@ class HtmlVoucherExporter {
         appendLine("footer{color:#444;font-size:11px;margin-top:3mm;border-top:1px solid #ddd;padding-top:2mm}")
         appendLine(".qr{text-align:center;margin:3mm 0}.qr svg{width:24mm;height:24mm}")
         appendLine("@media print{body{print-color-adjust:exact}}")
-        appendLine("</style></head><body><main class="grid">")
+        appendLine("</style></head><body><main class='grid'>")
 
         batch.vouchers.forEach { voucher ->
-            appendLine("<article class="voucher">")
+            appendLine("<article class='voucher'>")
             append("<header><strong>")
             append(html(voucher.branding.networkName.ifBlank { "WiFi" }))
-            append("</strong><span class="price">")
+            append("</strong><span class='price'>")
             append(html(priceArabic(voucher)))
             appendLine("</span></header>")
 
-            appendLine("<div class="credentials">")
+            appendLine("<div class='credentials'>")
             append("<div><small>اسم المستخدم</small><b>")
             append(html(voucher.username))
             appendLine("</b></div>")
@@ -85,18 +89,18 @@ class HtmlVoucherExporter {
             append(html(voucher.password))
             appendLine("</b></div></div>")
 
-            append("<div class="qr">")
+            append("<div class='qr'>")
             append(VoucherQrSvgFactory.create(VoucherQrPayloadBuilder.build(voucher)))
             appendLine("</div>")
 
-            append("<div class="meta"><span>المدة: ")
+            append("<div class='meta'><span>المدة: ")
             append(html(voucher.displayDuration(arabic = true)))
             append("</span><span>الباقة: ")
             append(html(voucher.profile))
             appendLine("</span></div>")
 
             voucher.absoluteExpiryEpochMs?.let { expiry ->
-                append("<div class="meta expiry"><span>ينتهي: ")
+                append("<div class='meta expiry'><span>ينتهي: ")
                 append(html(formatExpiry(expiry)))
                 appendLine("</span></div>")
             }
@@ -115,7 +119,7 @@ class HtmlVoucherExporter {
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
-            .replace(""", "&quot;")
+            .replace(34.toChar().toString(), "&quot;")
             .replace("'", "&#39;")
 }
 
