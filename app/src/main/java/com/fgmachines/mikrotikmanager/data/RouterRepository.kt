@@ -1,5 +1,7 @@
 package com.fgmachines.mikrotikmanager.data
 
+import com.fgmachines.mikrotikmanager.network.ApiRouterOsTransport
+import com.fgmachines.mikrotikmanager.network.AutoRouterOsTransport
 import com.fgmachines.mikrotikmanager.network.RestRouterOsTransport
 import com.fgmachines.mikrotikmanager.network.RouterOsTransport
 import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
@@ -190,10 +192,12 @@ class RouterRepository private constructor(
     companion object {
         fun create(settings: RouterConnectionSettings): RouterRepository {
             val transport = when (settings.protocol) {
+                RouterProtocol.AUTO -> AutoRouterOsTransport(settings)
+                RouterProtocol.API -> ApiRouterOsTransport(settings)
                 RouterProtocol.REST_HTTP,
                 RouterProtocol.REST_HTTPS -> RestRouterOsTransport(settings)
-                RouterProtocol.API_SSL,
-                RouterProtocol.API -> error("Native RouterOS API transport is scheduled for phase 2")
+                RouterProtocol.API_SSL ->
+                    error("API-SSL certificate transport is not enabled in this build")
             }
             return RouterRepository(transport)
         }
