@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Wifi
@@ -73,6 +74,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fgmachines.mikrotikmanager.command.ParsedRouterCommand
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
+import com.fgmachines.mikrotikmanager.data.RouterAdminGroup
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterInterface
 import com.fgmachines.mikrotikmanager.data.RouterProtocol
@@ -117,7 +119,13 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     onProvisionVouchers = viewModel::provisionVouchers,
                     onClearVoucherResult = viewModel::clearVoucherProvisionResult,
                     onRunCommands = viewModel::runCommands,
-                    onClearCommandResults = viewModel::clearCommandResults
+                    onClearCommandResults = viewModel::clearCommandResults,
+                    onCreateAdminItem = viewModel::createAdminItem,
+                    onCreateRouterAdmin = viewModel::createRouterAdmin,
+                    onUpdateAdminItem = viewModel::updateAdminItem,
+                    onToggleAdminItem = viewModel::setAdminItemEnabled,
+                    onRemoveAdminItem = viewModel::removeAdminItem,
+                    onClearAdminActionMessage = viewModel::clearAdminActionMessage
                 )
 
                 else -> ConnectionScreen(
@@ -141,7 +149,8 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 fun RouterDemoApp(screen: String) {
     val section = when (screen.lowercase(Locale.ENGLISH)) {
         "dashboard" -> AppSection.DASHBOARD
-        "winbox", "commands" -> AppSection.WINBOX
+        "winbox", "network" -> AppSection.NETWORK
+        "system", "commands" -> AppSection.SYSTEM
         "vouchers" -> AppSection.VOUCHERS
         "about" -> AppSection.ABOUT
         else -> AppSection.MENU
@@ -195,6 +204,12 @@ fun RouterDemoApp(screen: String) {
                 onClearVoucherResult = {},
                 onRunCommands = {},
                 onClearCommandResults = {},
+                onCreateAdminItem = {},
+                onCreateRouterAdmin = { _, _, _, _ -> },
+                onUpdateAdminItem = { _, _ -> },
+                onToggleAdminItem = { _, _ -> },
+                onRemoveAdminItem = {},
+                onClearAdminActionMessage = {},
                 commandCenterInitiallyOpen = screen.equals("commands", ignoreCase = true),
                 commandCenterInitialText = "/ip address print\n/ip service disable telnet"
             )
@@ -461,6 +476,12 @@ private fun RouterShell(
     onClearVoucherResult: () -> Unit,
     onRunCommands: (List<ParsedRouterCommand>) -> Unit,
     onClearCommandResults: () -> Unit,
+    onCreateAdminItem: (Map<String, String>) -> Unit,
+    onCreateRouterAdmin: (String, String, String, String) -> Unit,
+    onUpdateAdminItem: (String?, Map<String, String>) -> Unit,
+    onToggleAdminItem: (String, Boolean) -> Unit,
+    onRemoveAdminItem: (String) -> Unit,
+    onClearAdminActionMessage: () -> Unit,
     commandCenterInitiallyOpen: Boolean = false,
     commandCenterInitialText: String = ""
 ) {
@@ -468,7 +489,8 @@ private fun RouterShell(
     var commandCenterOpen by rememberSaveable { mutableStateOf(commandCenterInitiallyOpen) }
 
     val goBack: () -> Unit = {
-        if (state.section == AppSection.WINBOX && state.adminModule != null) {
+        if ((state.section == AppSection.NETWORK || state.section == AppSection.SYSTEM) &&
+            state.adminModule != null) {
             onCloseAdminModule()
         } else {
             onSection(AppSection.MENU)
@@ -507,11 +529,17 @@ private fun RouterShell(
                     onVoucherBatchGenerated = onVoucherBatchGenerated,
                     onProvisionVouchers = onProvisionVouchers,
                     onClearVoucherResult = onClearVoucherResult,
+                    onCreateAdminItem = onCreateAdminItem,
+                    onCreateRouterAdmin = onCreateRouterAdmin,
+                    onUpdateAdminItem = onUpdateAdminItem,
+                    onToggleAdminItem = onToggleAdminItem,
+                    onRemoveAdminItem = onRemoveAdminItem,
+                    onClearAdminActionMessage = onClearAdminActionMessage,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            if (state.section == AppSection.WINBOX) {
+            if ((state.section == AppSection.NETWORK || state.section == AppSection.SYSTEM)) {
                 FloatingActionButton(
                     onClick = { commandCenterOpen = true },
                     containerColor = FgMint,
@@ -543,7 +571,7 @@ private fun RouterShell(
     Scaffold(
         containerColor = FgBlack,
         floatingActionButton = {
-            if (state.section == AppSection.WINBOX) {
+            if ((state.section == AppSection.NETWORK || state.section == AppSection.SYSTEM)) {
                 FloatingActionButton(
                     onClick = { commandCenterOpen = true },
                     containerColor = FgMint,
@@ -613,6 +641,12 @@ private fun RouterShell(
             onVoucherBatchGenerated = onVoucherBatchGenerated,
             onProvisionVouchers = onProvisionVouchers,
             onClearVoucherResult = onClearVoucherResult,
+            onCreateAdminItem = onCreateAdminItem,
+            onCreateRouterAdmin = onCreateRouterAdmin,
+            onUpdateAdminItem = onUpdateAdminItem,
+            onToggleAdminItem = onToggleAdminItem,
+            onRemoveAdminItem = onRemoveAdminItem,
+            onClearAdminActionMessage = onClearAdminActionMessage,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -647,6 +681,12 @@ private fun RouterContent(
     onVoucherBatchGenerated: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
     onProvisionVouchers: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
     onClearVoucherResult: () -> Unit,
+    onCreateAdminItem: (Map<String, String>) -> Unit,
+    onCreateRouterAdmin: (String, String, String, String) -> Unit,
+    onUpdateAdminItem: (String?, Map<String, String>) -> Unit,
+    onToggleAdminItem: (String, Boolean) -> Unit,
+    onRemoveAdminItem: (String) -> Unit,
+    onClearAdminActionMessage: () -> Unit,
     modifier: Modifier,
     onSection: (AppSection) -> Unit = {},
     onDisconnect: () -> Unit = {}
@@ -667,15 +707,29 @@ private fun RouterContent(
             modifier = modifier
         )
 
-        AppSection.WINBOX -> RouterAdminScreen(
+        AppSection.NETWORK,
+        AppSection.SYSTEM -> RouterAdminScreen(
             arabic = arabic,
+            group = if (state.section == AppSection.NETWORK) {
+                RouterAdminGroup.NETWORK
+            } else {
+                RouterAdminGroup.SYSTEM
+            },
             loading = state.adminLoading,
+            actionRunning = state.adminActionRunning,
             selectedModule = state.adminModule,
             snapshot = state.adminSnapshot,
             error = state.adminError,
+            actionMessage = state.adminActionMessage,
             onOpenModule = onOpenAdminModule,
             onRefresh = onRefreshAdminModule,
             onBack = onCloseAdminModule,
+            onCreate = onCreateAdminItem,
+            onCreateAdmin = onCreateRouterAdmin,
+            onUpdate = onUpdateAdminItem,
+            onToggle = onToggleAdminItem,
+            onRemove = onRemoveAdminItem,
+            onClearActionMessage = onClearAdminActionMessage,
             modifier = modifier
         )
 
@@ -714,21 +768,28 @@ private fun MainMenuScreen(
         MenuEntry(
             AppSection.DASHBOARD,
             if (arabic) "حالة الراوتر" else "Router status",
-            if (arabic) "الموديل، RouterOS، المعالج، الذاكرة والواجهات" else "Model, RouterOS, CPU, memory and interfaces",
+            if (arabic) "الحالة والموديل والموارد" else "Status, model and resources",
             Icons.Outlined.Dashboard,
             FgBlue
         ),
         MenuEntry(
-            AppSection.WINBOX,
-            if (arabic) "إدارة الراوتر" else "Router Manager",
-            if (arabic) "واجهة WinBox: Wi-Fi، Firewall، DHCP، IP، PPP والمزيد" else "WinBox-style access to Wi-Fi, Firewall, DHCP, IP, PPP and more",
-            Icons.Outlined.Router,
+            AppSection.NETWORK,
+            if (arabic) "الشبكة والاتصال" else "Network & connectivity",
+            if (arabic) "Wi-Fi، Interfaces، IP، DHCP، DNS، Routes، HotSpot وPPP" else "Wi-Fi, interfaces, IP, DHCP, DNS, routes, HotSpot and PPP",
+            Icons.Outlined.Wifi,
             FgMint
         ),
         MenuEntry(
+            AppSection.SYSTEM,
+            if (arabic) "النظام والأمان" else "System & security",
+            if (arabic) "Firewall، Admin، Services، Files، Logs وCommand Center" else "Firewall, admins, services, files, logs and Command Center",
+            Icons.Outlined.Security,
+            FgAmber
+        ),
+        MenuEntry(
             AppSection.VOUCHERS,
-            if (arabic) "الكروت" else "Vouchers",
-            if (arabic) "إنشاء وتفعيل الكروت وتحديد المدة والسعر والانتهاء" else "Create and activate vouchers with duration, price and expiry",
+            if (arabic) "إنشاء الكروت" else "Voucher Studio",
+            if (arabic) "كروت احترافية مع المدة والسعر والانتهاء والتفعيل المباشر" else "Professional vouchers with duration, price, expiry and direct activation",
             Icons.Outlined.CreditCard,
             FgPurple
         ),
@@ -740,7 +801,6 @@ private fun MainMenuScreen(
             FgCyan
         )
     )
-
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -749,37 +809,12 @@ private fun MainMenuScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = FgDeepNavy),
-                border = BorderStroke(1.4.dp, FgSilverMuted),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        state.dashboard?.identity ?: "MikroTik",
-                        color = FgWhite,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        listOfNotNull(
-                            state.dashboard?.boardName?.takeIf { it.isNotBlank() },
-                            state.dashboard?.version?.takeIf { it.isNotBlank() }
-                        ).joinToString(" • "),
-                        color = FgSilver
-                    )
-                    Text(
-                        if (arabic) "اختر القسم المطلوب" else "Choose a section",
-                        color = FgMint,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            Text(
+                if (arabic) "القائمة الرئيسية" else "Main menu",
+                color = FgMint,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
         }
 
         items(items) { entry ->
@@ -888,7 +923,8 @@ private fun PersistentMainMenu(
 
         listOf(
             AppSection.DASHBOARD,
-            AppSection.WINBOX,
+            AppSection.NETWORK,
+            AppSection.SYSTEM,
             AppSection.VOUCHERS,
             AppSection.ABOUT
         ).forEach { section ->
@@ -1053,7 +1089,8 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
     when (section) {
         AppSection.MENU -> if (arabic) "القائمة الرئيسية" else "Main menu"
         AppSection.DASHBOARD -> if (arabic) "حالة الراوتر" else "Router status"
-        AppSection.WINBOX -> if (arabic) "إدارة الراوتر" else "Router Manager"
+        AppSection.NETWORK -> if (arabic) "الشبكة والاتصال" else "Network & connectivity"
+        AppSection.SYSTEM -> if (arabic) "النظام والأمان" else "System & security"
         AppSection.VOUCHERS -> if (arabic) "الكروت" else "Vouchers"
         AppSection.ABOUT -> if (arabic) "عن المطور" else "About developer"
     }
@@ -1062,7 +1099,8 @@ private fun sectionIcon(section: AppSection): ImageVector =
     when (section) {
         AppSection.MENU -> Icons.Outlined.Settings
         AppSection.DASHBOARD -> Icons.Outlined.Dashboard
-        AppSection.WINBOX -> Icons.Outlined.Router
+        AppSection.NETWORK -> Icons.Outlined.Wifi
+        AppSection.SYSTEM -> Icons.Outlined.Security
         AppSection.VOUCHERS -> Icons.Outlined.CreditCard
         AppSection.ABOUT -> Icons.Outlined.Info
     }
@@ -1071,7 +1109,8 @@ private fun sectionAccent(section: AppSection): Color =
     when (section) {
         AppSection.MENU -> FgSilver
         AppSection.DASHBOARD -> FgBlue
-        AppSection.WINBOX -> FgMint
+        AppSection.NETWORK -> FgMint
+        AppSection.SYSTEM -> FgAmber
         AppSection.VOUCHERS -> FgPurple
         AppSection.ABOUT -> FgCyan
     }
