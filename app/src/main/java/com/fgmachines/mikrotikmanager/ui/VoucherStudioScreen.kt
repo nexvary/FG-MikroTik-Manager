@@ -84,6 +84,9 @@ import java.util.Locale
 @Composable
 fun VoucherStudioScreen(
     arabic: Boolean,
+    hotspotManager: com.fgmachines.mikrotikmanager.hotspot.HotspotManager? = null,
+    advancedManager: com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager? = null,
+    onOpenAdvanced: () -> Unit = {},
     connected: Boolean = false,
     profiles: Map<VoucherMode, List<RouterVoucherProfile>> = emptyMap(),
     profilesLoading: Boolean = false,
@@ -106,6 +109,13 @@ fun VoucherStudioScreen(
     val htmlExporter = remember { HtmlVoucherExporter() }
     val pdfExporter = remember { VoucherPdfExporter() }
 
+    var preflight by remember { mutableStateOf<com.fgmachines.mikrotikmanager.advanced.ReadinessReport?>(null) }
+    var checkingPreflight by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(advancedManager) {
+        if (advancedManager != null) { checkingPreflight = true; try { preflight = advancedManager.preflight() } finally { checkingPreflight = false } }
+    }
+    var toolsTab by remember { mutableStateOf<String?>(null) }
+    var portalUrl by rememberSaveable { mutableStateOf("") }
     var mode by rememberSaveable { mutableStateOf(VoucherMode.HOTSPOT) }
     var quantity by rememberSaveable { mutableStateOf("10") }
     var usernameLength by rememberSaveable { mutableStateOf("6") }
@@ -119,6 +129,23 @@ fun VoucherStudioScreen(
     var priceEgp by rememberSaveable { mutableStateOf("5") }
     var networkName by rememberSaveable { mutableStateOf("FG WiFi") }
     var supportPhone by rememberSaveable { mutableStateOf("") }
+
+    androidx.compose.runtime.LaunchedEffect(hotspotManager) {
+        val designPrefs = context.getSharedPreferences("fg_portal_design", 0)
+        runCatching {
+            kotlinx.serialization.json.Json.decodeFromString<com.fgmachines.mikrotikmanager.hotspot.PortalDesign>(
+                designPrefs.getString("design", null).orEmpty()
+            )
+        }.getOrNull()?.let { design ->
+            networkName = design.networkName
+            supportPhone = design.supportPhone
+        }
+        if (portalUrl.isBlank() && hotspotManager != null) {
+            runCatching { hotspotManager.serverProfiles() }.getOrNull()
+                ?.firstOrNull { !it["dns-name"].isNullOrBlank() }
+                ?.get("dns-name")?.let { portalUrl = "http://$it/login" }
+        }
+    }
 
     var expiryEnabled by rememberSaveable { mutableStateOf(true) }
     var expiryEpochMs by rememberSaveable {
@@ -166,6 +193,9 @@ fun VoucherStudioScreen(
         ).show()
     }
 
+    toolsTab?.let { tab ->
+        HotspotToolsScreen(arabic, hotspotManager, recentBatches, tab, { toolsTab = null }, advancedManager=advancedManager, onAdvancedSetup={toolsTab=null;onOpenAdvanced()})
+    }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -190,6 +220,17 @@ fun VoucherStudioScreen(
             )
         }
 
+        if (connected && mode == VoucherMode.HOTSPOT) item {
+            Text(if(checkingPreflight) { if(arabic) "جاري فحص جاهزية HotSpot..." else "Checking HotSpot readiness..." } else if(preflight?.ready == true) { if(arabic) "HotSpot جاهز ✓" else "HotSpot ready ✓" } else { if(arabic) "الراوتر غير جاهز لتفعيل كروت HotSpot" else "Router is not ready to activate HotSpot vouchers" }, color = if(preflight?.ready == true) FgMint else FgAmber)
+            if(preflight?.ready != true && !checkingPreflight) OutlinedButton(onClick = onOpenAdvanced, modifier = Modifier.fillMaxWidth()) { Text(if(arabic) "فتح الإعداد المتقدم" else "Open Advanced Setup") }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(onClick = { toolsTab = "design" }, modifier = Modifier.weight(1f)) { Text(if(arabic) "صفحة العملاء" else "Customer portal") }
+                OutlinedButton(onClick = { toolsTab = "active" }, enabled = connected, modifier = Modifier.weight(1f)) { Text(if(arabic) "الكروت النشطة" else "Active vouchers") }
+            }
+            OutlinedButton(onClick = onOpenAdvanced, enabled = connected, modifier = Modifier.fillMaxWidth()) { Text(if(arabic) "إعداد HotSpot" else "Set up HotSpot") }
+        }
         item {
             NeonCard(accent = FgBlue) {
                 Text(
@@ -200,12 +241,12 @@ fun VoucherStudioScreen(
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    OutlinedTextField(
+                    CompactVoucherField(
                         value = quantity,
                         onValueChange = { quantity = it.filter(Char::isDigit).take(4) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(52.dp),
+                            ,
                         label = {
                             Text(
                                 if (arabic) "العدد" else "Quantity",
@@ -216,12 +257,12 @@ fun VoucherStudioScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
-                    OutlinedTextField(
+                    CompactVoucherField(
                         value = usernameLength,
                         onValueChange = { usernameLength = it.filter(Char::isDigit).take(2) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(52.dp),
+                            ,
                         label = {
                             Text(
                                 if (arabic) "طول الكود" else "Code length",
@@ -238,12 +279,12 @@ fun VoucherStudioScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
-                    OutlinedTextField(
+                    CompactVoucherField(
                         value = durationValue,
                         onValueChange = { durationValue = it.filter(Char::isDigit).take(5) },
                         modifier = Modifier
                             .weight(0.8f)
-                            .height(52.dp),
+                            ,
                         label = {
                             Text(
                                 if (arabic) "المدة" else "Duration",
@@ -277,14 +318,14 @@ fun VoucherStudioScreen(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    OutlinedTextField(
+                    CompactVoucherField(
                         value = priceEgp,
                         onValueChange = {
                             priceEgp = it.filter { ch -> ch.isDigit() || ch == '.' }.take(9)
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(52.dp),
+                            ,
                         label = {
                             Text(
                                 if (arabic) "السعر جنيه" else "Price EGP",
@@ -296,12 +337,12 @@ fun VoucherStudioScreen(
                         singleLine = true
                     )
 
-                    OutlinedTextField(
+                    CompactVoucherField(
                         value = dataMb,
                         onValueChange = { dataMb = it.filter(Char::isDigit).take(8) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(52.dp),
+                            ,
                         label = {
                             Text(
                                 if (arabic) "البيانات MB" else "Data MB",
@@ -390,12 +431,12 @@ fun VoucherStudioScreen(
                 }
 
                 if (!samePassword) {
-                    OutlinedTextField(
+                    CompactVoucherField(
                         value = passwordLength,
                         onValueChange = { passwordLength = it.filter(Char::isDigit).take(2) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
+                            ,
                         label = {
                             Text(
                                 if (arabic) "طول كلمة المرور" else "Password length",
@@ -457,7 +498,7 @@ fun VoucherStudioScreen(
                             }
                         }
                     } else {
-                        OutlinedTextField(
+                        CompactVoucherField(
                             value = profile,
                             onValueChange = { profile = it },
                             modifier = Modifier.fillMaxWidth(),
@@ -477,7 +518,7 @@ fun VoucherStudioScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                OutlinedTextField(
+                CompactVoucherField(
                     value = networkName,
                     onValueChange = { networkName = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -485,7 +526,11 @@ fun VoucherStudioScreen(
                     singleLine = true
                 )
 
-                OutlinedTextField(
+                if (mode == VoucherMode.HOTSPOT) {
+                    CompactVoucherField(portalUrl, { portalUrl = it.trim() }, Modifier.fillMaxWidth(), { Text(if(arabic) "رابط دخول الشبكة للـQR" else "HotSpot login URL for QR") })
+                    Text(if(arabic) "مثال: http://wifi.local/login — لا تضع كلمة مرور في الرابط. يجب تثبيت صفحة العملاء أولًا." else "Example: http://wifi.local/login — no passwords in the URL. Install the customer portal first.", color = FgSilver, style = MaterialTheme.typography.bodySmall)
+                }
+                CompactVoucherField(
                     value = supportPhone,
                     onValueChange = { supportPhone = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -553,11 +598,13 @@ fun VoucherStudioScreen(
                             branding = VoucherBranding(
                                 networkName = networkName,
                                 supportPhone = supportPhone,
-                                priceEgp = price
+                                priceEgp = price,
+                                portalLoginUrl = portalUrl
                             )
                         )
 
                         val generated = generator.generate(request)
+                        generated.vouchers.firstOrNull()?.let { VoucherQrPayloadBuilder.build(it) }
                         batch = generated
                         onBatchGenerated(generated)
                         onClearProvisionResult()
@@ -570,7 +617,7 @@ fun VoucherStudioScreen(
                         error = t.message ?: "Invalid voucher settings"
                     }
                 },
-                enabled = !provisioning,
+                enabled = !provisioning && !(connected && mode == VoucherMode.HOTSPOT && preflight?.ready != true),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (provisioning) {
@@ -625,6 +672,21 @@ fun VoucherStudioScreen(
         }
 
         if (batch != null) {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("PDF A4", "Thermal", "PNG").forEach { format ->
+                        OutlinedButton(onClick = {
+                            scope.launch {
+                                runCatching {
+                                    val generated = batch!!
+                                    val file = if(format == "PNG") com.fgmachines.mikrotikmanager.voucher.VoucherImageExporter.export(context,generated.vouchers.first()) else pdfExporter.export(context,generated,"vouchers.pdf",thermal = format == "Thermal")
+                                    VoucherShareManager.shareFile(context,file,if(format == "PNG") "image/png" else "application/pdf")
+                                }.onFailure { error = it.message }
+                            }
+                        }, modifier = Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 8.dp)) { Text(format) }
+                    }
+                }
+            }
             item {
                 NeonCard(accent = FgBlue) {
                     Row(
@@ -753,7 +815,14 @@ fun VoucherStudioScreen(
             }
         }
 
-        item { Spacer(Modifier.height(12.dp)) }
+        item {
+            if (batch != null) {
+                if (mode == VoucherMode.OFFLINE) Text(if(arabic) "الكارت غير مفعّل على راوتر" else "Voucher is not activated on a router", color = FgAmber)
+                if (mode == VoucherMode.PPPOE) Text(if(arabic) "QR لبيانات إعداد PPPoE، وليس دخول HotSpot" else "QR is a PPPoE setup card, not a HotSpot login", color = FgAmber)
+            }
+            if (provisionResult?.created?.let { it > 0 } == true) OutlinedButton(onClick = { toolsTab = "active" }, modifier = Modifier.fillMaxWidth()) { Text(if(arabic) "فتح الكروت النشطة" else "Open active vouchers") }
+            Spacer(Modifier.height(12.dp))
+        }
     }
 }
 
@@ -991,14 +1060,14 @@ private fun StatusCard(
 
             Text(
                 if (arabic) {
-                    "تم تفعيل ${result.created} • مكرر ${result.duplicates} • فشل ${result.failed}"
+                    "تم إنشاء وتفعيل ${result.created} من ${result.total} على MikroTik • مكرر ${result.duplicates} • فشل ${result.failed}"
                 } else {
-                    "Activated ${result.created} • duplicates ${result.duplicates} • failed ${result.failed}"
+                    "Created and activated ${result.created} of ${result.total} on MikroTik • duplicates ${result.duplicates} • failed ${result.failed}"
                 },
                 color = FgSilver
             )
 
-            result.items.firstOrNull { it.status.name == "FAILED" }?.let {
+            result.items.filter { it.status.name == "FAILED" }.forEach {
                 Text(
                     it.username + ": " + it.message,
                     color = MaterialTheme.colorScheme.error,
@@ -1212,8 +1281,8 @@ private fun PreviewValue(
 
 private fun modeLabel(mode: VoucherMode, arabic: Boolean): String =
     when (mode) {
-        VoucherMode.HOTSPOT -> if (arabic) "هوت سبوت" else "HotSpot"
-        VoucherMode.USER_MANAGER -> if (arabic) "يوزر مانجر" else "User Manager"
+        VoucherMode.HOTSPOT -> "HotSpot"
+        VoucherMode.USER_MANAGER -> "User Manager"
         VoucherMode.PPPOE -> "PPPoE"
         VoucherMode.OFFLINE -> if (arabic) "بدون راوتر" else "Offline"
     }

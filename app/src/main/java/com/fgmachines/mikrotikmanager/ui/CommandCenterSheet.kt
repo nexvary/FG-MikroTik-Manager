@@ -24,6 +24,8 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -78,9 +80,10 @@ fun CommandCenterSheet(
     val clipboard = LocalClipboardManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    var input by rememberSaveable { mutableStateOf(initialText) }
+    var input by remember { mutableStateOf(initialText) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
-    var dangerousConfirmed by rememberSaveable { mutableStateOf(false) }
+    var dangerousConfirmed by remember { mutableStateOf(false) }
+    var confirmationOpen by remember { mutableStateOf(false) }
     val clipboardCandidate = remember {
         clipboard.getText()?.text
             ?.takeIf { text ->
@@ -100,6 +103,15 @@ fun CommandCenterSheet(
         onClearResults()
     }
 
+    if (confirmationOpen) {
+        AlertDialog(
+            onDismissRequest = { confirmationOpen = false },
+            title = { Text(if (arabic) "تأكيد الأوامر الحساسة" else "Confirm sensitive commands") },
+            text = { Text(parsed.filter { it.risk == CommandRisk.DANGEROUS }.joinToString("\n") { if (arabic) it.explanationAr else it.explanationEn }) },
+            confirmButton = { Button(onClick = { confirmationOpen = false; onRun(parsed) }) { Text(if (arabic) "تنفيذ" else "Execute") } },
+            dismissButton = { TextButton(onClick = { confirmationOpen = false }) { Text(if (arabic) "إلغاء" else "Cancel") } }
+        )
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -266,8 +278,11 @@ fun CommandCenterSheet(
                     Text("/ip address print\n/ip service disable telnet")
                 },
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = FontFamily.Monospace
-                )
+                    fontFamily = FontFamily.Monospace,
+                    textDirection = androidx.compose.ui.text.style.TextDirection.Ltr
+                ),
+                visualTransformation = RouterSyntaxTransformation
+
             )
 
             Spacer(Modifier.height(8.dp))
@@ -342,7 +357,7 @@ fun CommandCenterSheet(
             Spacer(Modifier.height(8.dp))
 
             Button(
-                onClick = { onRun(parsed) },
+                onClick = { if (hasDangerous) confirmationOpen = true else onRun(parsed) },
                 enabled = !running &&
                     allSupported &&
                     (!hasDangerous || dangerousConfirmed),
@@ -493,4 +508,22 @@ private fun statusLabel(
         CommandExecutionStatus.PENDING -> if (arabic) "انتظار" else "Pending"
     }
     return prefix + " — " + result.message
+}
+
+private object RouterSyntaxTransformation : androidx.compose.ui.text.input.VisualTransformation {
+    override fun filter(text: AnnotatedString): androidx.compose.ui.text.input.TransformedText {
+        val colored = buildAnnotatedString {
+            append(text.text)
+            Regex("[/][a-zA-Z0-9_/-]+|\\b(print|add|set|remove|enable|disable|reboot)\\b|[a-zA-Z0-9-]+=").findAll(text.text).forEach { match ->
+                val color = when {
+                    match.value.startsWith("/") -> FgBlue
+                    match.value.endsWith("=") -> FgSilver
+                    match.value in setOf("remove", "reboot", "disable") -> FgAmber
+                    else -> FgMint
+                }
+                addStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold), match.range.first, match.range.last + 1)
+            }
+        }
+        return androidx.compose.ui.text.input.TransformedText(colored, androidx.compose.ui.text.input.OffsetMapping.Identity)
+    }
 }

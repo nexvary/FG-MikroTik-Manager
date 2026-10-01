@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
@@ -108,6 +110,8 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 
                 state.connected -> RouterShell(
                     state = state,
+                    hotspotManager = viewModel.hotspotManager,
+                    advancedManager = viewModel.advancedManager,
                     arabic = arabic,
                     onLanguageToggle = { arabic = !arabic },
                     onRefresh = viewModel::refresh,
@@ -149,9 +153,15 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 
 @Composable
 fun RouterDemoApp(screen: String) {
+    if (screen in setOf("active-vouchers", "portal-login", "portal-status")) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            FgMikroTikTheme { HotspotToolsScreen(true, null, emptyList(), if(screen == "active-vouchers") "active" else screen, {}, demo = true) }
+        }
+        return
+    }
     val section = when (screen.lowercase(Locale.ENGLISH)) {
-        "dashboard" -> AppSection.DASHBOARD
-        "winbox", "network" -> AppSection.NETWORK
+        "dashboard", "advanced", "readiness", "doctor", "wizard", "repair", "backup" -> AppSection.ADVANCED
+        "winbox", "network", "routes" -> AppSection.NETWORK
         "system", "commands", "admin-users" -> AppSection.SYSTEM
         "vouchers" -> AppSection.VOUCHERS
         "about" -> AppSection.ABOUT
@@ -174,13 +184,14 @@ fun RouterDemoApp(screen: String) {
         )
     )
 
+    val demoRoutes = screen.equals("routes", ignoreCase = true)
     val demoUsers = screen.equals("admin-users", ignoreCase = true)
     val demoState = RouterUiState(
         connected = true,
         dashboard = dashboard,
         interfaces = dashboard.interfaces,
         section = section,
-        adminModule = if (demoUsers) RouterAdminModule.USERS else null,
+        adminModule = if (demoUsers) RouterAdminModule.USERS else if (demoRoutes) RouterAdminModule.ROUTES else null,
         adminSnapshot = if (demoUsers) {
             RouterMenuSnapshot(
                 module = RouterAdminModule.USERS,
@@ -202,6 +213,11 @@ fun RouterDemoApp(screen: String) {
                     )
                 )
             )
+        } else if (demoRoutes) {
+            RouterMenuSnapshot(RouterAdminModule.ROUTES, "ip/route", listOf(
+                mapOf(".id" to "*1", "dst-address" to "0.0.0.0/0", "gateway" to "192.168.88.1", "distance" to "1", "disabled" to "false"),
+                mapOf(".id" to "*2", "dst-address" to "10.20.0.0/24", "gateway" to "192.168.88.2", "distance" to "2", "disabled" to "true")
+            ))
         } else {
             null
         },
@@ -239,7 +255,9 @@ fun RouterDemoApp(screen: String) {
                 onRemoveAdminItem = {},
                 onClearAdminActionMessage = {},
                 commandCenterInitiallyOpen = screen.equals("commands", ignoreCase = true),
-                commandCenterInitialText = "/ip address print\n/ip service disable telnet"
+                commandCenterInitialText = "/ip address print\n/ip service disable telnet",
+                initialAdvancedPanel = if(screen in setOf("readiness","doctor","wizard","repair","backup")) screen else "home",
+                advancedDemo = true
             )
         }
     }
@@ -261,7 +279,7 @@ private fun ConnectionScreen(
 ) {
     var host by rememberSaveable { mutableStateOf("") }
     var username by rememberSaveable { mutableStateOf("admin") }
-    var password by rememberSaveable { mutableStateOf("") }
+    var password by androidx.compose.runtime.remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) { onDiscover() }
     LaunchedEffect(discoveredRouters) {
@@ -474,6 +492,8 @@ private fun ConnectionScreen(
 @Composable
 private fun RouterShell(
     state: RouterUiState,
+    advancedManager: com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager? = null,
+    hotspotManager: com.fgmachines.mikrotikmanager.hotspot.HotspotManager? = null,
     arabic: Boolean,
     onLanguageToggle: () -> Unit,
     onRefresh: () -> Unit,
@@ -495,7 +515,9 @@ private fun RouterShell(
     onRemoveAdminItem: (String) -> Unit,
     onClearAdminActionMessage: () -> Unit,
     commandCenterInitiallyOpen: Boolean = false,
-    commandCenterInitialText: String = ""
+    commandCenterInitialText: String = "",
+    initialAdvancedPanel: String = "home",
+    advancedDemo: Boolean = false
 ) {
     val wide = LocalConfiguration.current.screenWidthDp >= 840
     var commandCenterOpen by rememberSaveable { mutableStateOf(commandCenterInitiallyOpen) }
@@ -532,9 +554,14 @@ private fun RouterShell(
                 VerticalDivider(color = FgBlue.copy(alpha = 0.35f))
                 RouterContent(
                     state = state,
+                    hotspotManager = hotspotManager,
+                    advancedManager = advancedManager,
+                    initialAdvancedPanel = initialAdvancedPanel, advancedDemo = advancedDemo,
+                    onSection = onSection,
                     arabic = arabic,
                     onRefresh = onRefresh,
                     onOpenAdminModule = onOpenAdminModule,
+                    onOpenTerminal = { commandCenterOpen = true },
                     onRefreshAdminModule = onRefreshAdminModule,
                     onCloseAdminModule = onCloseAdminModule,
                     onVoucherModeSelected = onVoucherModeSelected,
@@ -599,7 +626,7 @@ private fun RouterShell(
                 showBack = state.section != AppSection.MENU || state.adminModule != null,
                 onBack = goBack,
                 onLanguageToggle = onLanguageToggle,
-                showRefresh = state.section == AppSection.DASHBOARD,
+                showRefresh = state.section == AppSection.ADVANCED,
                 refreshing = state.refreshing,
                 onRefresh = onRefresh
             )
@@ -607,9 +634,13 @@ private fun RouterShell(
     ) { padding ->
         RouterContent(
             state = state,
+            hotspotManager = hotspotManager,
+            advancedManager = advancedManager,
+            initialAdvancedPanel = initialAdvancedPanel, advancedDemo = advancedDemo,
             arabic = arabic,
             onRefresh = onRefresh,
             onOpenAdminModule = onOpenAdminModule,
+            onOpenTerminal = { commandCenterOpen = true },
             onRefreshAdminModule = onRefreshAdminModule,
             onCloseAdminModule = onCloseAdminModule,
             onVoucherModeSelected = onVoucherModeSelected,
@@ -647,9 +678,12 @@ private fun RouterShell(
 @Composable
 private fun RouterContent(
     state: RouterUiState,
+    advancedManager: com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager? = null,
+    hotspotManager: com.fgmachines.mikrotikmanager.hotspot.HotspotManager?,
     arabic: Boolean,
     onRefresh: () -> Unit,
     onOpenAdminModule: (com.fgmachines.mikrotikmanager.data.RouterAdminModule) -> Unit,
+    onOpenTerminal: () -> Unit,
     onRefreshAdminModule: () -> Unit,
     onCloseAdminModule: () -> Unit,
     onVoucherModeSelected: (VoucherMode) -> Unit,
@@ -664,7 +698,9 @@ private fun RouterContent(
     onClearAdminActionMessage: () -> Unit,
     modifier: Modifier,
     onSection: (AppSection) -> Unit = {},
-    onDisconnect: () -> Unit = {}
+    onDisconnect: () -> Unit = {},
+    initialAdvancedPanel: String = "home",
+    advancedDemo: Boolean = false
 ) {
     when (state.section) {
         AppSection.MENU -> MainMenuScreen(
@@ -675,11 +711,12 @@ private fun RouterContent(
             modifier = modifier
         )
 
-        AppSection.DASHBOARD -> DashboardScreen(
-            snapshot = state.dashboard,
-            error = state.error,
-            arabic = arabic,
-            modifier = modifier
+        AppSection.ADVANCED -> AdvancedSetupScreen(
+            arabic = arabic, snapshot = state.dashboard, manager = advancedManager,
+            hotspot = hotspotManager, batches = state.recentVoucherBatches, onRefresh = onRefresh,
+            onAdmin = { module -> onSection(if(module.group == RouterAdminGroup.SYSTEM) AppSection.SYSTEM else AppSection.NETWORK); onOpenAdminModule(module) },
+            onTerminal = onOpenTerminal, onManualNetwork = { onSection(AppSection.NETWORK) },
+            modifier = modifier, initialPanel = initialAdvancedPanel, demo = advancedDemo
         )
 
         AppSection.NETWORK,
@@ -697,6 +734,7 @@ private fun RouterContent(
             error = state.adminError,
             actionMessage = state.adminActionMessage,
             onOpenModule = onOpenAdminModule,
+            onOpenTerminal = onOpenTerminal,
             onRefresh = onRefreshAdminModule,
             onBack = onCloseAdminModule,
             onCreate = onCreateAdminItem,
@@ -710,6 +748,9 @@ private fun RouterContent(
 
         AppSection.VOUCHERS -> VoucherStudioScreen(
             arabic = arabic,
+            hotspotManager = hotspotManager,
+            advancedManager = advancedManager,
+            onOpenAdvanced = { onSection(AppSection.ADVANCED) },
             connected = true,
             profiles = state.voucherProfiles,
             profilesLoading = state.voucherProfilesLoading,
@@ -741,10 +782,10 @@ private fun MainMenuScreen(
 ) {
     val items = listOf(
         MenuEntry(
-            AppSection.DASHBOARD,
-            if (arabic) "حالة الراوتر" else "Router status",
-            if (arabic) "الحالة والموديل والموارد" else "Status, model and resources",
-            Icons.Outlined.Dashboard,
+            AppSection.ADVANCED,
+            if (arabic) "الإعداد المتقدم" else "Advanced Setup",
+            if (arabic) "حالة الراوتر • إعداد HotSpot • تشخيص الشبكة • إصلاح المشاكل" else "Router status • HotSpot • Diagnostics • Repairs",
+            Icons.Outlined.Tune,
             FgBlue
         ),
         MenuEntry(
@@ -830,13 +871,13 @@ private fun MainMenuRow(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = FgPanel),
-        border = BorderStroke(1.4.dp, entry.accent.copy(alpha = 0.92f)),
+        border = BorderStroke(1.2.dp, FgBlue),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 14.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -897,7 +938,7 @@ private fun PersistentMainMenu(
         HorizontalDivider(color = FgSilverMuted.copy(alpha = 0.28f))
 
         listOf(
-            AppSection.DASHBOARD,
+            AppSection.ADVANCED,
             AppSection.NETWORK,
             AppSection.SYSTEM,
             AppSection.VOUCHERS,
@@ -1056,8 +1097,9 @@ private fun CompactAppHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(54.dp)
             .background(FgDeepNavy)
+            .statusBarsPadding()
+            .height(56.dp)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1088,7 +1130,7 @@ private fun CompactAppHeader(
             )
             Text(
                 subtitle,
-                color = FgMint,
+                color = FgSilver,
                 style = MaterialTheme.typography.labelSmall,
                 maxLines = 1
             )
@@ -1132,7 +1174,7 @@ private fun CompactAppHeader(
 private fun sectionLabel(section: AppSection, arabic: Boolean): String =
     when (section) {
         AppSection.MENU -> if (arabic) "القائمة الرئيسية" else "Main menu"
-        AppSection.DASHBOARD -> if (arabic) "حالة الراوتر" else "Router status"
+        AppSection.ADVANCED -> if (arabic) "الإعداد المتقدم" else "Advanced Setup"
         AppSection.NETWORK -> if (arabic) "الشبكة والاتصال" else "Network & connectivity"
         AppSection.SYSTEM -> if (arabic) "النظام والأمان" else "System & security"
         AppSection.VOUCHERS -> if (arabic) "الكروت" else "Vouchers"
@@ -1142,7 +1184,7 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
 private fun sectionIcon(section: AppSection): ImageVector =
     when (section) {
         AppSection.MENU -> Icons.Outlined.Settings
-        AppSection.DASHBOARD -> Icons.Outlined.Dashboard
+        AppSection.ADVANCED -> Icons.Outlined.Tune
         AppSection.NETWORK -> Icons.Outlined.Wifi
         AppSection.SYSTEM -> Icons.Outlined.Security
         AppSection.VOUCHERS -> Icons.Outlined.CreditCard
@@ -1152,7 +1194,7 @@ private fun sectionIcon(section: AppSection): ImageVector =
 private fun sectionAccent(section: AppSection): Color =
     when (section) {
         AppSection.MENU -> FgSilver
-        AppSection.DASHBOARD -> FgBlue
+        AppSection.ADVANCED -> FgBlue
         AppSection.NETWORK -> FgMint
         AppSection.SYSTEM -> FgAmber
         AppSection.VOUCHERS -> FgPurple

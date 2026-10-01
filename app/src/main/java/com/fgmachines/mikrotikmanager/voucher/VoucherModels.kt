@@ -38,7 +38,8 @@ data class VoucherBranding(
     val networkName: String = "",
     val supportPhone: String = "",
     val priceText: String = "",
-    val priceEgp: Double? = null
+    val priceEgp: Double? = null,
+    val portalLoginUrl: String = ""
 ) {
     fun formattedPrice(): String =
         when {

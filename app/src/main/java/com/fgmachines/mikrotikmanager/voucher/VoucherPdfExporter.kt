@@ -18,19 +18,20 @@ class VoucherPdfExporter {
     suspend fun export(
         context: Context,
         batch: VoucherBatch,
-        fileName: String = "vouchers.pdf"
+        fileName: String = "vouchers.pdf",
+        thermal: Boolean = false
     ): File = withContext(Dispatchers.IO) {
         val directory = File(context.cacheDir, "exports").apply { mkdirs() }
         val file = File(directory, fileName)
         val document = PdfDocument()
 
         try {
-            val pageWidth = 595
-            val pageHeight = 842
-            val margin = 24f
+            val pageWidth = if (thermal) 226 else 595
+            val pageHeight = if (thermal) 235 else 842
+            val margin = if (thermal) 8f else 24f
             val gap = 10f
-            val columns = 2
-            val rows = 4
+            val columns = if (thermal) 1 else 2
+            val rows = if (thermal) 1 else 4
             val cardsPerPage = columns * rows
             val cardWidth = (pageWidth - (margin * 2) - gap) / columns
             val cardHeight = (pageHeight - (margin * 2) - (gap * (rows - 1))) / rows
@@ -73,7 +74,7 @@ class VoucherPdfExporter {
         file
     }
 
-    private fun drawVoucher(
+    internal fun drawVoucher(
         canvas: android.graphics.Canvas,
         voucher: VoucherDraft,
         bounds: RectF
@@ -109,6 +110,8 @@ class VoucherPdfExporter {
         val top = bounds.top + pad
         val network = voucher.branding.networkName.ifBlank { "WiFi" }.take(28)
 
+        val titleWidth = bounds.width() - 20f - if (voucher.branding.formattedPrice().isBlank()) 0f else 68f
+        while (title.measureText(network) > titleWidth && title.textSize > 7f) title.textSize -= 0.5f
         canvas.drawText(network, left, top + 14f, title)
         val priceLabel = voucher.branding.priceEgp?.let {
             DecimalFormat("0.##").format(it) + " EGP"
@@ -123,10 +126,20 @@ class VoucherPdfExporter {
             )
         }
 
-        canvas.drawText("Username", left, top + 39f, label)
-        canvas.drawText(voucher.username.take(24), left, top + 54f, value)
-        canvas.drawText("Password", left, top + 74f, label)
-        canvas.drawText(voucher.password.take(24), left, top + 89f, value)
+        canvas.drawText(if (voucher.username == voucher.password) "Voucher Code" else "Username", left, top + 39f, label)
+        val credentialPaint = Paint(value)
+        val available = bounds.width() - 102f
+        while (credentialPaint.measureText(voucher.username) > available && credentialPaint.textSize > 6f) credentialPaint.textSize -= 0.5f
+        canvas.drawText(voucher.username, left, top + 54f, credentialPaint)
+        if (voucher.username != voucher.password) {
+            canvas.drawText("Password", left, top + 74f, label)
+            val passwordPaint = Paint(value)
+            while (passwordPaint.measureText(voucher.password) > available && passwordPaint.textSize > 6f) passwordPaint.textSize -= 0.5f
+            canvas.drawText(voucher.password, left, top + 89f, passwordPaint)
+        }
+        voucher.limitBytesTotal?.let { canvas.drawText("Data: ${it/1048576} MB", left, top + 108f, small) }
+        if(voucher.mode == VoucherMode.OFFLINE) canvas.drawText("NOT activated on router", left, top + 120f, small)
+        if(voucher.mode == VoucherMode.PPPOE) canvas.drawText("PPPoE setup card", left, top + 120f, small)
 
         val qr = VoucherQrCodeFactory.create(
             VoucherQrPayloadBuilder.build(voucher),

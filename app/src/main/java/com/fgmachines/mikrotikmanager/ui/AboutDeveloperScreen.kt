@@ -139,12 +139,12 @@ fun AboutDeveloperScreen(
 
         item {
             AccentInfoCard(
-                accent = FgPurple,
+                accent = FgBlue,
                 icon = {
                     Icon(
                         Icons.Outlined.Info,
                         contentDescription = null,
-                        tint = FgPurple
+                        tint = FgBlue
                     )
                 },
                 title = if (arabic) "FG MikroTik Manager" else "FG MikroTik Manager",
@@ -161,7 +161,7 @@ fun AboutDeveloperScreen(
                 if (arabic) "روابط المطور" else "Developer links",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
-                color = FgMagenta
+                color = FgBlue
             )
         }
 

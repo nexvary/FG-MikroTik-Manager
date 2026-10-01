@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -86,6 +88,7 @@ fun RouterAdminScreen(
     error: String?,
     actionMessage: String?,
     onOpenModule: (RouterAdminModule) -> Unit,
+    onOpenTerminal: () -> Unit,
     onRefresh: () -> Unit,
     onBack: () -> Unit,
     onCreate: (Map<String, String>) -> Unit,
@@ -101,6 +104,7 @@ fun RouterAdminScreen(
             arabic = arabic,
             group = group,
             onOpenModule = onOpenModule,
+            onOpenTerminal = onOpenTerminal,
             modifier = modifier
         )
         return
@@ -131,6 +135,7 @@ private fun RouterModuleMenu(
     arabic: Boolean,
     group: RouterAdminGroup,
     onOpenModule: (RouterAdminModule) -> Unit,
+    onOpenTerminal: () -> Unit,
     modifier: Modifier
 ) {
     val modules = RouterAdminModule.entries.filter { it.group == group }
@@ -179,7 +184,13 @@ private fun RouterModuleMenu(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            item { Spacer(Modifier.height(3.dp)) }
+            item {
+                OutlinedButton(onClick = onOpenTerminal, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), border = BorderStroke(1.dp, FgBlue)) {
+                    Icon(Icons.Outlined.Terminal, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Terminal / Command Center")
+                }
+            }
             items(modules, key = { it.name }) { module ->
                 val visual = moduleVisual(module)
                 RouterModuleRow(
@@ -190,7 +201,7 @@ private fun RouterModuleMenu(
                     onClick = { onOpenModule(module) }
                 )
             }
-            item { Spacer(Modifier.height(16.dp)) }
+            item { Spacer(Modifier.height(88.dp)) }
         }
     }
 }
@@ -209,7 +220,7 @@ private fun RouterModuleRow(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = FgPanel),
-        border = BorderStroke(1.2.dp, accent.copy(alpha = 0.88f)),
+        border = BorderStroke(1.2.dp, FgBlue),
         shape = RoundedCornerShape(14.dp)
     ) {
         Row(
@@ -279,6 +290,9 @@ private fun RouterModuleDetails(
 ) {
     var editorRow by remember { mutableStateOf<Map<String, String>?>(null) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
+    var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var pendingSummary by remember { mutableStateOf("") }
+    val sensitive = module.group == RouterAdminGroup.NETWORK || module in setOf(RouterAdminModule.FIREWALL, RouterAdminModule.ROUTES, RouterAdminModule.USERS, RouterAdminModule.SERVICES)
     var deleteRow by remember { mutableStateOf<Map<String, String>?>(null) }
 
     Column(
@@ -311,7 +325,7 @@ private fun RouterModuleDetails(
                 Text(
                     snapshot?.menuPath?.let { "/$it" }
                         ?: if (arabic) "RouterOS" else "RouterOS",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
                     color = FgCyan
                 )
             }
@@ -350,6 +364,13 @@ private fun RouterModuleDetails(
             }
         }
 
+        if (module == RouterAdminModule.USERS) {
+            Button(onClick = { editorRow = null; editorOpen = true }, enabled = !actionRunning, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                Icon(Icons.Outlined.PersonAdd, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (arabic) "+ إضافة Admin" else "+ Add admin")
+            }
+        }
         actionMessage?.let { message ->
             Card(
                 modifier = Modifier
@@ -412,11 +433,21 @@ private fun RouterModuleDetails(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(moduleVisual(module).icon, contentDescription = null, tint = FgBlue, modifier = Modifier.size(36.dp))
+                        Text(moduleTitle(module, arabic), color = FgBlue, fontWeight = FontWeight.Bold)
                         Text(
-                            if (arabic) "لا توجد عناصر" else "No items",
+                            if (module == RouterAdminModule.WIFI) {
+                                if (arabic) "لا توجد واجهات Wi-Fi متاحة على هذا الإصدار أو الحزمة من RouterOS" else "No Wi-Fi interfaces are available on this RouterOS version or package"
+                            } else {
+                                if (arabic) "لا توجد عناصر في " + moduleTitle(module, true) else "No items in " + moduleTitle(module, false)
+                            },
                             color = FgSilver
                         )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = onRefresh) { Text(if (arabic) "تحديث" else "Refresh") }
+                            OutlinedButton(onClick = onBack) { Text(if (arabic) "رجوع" else "Back") }
+                        }
                         if (module.canCreate) {
                             Spacer(Modifier.height(8.dp))
                             Button(
@@ -461,13 +492,15 @@ private fun RouterModuleDetails(
                                 editorOpen = true
                             },
                             onToggle = { enabled ->
-                                row[".id"]?.let { onToggle(it, enabled) }
+                                row[".id"]?.let { id ->
+                                    if (sensitive) { pendingSummary = id + " • " + if(enabled) "Enable" else "Disable"; pendingChange = { onToggle(id, enabled) } } else onToggle(id, enabled)
+                                }
                             },
                             onDelete = { deleteRow = row }
                         )
                     }
 
-                    item { Spacer(Modifier.height(16.dp)) }
+                    item { Spacer(Modifier.height(88.dp)) }
                 }
             }
         }
@@ -477,27 +510,41 @@ private fun RouterModuleDetails(
         RouterItemEditorDialog(
             arabic = arabic,
             module = module,
+            menuPath = snapshot?.menuPath.orEmpty(),
             existing = editorRow,
             busy = actionRunning,
             onDismiss = { editorOpen = false },
             onSave = { attributes ->
-                if (module == RouterAdminModule.USERS && editorRow == null) {
+                val rowToEdit = editorRow
+                val change = {
+                if (module == RouterAdminModule.USERS && rowToEdit == null) {
                     onCreateAdmin(
                         attributes["name"].orEmpty(),
                         attributes["password"].orEmpty(),
                         attributes["group"].orEmpty().ifBlank { "full" },
                         attributes["comment"].orEmpty()
                     )
-                } else if (editorRow == null) {
+                } else if (rowToEdit == null) {
                     onCreate(attributes)
                 } else {
-                    onUpdate(editorRow?.get(".id"), attributes)
+                    onUpdate(rowToEdit?.get(".id"), attributes)
                 }
+                }
+                if (sensitive) { pendingSummary = attributes.entries.joinToString("\n") { (key,value) -> key + ": " + if(key.contains("password") || key.contains("private-key")) "••••" else value }; pendingChange = change } else change()
                 editorOpen = false
             }
         )
     }
 
+    if (pendingChange != null) {
+        AlertDialog(
+            onDismissRequest = { pendingChange = null },
+            title = { Text(if (arabic) "تأكيد تغيير حساس" else "Confirm sensitive change") },
+            text = { Text(pendingSummary + "\n\n" + if (arabic) "سيتم تعديل " + moduleTitle(module, true) + ". قد يؤثر ذلك على الاتصال أو صلاحيات الوصول. سيتم حفظ Backup مشفّر أولًا؛ يمكنك الاستعادة من الإعداد المتقدم. استخدم اتصال إدارة منفصلًا عند تعديل شبكة الهاتف." else "This changes " + moduleTitle(module, false) + " and may affect connectivity or access. An encrypted backup is required first; recover from Advanced Setup. Use a separate management connection when editing this phone's network.") },
+            confirmButton = { Button(onClick = { val action = pendingChange; pendingChange = null; action?.invoke() }) { Text(if (arabic) "تأكيد" else "Confirm") } },
+            dismissButton = { TextButton(onClick = { pendingChange = null }) { Text(if (arabic) "إلغاء" else "Cancel") } }
+        )
+    }
     deleteRow?.let { row ->
         AlertDialog(
             onDismissRequest = { deleteRow = null },
@@ -507,9 +554,9 @@ private fun RouterModuleDetails(
             text = {
                 Text(
                     if (arabic) {
-                        "سيتم حذف " + recordTitle(row, arabic) + " من الراوتر. لا يمكن التراجع تلقائيًا."
+                        "سيتم حذف " + recordTitle(row, arabic) + " من الراوتر. قد ينقطع الاتصال. للعمليات الحساسة تُحفظ نسخة مشفّرة أولًا للرجوع من الإعداد المتقدم."
                     } else {
-                        "This will delete " + recordTitle(row, arabic) + " from the router. It cannot be automatically undone."
+                        "This will delete " + recordTitle(row, arabic) + " from the router. Connectivity may be interrupted. Sensitive operations require an encrypted backup first; recover from Advanced Setup."
                     }
                 )
             },
@@ -551,7 +598,7 @@ private fun RouterRecordCard(
             .padding(horizontal = 12.dp)
             .fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = FgPanel),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.62f)),
+        border = BorderStroke(1.dp, FgBlue),
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(
@@ -567,15 +614,15 @@ private fun RouterRecordCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         recordTitle(row, arabic),
+                        style = MaterialTheme.typography.titleMedium.copy(textDirection = androidx.compose.ui.text.style.TextDirection.ContentOrLtr),
                         color = FgWhite,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
+                        fontWeight = FontWeight.Bold
                     )
                     row[".id"]?.let {
                         Text(
                             it,
                             color = FgSilverMuted,
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr)
                         )
                     }
                 }
@@ -596,19 +643,19 @@ private fun RouterRecordCard(
 
             if (details.isNotEmpty()) {
                 HorizontalDivider(color = accent.copy(alpha = 0.22f))
-                details.take(5).forEach { (key, value) ->
+                details.filterNot { it.first == "disabled" || it.first == "dst-address" }.take(4).forEach { (key, value) ->
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             key,
                             modifier = Modifier.weight(0.42f),
                             color = FgSilverMuted,
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr)
                         )
                         Text(
                             value,
+                            style = MaterialTheme.typography.bodySmall.copy(textDirection = androidx.compose.ui.text.style.TextDirection.ContentOrLtr),
                             modifier = Modifier.weight(0.58f),
-                            color = FgSilver,
-                            style = MaterialTheme.typography.bodySmall
+                            color = FgSilver
                         )
                     }
                 }
@@ -617,16 +664,17 @@ private fun RouterRecordCard(
             if (module.canEdit || module.canToggle || module.canDelete) {
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (module.canEdit) {
                         OutlinedButton(
                             onClick = onEdit,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 3.dp, vertical = 8.dp),
                             enabled = !actionRunning
                         ) {
-                            Icon(Icons.Outlined.Edit, contentDescription = null, tint = FgBlue)
+                            Icon(Icons.Outlined.Edit, contentDescription = null, tint = FgBlue, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(if (arabic) "تعديل" else "Edit")
                         }
@@ -635,10 +683,13 @@ private fun RouterRecordCard(
                     if (module.canToggle && row[".id"] != null) {
                         OutlinedButton(
                             onClick = { onToggle(disabled) },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 3.dp, vertical = 8.dp),
                             enabled = !actionRunning
                         ) {
                             Icon(
                                 if (disabled) Icons.Outlined.ToggleOn else Icons.Outlined.ToggleOff,
+                                modifier = Modifier.size(16.dp),
                                 contentDescription = null,
                                 tint = if (disabled) FgMint else FgAmber
                             )
@@ -656,11 +707,14 @@ private fun RouterRecordCard(
                     if (module.canDelete && row[".id"] != null) {
                         OutlinedButton(
                             onClick = onDelete,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 3.dp, vertical = 8.dp),
                             enabled = !actionRunning,
                             border = BorderStroke(1.dp, Color(0xFFFF7B7B))
                         ) {
                             Icon(
                                 Icons.Outlined.Delete,
+                                modifier = Modifier.size(16.dp),
                                 contentDescription = null,
                                 tint = Color(0xFFFF7B7B)
                             )
@@ -681,12 +735,15 @@ private fun RouterRecordCard(
 private fun RouterItemEditorDialog(
     arabic: Boolean,
     module: RouterAdminModule,
+    menuPath: String,
     existing: Map<String, String>?,
     busy: Boolean,
     onDismiss: () -> Unit,
     onSave: (Map<String, String>) -> Unit
 ) {
-    val specs = fieldSpecs(module)
+    val specs = fieldSpecs(module).map { spec ->
+        if (module == RouterAdminModule.WIFI && spec.key == "ssid" && menuPath == "interface/wifi") spec.copy(key = "configuration.ssid") else spec
+    }
     val knownKeys = specs.map { it.key }.toSet()
 
     var values by remember(module, existing) {
@@ -708,7 +765,7 @@ private fun RouterItemEditorDialog(
         mutableStateOf(
             existing
                 ?.filterKeys { key ->
-                    key !in knownKeys &&
+                    key !in knownKeys && !key.contains("password", true) && !key.contains("private-key", true) &&
                         key != ".id" &&
                         key !in setOf(
                             "dynamic", "running", "actual-mtu",
@@ -748,7 +805,7 @@ private fun RouterItemEditorDialog(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(430.dp),
+                    .heightIn(max = 430.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(specs) { spec ->
@@ -1159,7 +1216,7 @@ private fun preferredDetails(
         }
         if (isEmpty()) {
             row.entries
-                .filter { it.key != ".id" && it.key != "name" }
+                .filter { it.key != ".id" && it.key != "name" && !it.key.contains("password", true) && !it.key.contains("private-key", true) }
                 .take(5)
                 .forEach { add(it.key to it.value) }
         }

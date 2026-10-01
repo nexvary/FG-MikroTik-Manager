@@ -1,6 +1,7 @@
 package com.fgmachines.mikrotikmanager.voucher
 
 import java.security.SecureRandom
+import java.util.UUID
 
 class VoucherGenerator(
     private val random: RandomSource = SecureRandomSource()
@@ -8,6 +9,8 @@ class VoucherGenerator(
     fun generate(request: VoucherBatchRequest): VoucherBatch {
         val usernames = LinkedHashSet<String>(request.quantity)
         val vouchers = ArrayList<VoucherDraft>(request.quantity)
+        val batchComment = listOf("FG-MTM batch=" + UUID.randomUUID(), request.comment)
+            .filter(String::isNotBlank).joinToString(" • ")
 
         var attempts = 0
         val maxAttempts = request.quantity * 50
@@ -32,7 +35,7 @@ class VoucherGenerator(
                 password = password,
                 profile = request.profile,
                 server = request.server,
-                comment = request.comment,
+                comment = batchComment,
                 limitUptime = request.routerOsDuration(),
                 limitBytesTotal = request.limitBytesTotal,
                 mode = request.mode,

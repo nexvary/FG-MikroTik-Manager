@@ -53,4 +53,18 @@ class VoucherExportersTest {
         assertTrue(payload.contains("Username: 123456"))
         assertTrue(payload.contains("Password: 123456"))
     }
+    @Test
+    fun loginQrNeverIncludesSeparatePasswordOrQuery() {
+        val voucher = batch.vouchers.single().copy(password = "private-secret", branding = branding.copy(portalLoginUrl = "http://wifi.local/login"))
+        val payload = VoucherQrPayloadBuilder.build(voucher)
+        assertTrue(payload.startsWith("http://wifi.local/login#"))
+        assertTrue(payload.contains("same=0"))
+        assertTrue(!payload.contains("private-secret") && !payload.contains("password=") && !payload.contains("?"))
+    }
+    @Test
+    fun pppoeAndOfflineNeverBecomeLoginLinks() {
+        val voucher = batch.vouchers.single().copy(branding = branding.copy(portalLoginUrl="http://wifi.local/login"))
+        assertTrue(VoucherQrPayloadBuilder.build(voucher.copy(mode=VoucherMode.PPPOE)).contains("PPPoE setup"))
+        assertTrue(VoucherQrPayloadBuilder.build(voucher.copy(mode=VoucherMode.OFFLINE)).contains("NOT activated"))
+    }
 }

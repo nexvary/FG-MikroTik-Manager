@@ -23,8 +23,12 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class RouterRepository private constructor(
-    private val transport: RouterOsTransport
+    private val transport: RouterOsTransport,
+    routerKey: String = "test-router"
 ) : AutoCloseable {
+
+    val advanced = com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager(transport, routerKey)
+    val hotspot = com.fgmachines.mikrotikmanager.hotspot.HotspotManager(transport)
 
     suspend fun loadDashboard(): DashboardSnapshot = coroutineScope {
         val identityRequest = async { transport.read("system/identity") }
@@ -53,17 +57,21 @@ class RouterRepository private constructor(
 
     suspend fun loadAdminModule(module: RouterAdminModule): RouterMenuSnapshot {
         var lastError: Throwable? = null
+        var emptyWifi: RouterMenuSnapshot? = null
         for (menu in module.menuCandidates) {
             try {
-                return RouterMenuSnapshot(
-                    module = module,
-                    menuPath = menu,
-                    rows = transport.read(menu)
-                )
+                val snapshot = RouterMenuSnapshot(module, menu, transport.read(menu))
+                if (module == RouterAdminModule.WIFI && snapshot.rows.isEmpty()) {
+                    emptyWifi = snapshot
+                    continue
+                }
+                return snapshot
             } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
                 lastError = t
             }
         }
+        emptyWifi?.let { return it }
         throw RouterOsException(
             message = "RouterOS menu is not available: " + module.name,
             cause = lastError
@@ -299,6 +307,15 @@ class RouterRepository private constructor(
             VoucherMode.OFFLINE -> error("Handled above")
         }
 
+        if (batch.request.mode == VoucherMode.USER_MANAGER) {
+            val available = runCatching {
+                val packages = transport.read("system/package")
+                require(packages.any { it["name"] == "user-manager" && it["disabled"] !in listOf("true", "yes") })
+                require(transport.read("user-manager").firstOrNull()?.get("enabled") in listOf("true", "yes"))
+                transport.read("user-manager/profile")
+            }.isSuccess
+            if (!available) return batch.vouchers.map { VoucherProvisionItem(it.username, VoucherProvisionStatus.FAILED, "User Manager غير متاح أو غير مجهز على هذا الراوتر — استخدم HotSpot التقليدي / User Manager is unavailable or not configured; use HotSpot") }.toSummary(batch.request.mode)
+        }
         val existingNames = transport.read(menu)
             .mapNotNull { it["name"]?.takeIf(String::isNotBlank) }
             .toMutableSet()
@@ -397,7 +414,11 @@ class RouterRepository private constructor(
                         )
                     }.fold(
                         onSuccess = { " • expires automatically" },
-                        onFailure = { " • created, but expiry schedule failed: " + (it.message ?: "unknown error") }
+                        onFailure = {
+                            val id = created.firstOrNull()?.get(".id") ?: transport.read(menu).firstOrNull { row -> row["name"] == voucher.username }?.get(".id")
+                            if (id != null) transport.execute("/$menu/disable", mapOf(".id" to id))
+                            " • created but disabled; expiry schedule failed: " + (it.message ?: "unknown error")
+                        }
                     )
                 }.orEmpty()
 
@@ -456,7 +477,7 @@ class RouterRepository private constructor(
         val delayMs = expiryEpochMs - System.currentTimeMillis()
         require(delayMs > 0) { "Expiry time must be in the future" }
 
-        val routerNow = routerClock ?: LocalDateTime.now()
+        val routerNow = routerClock ?: error("Router clock is unavailable; cannot enforce absolute expiry")
         val target = routerNow.plusSeconds(delayMs / 1000L)
 
         val schedulerName = ("fg-exp-" + voucher.username)
@@ -465,6 +486,7 @@ class RouterRepository private constructor(
 
         val escapedUser = voucher.username
             .replace("\\", "\\\\")
+            .replace("$", "\\$")
             .replace("\"", "\\\"")
 
         val disableCommand = when (voucher.mode) {
@@ -477,7 +499,8 @@ class RouterRepository private constructor(
             VoucherMode.OFFLINE -> return
         }
 
-        val onEvent = disableCommand +
+        val logout = if (voucher.mode == VoucherMode.HOTSPOT) "; /ip hotspot active remove [find where user=\"$escapedUser\"]" else ""
+        val onEvent = disableCommand + logout +
             "; /system scheduler remove [find where name=\"$schedulerName\"]"
 
         transport.create(
@@ -485,7 +508,7 @@ class RouterRepository private constructor(
             mapOf(
                 "name" to schedulerName,
                 "start-date" to target.format(
-                    DateTimeFormatter.ofPattern("MMM/dd/yyyy", Locale.ENGLISH)
+                    if (transport.read("system/clock").firstOrNull()?.get("date")?.contains('-') == true) DateTimeFormatter.ISO_LOCAL_DATE else DateTimeFormatter.ofPattern("MMM/dd/yyyy", Locale.ENGLISH)
                 ).lowercase(Locale.ENGLISH),
                 "start-time" to target.format(
                     DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ENGLISH)
@@ -509,7 +532,7 @@ class RouterRepository private constructor(
                 RouterProtocol.API_SSL ->
                     error("API-SSL certificate transport is not enabled in this build")
             }
-            return RouterRepository(transport)
+            return RouterRepository(transport, settings.host + ":" + settings.username)
         }
 
         internal fun forTesting(transport: RouterOsTransport): RouterRepository =

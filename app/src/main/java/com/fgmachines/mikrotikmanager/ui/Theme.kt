@@ -2,6 +2,9 @@ package com.fgmachines.mikrotikmanager.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.Shapes
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
@@ -18,9 +21,9 @@ val FgWhite = Color(0xFFF4F7FA)
 val FgBlue = Color(0xFF159DFF)
 val FgCyan = Color(0xFF16D4E8)
 val FgMint = Color(0xFF42E6A4)
-val FgPurple = Color(0xFFA955F7)
+val FgPurple = FgBlue
 val FgAmber = Color(0xFFFFBE43)
-val FgMagenta = Color(0xFFE94BD6)
+val FgMagenta = FgBlue
 
 // Backwards-compatible aliases used by existing screens.
 val Navy900 = FgBlack
@@ -43,10 +46,10 @@ private val FgDarkColors = darkColorScheme(
     secondaryContainer = Color(0xFF0C493D),
     onSecondaryContainer = Color(0xFFC9FFE9),
 
-    tertiary = FgPurple,
+    tertiary = FgBlue,
     onTertiary = FgWhite,
-    tertiaryContainer = Color(0xFF3C1B62),
-    onTertiaryContainer = Color(0xFFEEDCFF),
+    tertiaryContainer = FgPanelRaised,
+    onTertiaryContainer = FgSilver,
 
     background = FgBlack,
     onBackground = FgWhite,
@@ -67,6 +70,7 @@ private val FgDarkColors = darkColorScheme(
 fun FgMikroTikTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = FgDarkColors,
+        shapes = Shapes(small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(14.dp), large = RoundedCornerShape(14.dp)),
         content = content
     )
 }

@@ -15,6 +15,16 @@ object RouterCommandParser {
             .toList()
 
     fun parseLine(line: String): ParsedRouterCommand {
+        var quote: Char? = null
+        var escaped = false
+        for (ch in line) {
+            if (escaped) { escaped = false; continue }
+            if (ch == '\\') { escaped = true; continue }
+            if (quote != null) { if (ch == quote) quote = null; continue }
+            if (ch == '\"' || ch == '\'') { quote = ch; continue }
+            if (ch in ";[]{}$") return unsupported(line, "الأوامر المركبة غير مدعومة؛ استخدم أمرًا واحدًا واضحًا في كل سطر", "Compound expressions are unsupported; use one explicit command per line")
+        }
+        if (quote != null || escaped) return unsupported(line, "علامات الاقتباس غير مكتملة", "Unclosed quote or escape")
         val words = tokenize(line.trim())
         if (words.isEmpty() || !words.first().startsWith("/")) {
             return unsupported(line, "صيغة الأمر غير معروفة", "Unsupported command syntax")
@@ -38,6 +48,9 @@ object RouterCommandParser {
         val attributes = linkedMapOf<String, String>()
         var selector: String? = null
 
+        if (tail.count { !it.contains("=") } > 1 || tail.any { !it.contains("=") && action in setOf("print", "add", "reboot", "save", "run") }) {
+            return unsupported(line, "وسائط الأمر غير مدعومة", "Unsupported command arguments")
+        }
         tail.forEach { token ->
             when {
                 token.contains("=") -> {

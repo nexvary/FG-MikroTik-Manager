@@ -67,4 +67,18 @@ class RouterCommandParserTest {
         assertEquals("before-change", parsed.attributes["name"])
     }
 
+    @Test
+    fun compoundCommandsCannotBeSilentlyReinterpreted() {
+        listOf("/ip address print; /system reboot", "/ip service disable [find name=api]", "/system identity set name=\"unclosed", "/ip service disable api unexpected", "/ip address print where dynamic=yes").forEach {
+            assertFalse(it, RouterCommandParser.parseLine(it).supported)
+        }
+    }
+
+    @Test
+    fun quotedPunctuationRemainsAValue() {
+        val parsed = RouterCommandParser.parseLine("/ip hotspot user add name=guest password=\"abc;[123]\"")
+        assertTrue(parsed.supported)
+        assertEquals("abc;[123]", parsed.attributes["password"])
+    }
+
 }

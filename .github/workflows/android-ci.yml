@@ -53,7 +53,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.5.1-debug
+          name: FG-MTM-0.8.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -83,8 +83,11 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Build debug APK for emulator
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Download tested APK
+        uses: actions/download-artifact@v4
+        with:
+          name: FG-MTM-0.8.0-debug
+          path: app/build/outputs/apk/debug
 
       - name: Enable KVM
         run: |
@@ -140,9 +143,22 @@ jobs:
             sleep 3
             adb exec-out screencap -p > ui-proof/07-command-center.png
 
+            for screen in routes active-vouchers portal-login portal-status advanced readiness doctor wizard repair backup; do
+              adb shell am force-stop com.fgmachines.mikrotikmanager
+              adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen "$screen"
+              sleep 3
+              adb exec-out screencap -p > "ui-proof/$screen.png"
+            done
+            adb shell wm size 1080x2400
+            adb shell wm density 480
+            adb shell am force-stop com.fgmachines.mikrotikmanager
+            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen vouchers
+            sleep 3
+            adb exec-out screencap -p > ui-proof/vouchers-1080.png
+
       - name: Upload UI proof
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.5.1-ui-proof
+          name: FG-MTM-0.8.0-ui-proof
           path: ui-proof/*.png
           if-no-files-found: error

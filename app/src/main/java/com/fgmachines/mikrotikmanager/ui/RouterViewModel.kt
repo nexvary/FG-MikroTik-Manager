@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 
 enum class AppSection(val title: String) {
     MENU("Menu"),
-    DASHBOARD("Dashboard"),
+    ADVANCED("Advanced Setup"),
     NETWORK("Network"),
     SYSTEM("System"),
     VOUCHERS("Vouchers"),
@@ -65,6 +65,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     val state: StateFlow<RouterUiState> = _state.asStateFlow()
 
     private var repository: RouterRepository? = null
+    val advancedManager get() = repository?.advanced
+    val hotspotManager get() = repository?.hotspot
     private val voucherHistory = VoucherHistoryStore(application)
     private val mndpDiscovery = MndpDiscovery(application)
 
@@ -226,11 +228,16 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = true,
                 adminActionMessage = null
             )
+            val backupFile = runCatching { backupBeforeAdminChange(repo, snapshot.module) }.getOrElse {
+                _state.value = _state.value.copy(adminActionRunning=false, adminActionMessage="لم يتم التعديل لأن النسخة الاحتياطية لم تُحفظ / Change aborted: backup failed — " + it.message.orEmpty())
+                return@launch
+            }
             val result = repo.createAdminItem(snapshot.menuPath, attributes)
             _state.value = _state.value.copy(
                 adminActionRunning = false,
                 adminActionMessage = result.message
             )
+            logAdminChange(repo, snapshot.module, result.success, backupFile)
             if (result.success) refreshAdminModule()
         }
     }
@@ -249,6 +256,10 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = true,
                 adminActionMessage = null
             )
+            val backupFile = runCatching { backupBeforeAdminChange(repo, RouterAdminModule.USERS) }.getOrElse {
+                _state.value = _state.value.copy(adminActionRunning=false, adminActionMessage="لم يتم التعديل لأن النسخة الاحتياطية لم تُحفظ / Change aborted: backup failed — " + it.message.orEmpty())
+                return@launch
+            }
             val result = repo.createRouterAdmin(
                 username = username,
                 password = password,
@@ -259,6 +270,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = false,
                 adminActionMessage = result.message
             )
+            logAdminChange(repo, RouterAdminModule.USERS, result.success, backupFile)
             if (result.success) refreshAdminModule()
         }
     }
@@ -276,6 +288,10 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = true,
                 adminActionMessage = null
             )
+            val backupFile = runCatching { backupBeforeAdminChange(repo, snapshot.module) }.getOrElse {
+                _state.value = _state.value.copy(adminActionRunning=false, adminActionMessage="لم يتم التعديل لأن النسخة الاحتياطية لم تُحفظ / Change aborted: backup failed — " + it.message.orEmpty())
+                return@launch
+            }
             val result = repo.updateAdminItem(
                 snapshot.menuPath,
                 rowId,
@@ -285,6 +301,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = false,
                 adminActionMessage = result.message
             )
+            logAdminChange(repo, snapshot.module, result.success, backupFile)
             if (result.success) refreshAdminModule()
         }
     }
@@ -299,11 +316,16 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = true,
                 adminActionMessage = null
             )
+            val backupFile = runCatching { backupBeforeAdminChange(repo, snapshot.module) }.getOrElse {
+                _state.value = _state.value.copy(adminActionRunning=false, adminActionMessage="لم يتم التعديل لأن النسخة الاحتياطية لم تُحفظ / Change aborted: backup failed — " + it.message.orEmpty())
+                return@launch
+            }
             val result = repo.removeAdminItem(snapshot.menuPath, rowId)
             _state.value = _state.value.copy(
                 adminActionRunning = false,
                 adminActionMessage = result.message
             )
+            logAdminChange(repo, snapshot.module, result.success, backupFile)
             if (result.success) refreshAdminModule()
         }
     }
@@ -321,6 +343,10 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = true,
                 adminActionMessage = null
             )
+            val backupFile = runCatching { backupBeforeAdminChange(repo, snapshot.module) }.getOrElse {
+                _state.value = _state.value.copy(adminActionRunning=false, adminActionMessage="لم يتم التعديل لأن النسخة الاحتياطية لم تُحفظ / Change aborted: backup failed — " + it.message.orEmpty())
+                return@launch
+            }
             val result = repo.setAdminItemEnabled(
                 snapshot.menuPath,
                 rowId,
@@ -330,8 +356,24 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 adminActionRunning = false,
                 adminActionMessage = result.message
             )
+            logAdminChange(repo, snapshot.module, result.success, backupFile)
             if (result.success) refreshAdminModule()
         }
+    }
+
+    private suspend fun backupBeforeAdminChange(repo: RouterRepository, module: RouterAdminModule): String {
+        val sensitive = module.group == com.fgmachines.mikrotikmanager.data.RouterAdminGroup.NETWORK || module in setOf(RouterAdminModule.FIREWALL, RouterAdminModule.USERS, RouterAdminModule.SERVICES)
+        if (!sensitive) return ""
+        val secret = java.util.UUID.randomUUID().toString().replace("-", "")
+        val file = repo.advanced.backup(secret)
+        val vault = com.fgmachines.mikrotikmanager.advanced.RouterChangeVault(getApplication(), repo.advanced.routerKey)
+        vault.rememberBackup(file, secret)
+        vault.record("نسخة قبل تعديل " + module.name, "Backup before " + module.name, true, file)
+        return file
+    }
+
+    private fun logAdminChange(repo: RouterRepository, module: RouterAdminModule, success: Boolean, backup: String) {
+        runCatching { com.fgmachines.mikrotikmanager.advanced.RouterChangeVault(getApplication(),repo.advanced.routerKey).record("تعديل " + module.name,"Change " + module.name,success,backup) }
     }
 
     fun clearAdminActionMessage() {
@@ -426,6 +468,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
             )
 
             runCatching {
+                if (batch.request.mode == VoucherMode.HOTSPOT) require(repo.advanced.preflight().ready) { "الراوتر غير جاهز لتفعيل كروت HotSpot — افتح الإعداد المتقدم / Router is not ready; open Advanced Setup" }
                 repo.provisionVoucherBatch(batch)
             }.onSuccess { summary ->
                 _state.value = _state.value.copy(

@@ -85,9 +85,15 @@ class HtmlVoucherExporter {
             append("<div><small>اسم المستخدم</small><b>")
             append(html(voucher.username))
             appendLine("</b></div>")
-            append("<div><small>كلمة المرور</small><b>")
-            append(html(voucher.password))
-            appendLine("</b></div></div>")
+            if (voucher.username != voucher.password) {
+                append("<div><small>كلمة المرور</small><b dir='ltr'>")
+                append(html(voucher.password))
+                appendLine("</b></div>")
+            }
+            appendLine("</div>")
+            voucher.limitBytesTotal?.let { appendLine("<p>البيانات: " + (it / 1048576) + " MB</p>") }
+            if (voucher.mode == VoucherMode.OFFLINE) appendLine("<p>الكارت غير مفعّل على راوتر</p>")
+            if (voucher.mode == VoucherMode.PPPOE) appendLine("<p>PPPoE — بيانات إعداد الاشتراك</p>")
 
             append("<div class='qr'>")
             append(VoucherQrSvgFactory.create(VoucherQrPayloadBuilder.build(voucher)))
@@ -124,9 +130,16 @@ class HtmlVoucherExporter {
 }
 
 object VoucherQrPayloadBuilder {
-    fun build(voucher: VoucherDraft): String =
-        buildString {
-            appendLine("FG MTM Voucher")
+    fun build(voucher: VoucherDraft): String {
+        if (voucher.mode == VoucherMode.HOTSPOT && voucher.branding.portalLoginUrl.isNotBlank()) {
+            return buildLoginUrl(voucher.branding.portalLoginUrl, voucher)
+        }
+        return buildString {
+            appendLine(when (voucher.mode) {
+                VoucherMode.OFFLINE -> "Offline voucher — NOT activated on a router"
+                VoucherMode.PPPOE -> "PPPoE setup card — not a captive portal login"
+                else -> "FG MTM Voucher"
+            })
             appendLine("Network: " + voucher.branding.networkName)
             appendLine("Username: " + voucher.username)
             appendLine("Password: " + voucher.password)
@@ -142,12 +155,17 @@ object VoucherQrPayloadBuilder {
                 append("Support: " + voucher.branding.supportPhone)
             }
         }.trim()
+    }
 
     fun buildLoginUrl(baseUrl: String, voucher: VoucherDraft): String {
-        val separator = if (baseUrl.contains("?")) "&" else "?"
-        return baseUrl + separator +
-            "username=" + encode(voucher.username) +
-            "&password=" + encode(voucher.password)
+        val uri = java.net.URI(baseUrl)
+        require(uri.scheme in setOf("http", "https") && uri.host != null && uri.userInfo == null && uri.query == null && uri.fragment == null) { "Use a local HotSpot login URL without credentials or query parameters" }
+        require(voucher.mode == VoucherMode.HOTSPOT) { "Login QR is only available for HotSpot" }
+        // Fragments are not transmitted to RouterOS, proxies or referrers. Never include a separate password.
+        // The voucher code is still a bearer secret when code=password; scanner apps may retain the QR.
+        val same = if (voucher.username == voucher.password) "1" else "0"
+        return baseUrl + "#u=" + encode(voucher.username) + "&same=" + same +
+            "&profile=" + encode(voucher.profile) + "&expiry=" + (voucher.absoluteExpiryEpochMs ?: "") + "&limit=" + (voucher.limitBytesTotal ?: "")
     }
 
     private fun encode(value: String): String =
