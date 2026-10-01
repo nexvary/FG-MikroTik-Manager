@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Business
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.OpenInNew
@@ -59,64 +58,62 @@ fun AboutDeveloperScreen(
                     )
                 )
             )
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = FgDeepNavy.copy(alpha = 0.96f)
                 ),
-                border = BorderStroke(1.6.dp, FgSilver),
-                shape = RoundedCornerShape(28.dp)
+                border = BorderStroke(1.3.dp, FgSilver),
+                shape = RoundedCornerShape(18.dp)
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(22.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(86.dp)
+                            .size(56.dp)
                             .background(
                                 Brush.sweepGradient(
-                                    listOf(
-                                        FgBlue,
-                                        FgCyan,
-                                        FgMint,
-                                        FgBlue
-                                    )
+                                    listOf(FgBlue, FgCyan, FgMint, FgBlue)
                                 ),
                                 CircleShape
                             )
-                            .padding(5.dp)
+                            .padding(3.dp)
                             .background(FgBlack, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             "FG",
                             color = FgMint,
-                            style = MaterialTheme.typography.headlineMedium,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black
                         )
                     }
 
-                    Text(
-                        if (arabic) "عن المطور" else "About the developer",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Black,
-                        color = FgWhite
-                    )
-
-                    Text(
-                        if (arabic) "بسم الله الرحمن الرحيم" else "In the name of Allah, the Most Gracious, the Most Merciful",
-                        color = FgMint,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            if (arabic) "عن المطور" else "About the developer",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Black,
+                            color = FgWhite
+                        )
+                        Text(
+                            if (arabic) "بسم الله الرحمن الرحيم"
+                            else "In the name of Allah, the Most Gracious, the Most Merciful",
+                            color = FgMint,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -206,39 +203,6 @@ fun AboutDeveloperScreen(
                     uriHandler.openUri("https://www.facebook.com/share/1T7r3WpH8Y/")
                 }
             )
-        }
-
-        item {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = FgPanel.copy(alpha = 0.88f)
-                ),
-                border = BorderStroke(1.3.dp, FgMagenta),
-                shape = RoundedCornerShape(22.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        Icons.Outlined.Favorite,
-                        contentDescription = null,
-                        tint = FgMagenta
-                    )
-                    Text(
-                        if (arabic) {
-                            "هذا القسم منقول في المحتوى والهوية البصرية من FG Link 2.1.2."
-                        } else {
-                            "This section follows the content and visual identity of FG Link 2.1.2."
-                        },
-                        color = FgSilver,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
         }
 
         item { Spacer(Modifier.height(10.dp)) }
