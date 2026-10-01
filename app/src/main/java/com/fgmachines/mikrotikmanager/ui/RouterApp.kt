@@ -47,6 +47,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -140,6 +141,16 @@ private fun ConnectionScreen(
     var host by rememberSaveable { mutableStateOf("") }
     var username by rememberSaveable { mutableStateOf("admin") }
     var password by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        onDiscover()
+    }
+
+    LaunchedEffect(discoveredRouters) {
+        if (host.isBlank() && discoveredRouters.size == 1) {
+            host = discoveredRouters.single().ipAddress
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize().padding(18.dp),
