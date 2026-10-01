@@ -32,12 +32,14 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +70,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fgmachines.mikrotikmanager.command.ParsedRouterCommand
 import com.fgmachines.mikrotikmanager.data.DashboardSnapshot
 import com.fgmachines.mikrotikmanager.data.DiscoveredRouter
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
@@ -112,7 +115,9 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     onVoucherModeSelected = viewModel::refreshVoucherProfiles,
                     onVoucherBatchGenerated = viewModel::saveGeneratedBatch,
                     onProvisionVouchers = viewModel::provisionVouchers,
-                    onClearVoucherResult = viewModel::clearVoucherProvisionResult
+                    onClearVoucherResult = viewModel::clearVoucherProvisionResult,
+                    onRunCommands = viewModel::runCommands,
+                    onClearCommandResults = viewModel::clearCommandResults
                 )
 
                 else -> ConnectionScreen(
@@ -187,7 +192,11 @@ fun RouterDemoApp(screen: String) {
                 onVoucherModeSelected = {},
                 onVoucherBatchGenerated = {},
                 onProvisionVouchers = {},
-                onClearVoucherResult = {}
+                onClearVoucherResult = {},
+                onRunCommands = {},
+                onClearCommandResults = {},
+                commandCenterInitiallyOpen = screen.equals("commands", ignoreCase = true),
+                commandCenterInitialText = "/ip address print\n/ip service disable telnet"
             )
         }
     }
@@ -449,9 +458,14 @@ private fun RouterShell(
     onVoucherModeSelected: (VoucherMode) -> Unit,
     onVoucherBatchGenerated: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
     onProvisionVouchers: (com.fgmachines.mikrotikmanager.voucher.VoucherBatch) -> Unit,
-    onClearVoucherResult: () -> Unit
+    onClearVoucherResult: () -> Unit,
+    onRunCommands: (List<ParsedRouterCommand>) -> Unit,
+    onClearCommandResults: () -> Unit,
+    commandCenterInitiallyOpen: Boolean = false,
+    commandCenterInitialText: String = ""
 ) {
     val wide = LocalConfiguration.current.screenWidthDp >= 840
+    var commandCenterOpen by rememberSaveable { mutableStateOf(commandCenterInitiallyOpen) }
 
     val goBack: () -> Unit = {
         if (state.section == AppSection.WINBOX && state.adminModule != null) {
@@ -494,12 +508,36 @@ private fun RouterShell(
                 onClearVoucherResult = onClearVoucherResult,
                 modifier = Modifier.weight(1f)
             )
+
+            if (state.section == AppSection.WINBOX) {
+                FloatingActionButton(
+                    onClick = { commandCenterOpen = true },
+                    containerColor = FgMint,
+                    contentColor = FgBlack,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(20.dp)
+                ) {
+                    Icon(Icons.Outlined.Terminal, contentDescription = "Command Center")
+                }
+            }
         }
         return
     }
 
     Scaffold(
         containerColor = FgBlack,
+        floatingActionButton = {
+            if (state.section == AppSection.WINBOX) {
+                FloatingActionButton(
+                    onClick = { commandCenterOpen = true },
+                    containerColor = FgMint,
+                    contentColor = FgBlack
+                ) {
+                    Icon(Icons.Outlined.Terminal, contentDescription = "Command Center")
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = FgDeepNavy),
@@ -565,6 +603,19 @@ private fun RouterShell(
                 .padding(padding),
             onSection = onSection,
             onDisconnect = onDisconnect
+        )
+    }
+
+    if (commandCenterOpen) {
+        CommandCenterSheet(
+            arabic = arabic,
+            running = state.commandRunning,
+            results = state.commandResults,
+            history = state.commandHistory,
+            onRun = onRunCommands,
+            onClearResults = onClearCommandResults,
+            onDismiss = { commandCenterOpen = false },
+            initialText = commandCenterInitialText
         )
     }
 }
