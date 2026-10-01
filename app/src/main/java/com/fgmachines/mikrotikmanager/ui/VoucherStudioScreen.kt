@@ -1,6 +1,7 @@
 package com.fgmachines.mikrotikmanager.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,10 +44,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.fgmachines.mikrotikmanager.voucher.CsvVoucherExporter
+import com.fgmachines.mikrotikmanager.voucher.HtmlVoucherExporter
 import com.fgmachines.mikrotikmanager.voucher.RouterOsScriptExporter
 import com.fgmachines.mikrotikmanager.voucher.VoucherBatch
 import com.fgmachines.mikrotikmanager.voucher.VoucherBatchRequest
@@ -55,6 +61,9 @@ import com.fgmachines.mikrotikmanager.voucher.VoucherMode
 import com.fgmachines.mikrotikmanager.voucher.RouterVoucherProfile
 import com.fgmachines.mikrotikmanager.voucher.VoucherPasswordMode
 import com.fgmachines.mikrotikmanager.voucher.VoucherProvisionSummary
+import com.fgmachines.mikrotikmanager.voucher.VoucherQrCodeFactory
+import com.fgmachines.mikrotikmanager.voucher.VoucherQrPayloadBuilder
+import com.fgmachines.mikrotikmanager.voucher.VoucherShareManager
 
 @Composable
 fun VoucherStudioScreen(
@@ -71,8 +80,11 @@ fun VoucherStudioScreen(
     onClearProvisionResult: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val generator = remember { VoucherGenerator() }
     val exporter = remember { RouterOsScriptExporter() }
+    val csvExporter = remember { CsvVoucherExporter() }
+    val htmlExporter = remember { HtmlVoucherExporter() }
 
     var mode by remember { mutableStateOf(VoucherMode.HOTSPOT) }
     var quantity by remember { mutableStateOf("10") }
@@ -537,6 +549,52 @@ fun VoucherStudioScreen(
                     ) {
                         Text(if (arabic) "تحديث المعاينة" else "Refresh preview")
                     }
+
+                    batch?.let { generated ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    VoucherShareManager.shareTextFile(
+                                        context = context,
+                                        fileName = "vouchers.rsc",
+                                        content = exporter.export(generated),
+                                        mimeType = "text/plain"
+                                    )
+                                }
+                            ) {
+                                Text("RSC")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    VoucherShareManager.shareTextFile(
+                                        context = context,
+                                        fileName = "vouchers.csv",
+                                        content = csvExporter.export(generated),
+                                        mimeType = "text/csv"
+                                    )
+                                }
+                            ) {
+                                Text("CSV")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    VoucherShareManager.shareTextFile(
+                                        context = context,
+                                        fileName = "vouchers.html",
+                                        content = htmlExporter.export(generated),
+                                        mimeType = "text/html"
+                                    )
+                                }
+                            ) {
+                                Text(if (arabic) "HTML للطباعة" else "Print HTML")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -612,6 +670,27 @@ private fun VoucherPreview(
     supportPhone: String,
     count: Int
 ) {
+    val qrBitmap = remember(username, password, networkName, profile, supportPhone) {
+        val previewVoucher = com.fgmachines.mikrotikmanager.voucher.VoucherDraft(
+            username = username,
+            password = password,
+            profile = profile,
+            server = "all",
+            comment = "",
+            limitUptime = uptime.ifBlank { null },
+            limitBytesTotal = null,
+            branding = VoucherBranding(
+                networkName = networkName,
+                supportPhone = supportPhone,
+                priceText = price
+            )
+        )
+        VoucherQrCodeFactory.create(
+            VoucherQrPayloadBuilder.build(previewVoucher),
+            size = 260
+        )
+    }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF111A22)),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f)),
@@ -688,6 +767,20 @@ private fun VoucherPreview(
                     )
                 }
             }
+
+            Image(
+                bitmap = qrBitmap.asImageBitmap(),
+                contentDescription = if (arabic) "رمز QR للكارت" else "Voucher QR code",
+                modifier = Modifier
+                    .size(132.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
+            Text(
+                if (arabic) "امسح QR لعرض بيانات الكارت" else "Scan QR to view voucher credentials",
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             if (price.isNotBlank() || supportPhone.isNotBlank()) {
                 Row(
