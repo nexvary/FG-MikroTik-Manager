@@ -13,8 +13,8 @@ android {
         applicationId = "com.fgmachines.mikrotikmanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.8.5"
+        versionCode = 15
+        versionName = "0.8.6"
     }
 
     buildFeatures {
@@ -57,5 +57,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }

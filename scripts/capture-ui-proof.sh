@@ -20,6 +20,44 @@ capture() {
 }
 
 capture login 00-login
+# Open the real connection settings and select TLS; do not connect to a router.
+for language in login login-en; do
+  capture "$language" "tls-$language-before"
+  adb shell input swipe 360 1200 360 400 400
+  sleep 1
+  adb shell uiautomator dump /sdcard/tls.xml
+  adb pull /sdcard/tls.xml ui-proof/tls.xml
+  read -r tx ty < <(python3 - <<'PYTAP'
+import xml.etree.ElementTree as ET, re
+root=ET.parse('ui-proof/tls.xml').getroot()
+node=next(n for n in root.iter('node') if ' • AUTO' in n.get('text',''))
+x1,y1,x2,y2=map(int,re.findall(r'\d+',node.get('bounds')))
+print((x1+x2)//2,(y1+y2)//2)
+PYTAP
+)
+  adb shell input tap "$tx" "$ty"
+  sleep 1
+  adb shell input swipe 360 1250 360 350 400
+  sleep 1
+  adb shell uiautomator dump /sdcard/tls.xml
+  adb pull /sdcard/tls.xml ui-proof/tls.xml
+  read -r tx ty < <(python3 - <<'PYTLS'
+import xml.etree.ElementTree as ET, re
+root=ET.parse('ui-proof/tls.xml').getroot()
+node=next(n for n in root.iter('node') if n.get('text') == 'API-SSL • TLS')
+x1,y1,x2,y2=map(int,re.findall(r'\d+',node.get('bounds')))
+print((x1+x2)//2,(y1+y2)//2)
+PYTLS
+)
+  adb shell input tap "$tx" "$ty"
+  sleep 1
+  adb shell input swipe 360 1250 360 600 400
+  sleep 1
+  adb shell uiautomator dump /sdcard/tls.xml
+  adb pull /sdcard/tls.xml "ui-proof/tls-$language.xml"
+  grep -q '8729' "ui-proof/tls-$language.xml"
+  adb exec-out screencap -p > "ui-proof/tls-$language.png"
+done
 capture menu 01-main-menu
 capture network 02-network
 capture system 03-system-security

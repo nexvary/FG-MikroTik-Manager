@@ -5,7 +5,14 @@ enum class RouterProtocol {
     API,
     API_SSL,
     REST_HTTPS,
-    REST_HTTP
+    REST_HTTP;
+
+    val defaultPort: Int get() = when (this) {
+        AUTO, API -> 8728
+        API_SSL -> 8729
+        REST_HTTPS -> 443
+        REST_HTTP -> 80
+    }
 }
 
 data class RouterConnectionSettings(

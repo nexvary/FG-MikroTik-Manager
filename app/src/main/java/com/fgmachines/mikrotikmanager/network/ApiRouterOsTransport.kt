@@ -13,10 +13,18 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.SSLSocketFactory
+import com.fgmachines.mikrotikmanager.data.RouterProtocol
 
-class ApiRouterOsTransport(
-    private val settings: RouterConnectionSettings
+class ApiRouterOsTransport internal constructor(
+    private val settings: RouterConnectionSettings,
+    private val tlsFactory: SSLSocketFactory
 ) : RouterOsTransport {
+
+    constructor(settings: RouterConnectionSettings) : this(
+        settings, SSLSocketFactory.getDefault() as SSLSocketFactory
+    )
 
     private val mutex = Mutex()
     private var socket: Socket? = null
@@ -83,7 +91,17 @@ class ApiRouterOsTransport(
         }
 
         closeInternal()
-        val newSocket = Socket()
+        val newSocket = if (settings.protocol == RouterProtocol.API_SSL) {
+            (tlsFactory.createSocket() as SSLSocket).apply {
+                useClientMode = true
+                sslParameters = sslParameters.apply {
+                    endpointIdentificationAlgorithm = "HTTPS"
+                }
+                enabledProtocols = supportedProtocols.filter {
+                    it == "TLSv1.2" || it == "TLSv1.3"
+                }.toTypedArray()
+            }
+        } else Socket()
         try {
             socket = newSocket
             if (disposed) throw RouterOsException("RouterOS API session was closed")
@@ -95,6 +113,10 @@ class ApiRouterOsTransport(
                 8_000
             )
             if (disposed) throw RouterOsException("RouterOS API session was closed")
+            // Authenticate the certificate chain AND host before sending /login.
+            // An explicit API-SSL connection never falls back to plaintext API.
+            (newSocket as? SSLSocket)?.startHandshake()
+            if (disposed) throw RouterOsException("RouterOS API session was closed")
             input = BufferedInputStream(newSocket.getInputStream())
             output = BufferedOutputStream(newSocket.getOutputStream())
             login()
@@ -103,7 +125,9 @@ class ApiRouterOsTransport(
             runCatching { newSocket.close() }
             closeInternal()
             throw RouterOsException(
-                "Unable to connect to RouterOS API at " +
+                (if (settings.protocol == RouterProtocol.API_SSL)
+                    "Unable to connect securely to RouterOS API-SSL; check the certificate, host and port at "
+                else "Unable to connect to RouterOS API at ") +
                     settings.normalizedHost() + ":" + settings.port,
                 cause = t
             )

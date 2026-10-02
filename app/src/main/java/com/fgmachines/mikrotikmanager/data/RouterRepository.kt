@@ -527,11 +527,9 @@ class RouterRepository private constructor(
         fun create(settings: RouterConnectionSettings): RouterRepository {
             val transport = when (settings.protocol) {
                 RouterProtocol.AUTO -> AutoRouterOsTransport(settings)
-                RouterProtocol.API -> ApiRouterOsTransport(settings)
+                RouterProtocol.API, RouterProtocol.API_SSL -> ApiRouterOsTransport(settings)
                 RouterProtocol.REST_HTTP,
                 RouterProtocol.REST_HTTPS -> RestRouterOsTransport(settings)
-                RouterProtocol.API_SSL ->
-                    error("API-SSL certificate transport is not enabled in this build")
             }
             return RouterRepository(transport, settings.host + ":" + settings.username)
         }

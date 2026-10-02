@@ -310,12 +310,18 @@ private fun ConnectionScreen(
     var host by rememberSaveable { mutableStateOf("") }
     var username by rememberSaveable { mutableStateOf("admin") }
     var password by androidx.compose.runtime.remember { mutableStateOf("") }
+    var advancedConnection by rememberSaveable { mutableStateOf(false) }
+    var protocolName by rememberSaveable { mutableStateOf(RouterProtocol.AUTO.name) }
+    var portText by rememberSaveable { mutableStateOf("8728") }
+    val protocol = RouterProtocol.valueOf(protocolName)
+    val port = if (protocol == RouterProtocol.AUTO) protocol.defaultPort else portText.toIntOrNull()
+    val validPort = port != null && port in 1..65535
     val keyboard = LocalSoftwareKeyboardController.current
     fun connect() {
-        if (connecting || host.isBlank() || username.isBlank()) return
+        if (connecting || host.isBlank() || username.isBlank() || !validPort) return
         keyboard?.hide()
-        onConnect(RouterConnectionSettings(host = host, port = 8728, username = username,
-            password = password, protocol = RouterProtocol.AUTO))
+        onConnect(RouterConnectionSettings(host = host, port = port!!, username = username,
+            password = password, protocol = protocol))
     }
 
     LaunchedEffect(Unit) { onDiscover() }
@@ -444,7 +450,7 @@ private fun ConnectionScreen(
                     value = host,
                     onValueChange = { host = it; onClearError() },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(if (arabic) "IP الراوتر" else "Router IP") },
+                    label = { Text(if (arabic) "عنوان الراوتر أو اسم النطاق" else "Router IP or hostname") },
                     placeholder = { Text("192.168.88.1") },
                     singleLine = true
                 )
@@ -476,6 +482,63 @@ private fun ConnectionScreen(
                 )
             }
 
+            item {
+                OutlinedButton(
+                    onClick = { advancedConnection = !advancedConnection },
+                    enabled = !connecting,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (arabic) "إعدادات الاتصال • ${protocol.name}" else "Connection settings • ${protocol.name}")
+                }
+            }
+            if (advancedConnection) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        listOf(RouterProtocol.AUTO, RouterProtocol.API, RouterProtocol.API_SSL, RouterProtocol.REST_HTTPS).forEach { option ->
+                            androidx.compose.material3.FilterChip(
+                                selected = protocol == option,
+                                onClick = {
+                                    protocolName = option.name
+                                    portText = option.defaultPort.toString()
+                                    onClearError()
+                                },
+                                enabled = !connecting,
+                                label = { Text(when (option) {
+                                    RouterProtocol.AUTO -> if (arabic) "تلقائي • API ثم HTTPS" else "Automatic • API then HTTPS"
+                                    RouterProtocol.API -> if (arabic) "API • شبكة محلية موثوقة" else "API • trusted local network"
+                                    RouterProtocol.API_SSL -> "API-SSL • TLS"
+                                    else -> "REST • HTTPS"
+                                }) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        if (protocol != RouterProtocol.AUTO) {
+                            OutlinedTextField(
+                                value = portText,
+                                onValueChange = { portText = it; onClearError() },
+                                enabled = !connecting,
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(if (arabic) "المنفذ" else "Port") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                isError = !validPort,
+                                supportingText = { if (!validPort) Text(if (arabic) "اكتب رقمًا من 1 إلى 65535" else "Enter a number from 1 to 65535") }
+                            )
+                        }
+                        Text(
+                            if (protocol == RouterProtocol.API_SSL || protocol == RouterProtocol.REST_HTTPS) {
+                                if (arabic) "يلزم شهادة موثوقة تطابق عنوان الراوتر. لن يتحول الاتصال المشفر إلى اتصال غير مشفر عند الفشل."
+                                else "Requires a trusted certificate matching the router address. Secure connections do not fall back to plaintext."
+                            } else {
+                                if (arabic) "API العادي غير مشفر؛ استخدمه على شبكة موثوقة أو VPN. اختر API-SSL للاتصال المشفر."
+                                else "Plain API is unencrypted; use a trusted network or VPN. Select API-SSL for encryption."
+                            },
+                            color = FgSilver, style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
             error?.let { message ->
                 item {
                     Text(
@@ -490,7 +553,7 @@ private fun ConnectionScreen(
                 Button(
                     onClick = { connect() },
                     colors = ButtonDefaults.buttonColors(containerColor = FgRoyalBlue, contentColor = FgWhite),
-                    enabled = !connecting && host.isNotBlank() && username.isNotBlank(),
+                    enabled = !connecting && host.isNotBlank() && username.isNotBlank() && validPort,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (connecting) {

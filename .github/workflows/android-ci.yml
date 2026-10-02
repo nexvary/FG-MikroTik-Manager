@@ -58,7 +58,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.5-verification
+          name: FG-MTM-0.8.6-verification
           path: |
             app/build/test-results/testDebugUnitTest/*.xml
             app/build/reports/lint-results-debug.*
@@ -66,7 +66,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.5-debug
+          name: FG-MTM-0.8.6-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -99,7 +99,7 @@ jobs:
       - name: Download tested APK
         uses: actions/download-artifact@v4
         with:
-          name: FG-MTM-0.8.5-debug
+          name: FG-MTM-0.8.6-debug
           path: app/build/outputs/apk/debug
 
       - name: Enable KVM
@@ -121,6 +121,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.5-ui-proof
+          name: FG-MTM-0.8.6-ui-proof
           path: ui-proof/*
           if-no-files-found: error

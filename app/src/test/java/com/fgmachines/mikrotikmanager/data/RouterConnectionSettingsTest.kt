@@ -4,6 +4,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RouterConnectionSettingsTest {
+    @Test fun protocolPortsMatchRouterServices() {
+        assertEquals(8728, RouterProtocol.AUTO.defaultPort)
+        assertEquals(8728, RouterProtocol.API.defaultPort)
+        assertEquals(8729, RouterProtocol.API_SSL.defaultPort)
+        assertEquals(443, RouterProtocol.REST_HTTPS.defaultPort)
+        assertEquals(80, RouterProtocol.REST_HTTP.defaultPort)
+    }
+
 
     @Test
     fun normalizesHttpsHost() {
