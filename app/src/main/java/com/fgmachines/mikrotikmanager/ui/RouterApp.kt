@@ -10,6 +10,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -167,10 +174,11 @@ fun RouterDemoApp(screen: String) {
         }
         return
     }
-    if (screen == "login") {
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+    if (screen == "login" || screen == "login-en") {
+        val previewArabic = screen != "login-en"
+        CompositionLocalProvider(LocalLayoutDirection provides if(previewArabic) LayoutDirection.Rtl else LayoutDirection.Ltr) {
             FgMikroTikTheme {
-                ConnectionScreen(false, false, listOf(DiscoveredRouter("MikroTik", "192.168.1.104")), null, true, {}, {}, {}, {}, {})
+                ConnectionScreen(false, false, listOf(DiscoveredRouter("MikroTik", "192.168.1.104")), null, previewArabic, {}, {}, {}, {}, {})
             }
         }
         return
@@ -302,6 +310,13 @@ private fun ConnectionScreen(
     var host by rememberSaveable { mutableStateOf("") }
     var username by rememberSaveable { mutableStateOf("admin") }
     var password by androidx.compose.runtime.remember { mutableStateOf("") }
+    val keyboard = LocalSoftwareKeyboardController.current
+    fun connect() {
+        if (connecting || host.isBlank() || username.isBlank()) return
+        keyboard?.hide()
+        onConnect(RouterConnectionSettings(host = host, port = 8728, username = username,
+            password = password, protocol = RouterProtocol.AUTO))
+    }
 
     LaunchedEffect(Unit) { onDiscover() }
     LaunchedEffect(discoveredRouters) {
@@ -325,6 +340,8 @@ private fun ConnectionScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .consumeWindowInsets(padding)
+                .imePadding()
                 .background(FgBlack),
             contentPadding = PaddingValues(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -453,6 +470,8 @@ private fun ConnectionScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(if (arabic) "كلمة مرور MikroTik" else "MikroTik password") },
                     visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { connect() }),
                     singleLine = true
                 )
             }
@@ -469,17 +488,7 @@ private fun ConnectionScreen(
 
             item {
                 Button(
-                    onClick = {
-                        onConnect(
-                            RouterConnectionSettings(
-                                host = host,
-                                port = 8728,
-                                username = username,
-                                password = password,
-                                protocol = RouterProtocol.AUTO
-                            )
-                        )
-                    },
+                    onClick = { connect() },
                     colors = ButtonDefaults.buttonColors(containerColor = FgRoyalBlue, contentColor = FgWhite),
                     enabled = !connecting && host.isNotBlank() && username.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()

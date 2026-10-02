@@ -34,6 +34,50 @@ for screen in routes active-vouchers portal-login portal-status advanced readine
   capture "$screen" "$screen"
 done
 
+# Exercise a 360x640dp phone, both directions and actual IME insets.
+adb shell wm size 720x1280
+adb shell wm density 320
+capture login-en login-en-small
+capture login login-small
+adb shell settings put secure show_ime_with_hard_keyboard 1
+adb shell input swipe 360 950 360 300 400
+adb shell uiautomator dump /sdcard/login-focus.xml
+adb pull /sdcard/login-focus.xml ui-proof/login-focus.xml
+read -r focus_x focus_y < <(python3 - <<'PYFOCUS'
+import xml.etree.ElementTree as ET, re
+root = ET.parse('ui-proof/login-focus.xml').getroot()
+field = next(n for n in root.iter('node') if n.get('password') == 'true')
+x1,y1,x2,y2 = map(int,re.findall(r'\d+',field.get('bounds')))
+print((x1+x2)//2,(y1+y2)//2)
+PYFOCUS
+)
+adb shell input tap "$focus_x" "$focus_y"
+sleep 3
+adb shell input swipe 360 530 360 200 400
+sleep 2
+adb exec-out screencap -p > ui-proof/login-keyboard-small.png
+adb shell uiautomator dump /sdcard/login-keyboard.xml
+adb pull /sdcard/login-keyboard.xml ui-proof/login-keyboard.xml
+python3 - <<'PYKEYBOARD'
+import xml.etree.ElementTree as ET, re
+root=ET.parse('ui-proof/login-keyboard.xml').getroot()
+parents={child:parent for parent in root.iter() for child in parent}
+buttons=[]
+for label in root.iter('node'):
+    if label.get('text') != 'اتصال بالراوتر': continue
+    node=label
+    while node.get('clickable') != 'true' and node in parents: node=parents[node]
+    if node.get('clickable') == 'true': buttons.append(node)
+assert buttons, 'Connect button cannot be reached while typing'
+x1,y1,x2,y2=map(int,re.findall(r'\d+',buttons[0].get('bounds')))
+assert y2 <= 1216 and y2-y1 >= 80, 'Connect button clipped or behind system navigation'
+print('Small phone connect button reachable with keyboard open', buttons[0].get('bounds'))
+PYKEYBOARD
+adb shell input keyevent 4
+adb shell settings put system font_scale 1.3
+capture login login-font-scale-small
+adb shell settings put system font_scale 1.0
+
 adb shell wm size 1080x2400
 adb shell wm density 480
 capture vouchers vouchers-1080
