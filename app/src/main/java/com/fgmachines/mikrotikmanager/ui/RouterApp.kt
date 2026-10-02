@@ -167,7 +167,7 @@ fun RouterDemoApp(screen: String) {
             FgMikroTikTheme {
                 if(screen == "command-library") CommandLibraryDialog(true, {}, {})
                 else VoucherShareDialog(listOf(com.fgmachines.mikrotikmanager.voucher.VoucherDraft(
-                    "198673", "198673", "6h", "all", "", "6h", 524288000,
+                    "123456", "123456", "6h", "all", "", "6h", 524288000,
                     branding=com.fgmachines.mikrotikmanager.voucher.VoucherBranding(networkName="FG Machines WiFi",portalLoginUrl="http://192.168.10.1/login"),
                     durationValue=6, durationUnit=com.fgmachines.mikrotikmanager.voucher.VoucherTimeUnit.HOURS)),true,true,{})
             }
