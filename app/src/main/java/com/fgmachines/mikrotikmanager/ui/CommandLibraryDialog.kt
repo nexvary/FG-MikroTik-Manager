@@ -43,7 +43,7 @@ fun CommandLibraryDialog(arabic: Boolean, onSelect: (String) -> Unit, onDismiss:
                     Text(label("اختيار الأمر يفتح معاينته؛ لا ينفذه. بعض الأوامر تحتاج حزمة أو جهازًا داعمًا.", "Selection previews a command; it does not execute it. Some commands require a supporting package or device."), style = MaterialTheme.typography.bodySmall)
                     LazyColumn(Modifier.heightIn(max = 340.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(filtered, key = { it.command }) { item ->
-                            OutlinedCard(onClick = { selected = item; fields = emptyMap() }) {
+                            OutlinedCard(modifier = Modifier.fillMaxWidth(), onClick = { selected = item; fields = emptyMap() }) {
                                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(label(item.titleAr,item.titleEn), color = FgBlue)
                                     Text(item.command, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr))

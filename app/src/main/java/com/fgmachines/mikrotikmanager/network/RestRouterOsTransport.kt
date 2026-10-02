@@ -82,9 +82,8 @@ class RestRouterOsTransport(
                     val body = response.body?.string().orEmpty()
 
                     if (!response.isSuccessful) {
-                        val detail = body.take(320).ifBlank { response.message }
                         throw RouterOsException(
-                            message = "RouterOS returned HTTP " + response.code + ": " + detail,
+                            message = "RouterOS returned HTTP " + response.code,
                             statusCode = response.code
                         )
                     }

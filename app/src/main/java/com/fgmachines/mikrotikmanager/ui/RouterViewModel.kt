@@ -116,8 +116,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 repository?.close()
                 val newRepository = RouterRepository.create(settings)
-                val dashboard = newRepository.loadDashboard()
                 repository = newRepository
+                val dashboard = newRepository.loadDashboard()
                 _state.value = RouterUiState(
                     connected = true,
                     dashboard = dashboard,

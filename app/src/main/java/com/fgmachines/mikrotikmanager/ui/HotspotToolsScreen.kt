@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import android.webkit.WebView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
@@ -262,7 +263,7 @@ fun HotspotToolsScreen(
     shareVoucher?.let { VoucherShareDialog(listOf(it), arabic, true, { shareVoucher = null }) }
     preview?.let { page ->
         FgFullScreenDialog({ preview = null }) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
+            Column(Modifier.fillMaxSize().background(FgBlack).safeDrawingPadding().imePadding()) {
                 TextButton(onClick = { preview = null }) { Text(label("معاينة فقط — رجوع", "Preview only — Back")) }
                 AndroidView(factory = { ctx -> WebView(ctx).apply {
                     settings.javaScriptEnabled = true

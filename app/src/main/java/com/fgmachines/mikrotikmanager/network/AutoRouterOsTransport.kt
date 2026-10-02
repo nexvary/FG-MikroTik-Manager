@@ -2,12 +2,21 @@ package com.fgmachines.mikrotikmanager.network
 
 import com.fgmachines.mikrotikmanager.data.RouterConnectionSettings
 import com.fgmachines.mikrotikmanager.data.RouterProtocol
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-class AutoRouterOsTransport(
-    private val settings: RouterConnectionSettings
+class AutoRouterOsTransport internal constructor(
+    private val candidatesFactory: () -> List<RouterOsTransport>
 ) : RouterOsTransport {
 
+    constructor(settings: RouterConnectionSettings) : this({ listOf(
+        ApiRouterOsTransport(settings.copy(port = 8728, protocol = RouterProtocol.API)),
+        RestRouterOsTransport(settings.copy(port = 443, protocol = RouterProtocol.REST_HTTPS))
+    ) })
+
     private var delegate: RouterOsTransport? = null
+    private val selectionMutex = Mutex()
 
     override suspend fun read(menu: String): List<Map<String, String>> =
         withTransport { it.read(menu) }
@@ -26,32 +35,24 @@ class AutoRouterOsTransport(
 
     private suspend fun <T> withTransport(
         operation: suspend (RouterOsTransport) -> T
-    ): T {
-        delegate?.let { return operation(it) }
+    ): T = operation(selectTransport())
 
-        val candidates = listOf(
-            ApiRouterOsTransport(
-                settings.copy(
-                    port = 8728,
-                    protocol = RouterProtocol.API
-                )
-            ),
-            RestRouterOsTransport(
-                settings.copy(
-                    port = 443,
-                    protocol = RouterProtocol.REST_HTTPS
-                )
-            )
-        )
-
+    private suspend fun selectTransport(): RouterOsTransport = selectionMutex.withLock {
+        delegate?.let { return@withLock it }
+        val candidates = candidatesFactory()
         var lastError: Throwable? = null
         for (candidate in candidates) {
             try {
-                val result = operation(candidate)
+                // Negotiate with a read only. Never replay a possibly applied mutation
+                // over another protocol when its response is lost.
+                candidate.read("system/identity")
                 delegate = candidate
                 candidates.filter { it !== candidate }.forEach { runCatching { it.close() } }
-                return result
-            } catch (t: Throwable) {
+                return@withLock candidate
+            } catch (cancelled: CancellationException) {
+                candidates.forEach { runCatching { it.close() } }
+                throw cancelled
+            } catch (t: Exception) {
                 lastError = t
                 runCatching { candidate.close() }
             }
