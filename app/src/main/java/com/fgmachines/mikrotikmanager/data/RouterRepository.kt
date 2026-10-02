@@ -204,10 +204,11 @@ class RouterRepository private constructor(
                 "print" -> if (command.attributes.isEmpty()) transport.read(command.menu) else transport.execute("/" + command.menu.trim('/') + "/print", command.attributes)
                 "add" -> transport.create(command.menu, command.attributes)
                 "set", "enable", "disable", "remove", "renew", "release" -> {
-                    val id = resolveCommandTarget(command)
+                    val singleton = command.action == "set" && command.menu in setOf("system/identity", "system/clock", "system/ntp/client", "ip/dns")
+                    val id = if(singleton) null else resolveCommandTarget(command)
                     val attrs = buildMap {
-                        put(".id", id)
-                        putAll(command.attributes)
+                        putAll(command.attributes.filterKeys { it != "numbers" && it != ".id" })
+                        if(id != null) put(".id", id)
                     }
                     transport.execute(
                         "/" + command.menu.trim('/') + "/" + command.action,

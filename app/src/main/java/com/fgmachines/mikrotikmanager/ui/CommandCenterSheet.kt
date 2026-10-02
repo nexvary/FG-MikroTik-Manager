@@ -80,6 +80,7 @@ fun CommandCenterSheet(
     val clipboard = LocalClipboardManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    var libraryOpen by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf(initialText) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var dangerousConfirmed by remember { mutableStateOf(false) }
@@ -102,6 +103,8 @@ fun CommandCenterSheet(
         dangerousConfirmed = false
         onClearResults()
     }
+
+    if (libraryOpen) CommandLibraryDialog(arabic, { input = it; libraryOpen = false }, { libraryOpen = false })
 
     if (confirmationOpen) {
         AlertDialog(
@@ -249,7 +252,8 @@ fun CommandCenterSheet(
                     Text(if (arabic) "لصق" else "Paste", color = FgMint)
                 }
 
-                CommandTemplates.items.forEach { template ->
+                OutlinedButton(onClick = { libraryOpen = true }) { Text(if (arabic) "مكتبة الأوامر (" + CommandTemplates.items.size + ")" else "Command library (" + CommandTemplates.items.size + ")") }
+                CommandTemplates.items.take(3).forEach { template ->
                     FilterChip(
                         selected = false,
                         onClick = { input = template.command },

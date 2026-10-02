@@ -62,6 +62,7 @@ fun HotspotToolsScreen(
     var qrVoucher by remember { mutableStateOf<VoucherDraft?>(null) }
     var addMinutes by remember { mutableStateOf("30") }
     var newProfile by remember { mutableStateOf("") }
+    var shareVoucher by remember { mutableStateOf<VoucherDraft?>(null) }
     var preview by remember { mutableStateOf<String?>(when(initialTab) { "portal-login" -> "login.html"; "portal-status" -> "status.html"; else -> null }) }
     var interfaceName by remember { mutableStateOf("") }
     var gateway by remember { mutableStateOf("192.168.88.1/24") }
@@ -184,6 +185,11 @@ fun HotspotToolsScreen(
                                     OutlinedButton(onClick = { run { manager!!.setEnabled(id, username, disabled); label("تم تعديل الحالة", "State updated") } }, enabled = manager != null && !busy, modifier = Modifier.weight(1f)) { Text(if (disabled) label("تفعيل", "Enable") else label("تعطيل", "Disable")) }
                                     OutlinedButton(onClick = { selectedUser = row; newProfile = row["profile"].orEmpty() }, enabled = manager != null && !busy, modifier = Modifier.weight(1f)) { Text(label("+ وقت / باقة", "+ Time / profile")) }
                                 }
+                                known?.let { voucher ->
+                                    OutlinedButton(onClick = { shareVoucher = voucher.copy(profile = row["profile"].orEmpty(), limitUptime = row["limit-uptime"], limitBytesTotal = byteLimit.takeIf { it > 0 }) }, modifier = Modifier.fillMaxWidth()) {
+                                        Text(label("مشاركة الكارت — واتساب والتطبيقات", "Share voucher — WhatsApp & apps"))
+                                    }
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     TextButton(onClick = { if (known != null) qrVoucher = known.copy(
                                         profile = row["profile"].orEmpty(), limitUptime = row["limit-uptime"],
@@ -253,6 +259,7 @@ fun HotspotToolsScreen(
             }
         }, confirmButton = { TextButton(onClick = { val request=VoucherBatchRequest(1,6,profile=voucher.profile,mode=voucher.mode); run { val file=VoucherPdfExporter().export(context,VoucherBatch(request,listOf(voucher))); VoucherShareManager.shareFile(context,file,"application/pdf"); label("تم تجهيز الطباعة", "Print file ready") } }) { Text("PDF / " + label("طباعة", "Print")) } }, dismissButton = { TextButton(onClick = { qrVoucher = null }) { Text(label("رجوع", "Back")) } })
     }
+    shareVoucher?.let { VoucherShareDialog(listOf(it), arabic, true, { shareVoucher = null }) }
     preview?.let { page ->
         FgFullScreenDialog({ preview = null }) {
             Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
@@ -262,7 +269,7 @@ fun HotspotToolsScreen(
                     val rendered = PortalTemplates.render(assets(), design)
                     val html = rendered.getValue(page)
                     // Preview uses the real assets with explicit sample servlet values; it cannot contact RouterOS.
-                    val sample = mapOf("username" to "123456", "uptime" to "12m", "session-time-left" to "48m", "bytes-in-nice" to "1 MiB", "bytes-out-nice" to "24 MiB", "remain-bytes-in" to "", "remain-bytes-out" to "", "ip" to "192.168.88.101", "link-login-only" to "#", "link-logout" to "#", "link-status" to "#", "chap-id" to "", "chap-challenge" to "", "ssl-login" to "yes", "plain-passwd" to "no")
+                    val sample = mapOf("username" to "123456", "uptime" to "12m", "session-time-left" to "48m", "bytes-in" to "1048576", "bytes-out" to "25165824", "remain-bytes-total" to "524281093", "bytes-in-nice" to "1 MiB", "bytes-out-nice" to "24 MiB", "remain-bytes-in" to "", "remain-bytes-out" to "", "ip" to "192.168.88.101", "link-login-only" to "#", "link-logout" to "#", "link-status" to "#", "chap-id" to "", "chap-challenge" to "", "ssl-login" to "yes", "plain-passwd" to "no")
                     var previewHtml = html.replace(Regex("\\$\\(if error\\).*?\\$\\(endif\\)",RegexOption.DOT_MATCHES_ALL),"")
                     previewHtml = previewHtml.replace(Regex("\\$\\(if ([a-z-]+)\\)(.*?)\\$\\(else\\)(.*?)\\$\\(endif\\)",RegexOption.DOT_MATCHES_ALL)) { match -> if(sample[match.groupValues[1]].isNullOrBlank()) match.groupValues[3] else match.groupValues[2] }
                     sample.forEach { (key,value) -> previewHtml = previewHtml.replace("\$("+key+")",value) }

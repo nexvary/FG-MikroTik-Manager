@@ -28,6 +28,8 @@ capture vouchers 05-vouchers
 capture about 06-about
 capture portal-design portal-design
 capture commands 07-command-center
+capture command-library command-library
+capture voucher-share voucher-share
 for screen in routes active-vouchers portal-login portal-status advanced readiness doctor wizard repair backup; do
   capture "$screen" "$screen"
 done

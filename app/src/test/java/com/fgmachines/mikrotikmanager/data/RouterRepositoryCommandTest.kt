@@ -39,6 +39,17 @@ class RouterRepositoryCommandTest {
         assertEquals(0, transport.executed.size)
     }
 
+    @Test
+    fun singletonSettingsDoNotRequireAnItemId() = runTest {
+        val transport=FakeTransport()
+        val repository=RouterRepository.forTesting(transport)
+        listOf("/system identity set name=FG", "/system clock set time-zone-autodetect=no time-zone-name=Africa/Cairo", "/system ntp client set enabled=yes").forEach {
+            assertEquals(CommandExecutionStatus.SUCCESS,repository.executeCommand(RouterCommandParser.parseLine(it)).status)
+        }
+        assertEquals(3,transport.executed.size)
+        transport.executed.forEach { assertEquals(null,it.second[".id"]) }
+    }
+
     private class FakeTransport : RouterOsTransport {
         val executed = mutableListOf<Pair<String, Map<String, String>>>()
 

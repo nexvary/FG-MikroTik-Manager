@@ -112,7 +112,7 @@ object RouterCommandParser {
 
     private fun classify(menu: String, action: String): CommandRisk {
         if (action == "print") return CommandRisk.SAFE
-        if (action == "reboot" || action == "remove") return CommandRisk.DANGEROUS
+        if (action == "reboot" || action == "remove" || action in setOf("disable", "release") || menu == "ip/service" || menu == "user" || menu.startsWith("interface") || menu == "ip/address" || menu == "ip/route") return CommandRisk.DANGEROUS
 
         val dangerousMenu = menu.startsWith("system/reset") ||
             menu.startsWith("system/routerboard") ||
@@ -178,70 +178,5 @@ object RouterCommandParser {
         explanationAr = ar,
         explanationEn = en,
         supported = false
-    )
-}
-
-object CommandTemplates {
-    val items = listOf(
-        CommandTemplate(
-            titleAr = "عرض عناوين IP",
-            titleEn = "Show IP addresses",
-            command = "/ip address print",
-            risk = CommandRisk.SAFE
-        ),
-        CommandTemplate(
-            titleAr = "عرض خدمات الراوتر",
-            titleEn = "Show router services",
-            command = "/ip service print",
-            risk = CommandRisk.SAFE
-        ),
-        CommandTemplate(
-            titleAr = "عرض DHCP",
-            titleEn = "Show DHCP servers",
-            command = "/ip dhcp-server print",
-            risk = CommandRisk.SAFE
-        ),
-        CommandTemplate(
-            titleAr = "عرض Firewall",
-            titleEn = "Show firewall rules",
-            command = "/ip firewall filter print",
-            risk = CommandRisk.SAFE
-        ),
-        CommandTemplate(
-            titleAr = "عرض HotSpot Users",
-            titleEn = "Show HotSpot users",
-            command = "/ip hotspot user print",
-            risk = CommandRisk.SAFE
-        ),
-        CommandTemplate(
-            titleAr = "إيقاف Telnet",
-            titleEn = "Disable Telnet",
-            command = "/ip service disable telnet",
-            risk = CommandRisk.CHANGE
-        ),
-        CommandTemplate(
-            titleAr = "نسخة احتياطية",
-            titleEn = "Save backup",
-            command = "/system backup save name=fg-mtm-backup",
-            risk = CommandRisk.CHANGE
-        ),
-        CommandTemplate(
-            titleAr = "معلومات النظام",
-            titleEn = "System resources",
-            command = "/system resource print",
-            risk = CommandRisk.SAFE
-        ),
-        CommandTemplate(
-            titleAr = "اسم الراوتر",
-            titleEn = "Router identity",
-            command = "/system identity print",
-            risk = CommandRisk.SAFE
-        ),
-        CommandTemplate(
-            titleAr = "إعادة تشغيل الراوتر",
-            titleEn = "Reboot router",
-            command = "/system reboot",
-            risk = CommandRisk.DANGEROUS
-        )
     )
 }

@@ -38,5 +38,9 @@ data class CommandTemplate(
     val titleAr: String,
     val titleEn: String,
     val command: String,
-    val risk: CommandRisk
+    val risk: CommandRisk,
+    val categoryAr: String = "عام",
+    val categoryEn: String = "General",
+    val descriptionAr: String = "",
+    val descriptionEn: String = ""
 )

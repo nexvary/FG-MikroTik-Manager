@@ -155,6 +155,18 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 
 @Composable
 fun RouterDemoApp(screen: String) {
+    if(screen in setOf("command-library", "voucher-share")) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            FgMikroTikTheme {
+                if(screen == "command-library") CommandLibraryDialog(true, {}, {})
+                else VoucherShareDialog(listOf(com.fgmachines.mikrotikmanager.voucher.VoucherDraft(
+                    "198673", "198673", "6h", "all", "", "6h", 524288000,
+                    branding=com.fgmachines.mikrotikmanager.voucher.VoucherBranding(networkName="FG Machines WiFi",portalLoginUrl="http://192.168.10.1/login"),
+                    durationValue=6, durationUnit=com.fgmachines.mikrotikmanager.voucher.VoucherTimeUnit.HOURS)),true,true,{})
+            }
+        }
+        return
+    }
     if (screen == "login") {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             FgMikroTikTheme {

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Print
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
@@ -152,6 +153,7 @@ fun VoucherStudioScreen(
         mutableStateOf(System.currentTimeMillis() + 24L * 60L * 60L * 1000L)
     }
 
+    var shareOpen by remember { mutableStateOf(false) }
     var batch by remember { mutableStateOf<VoucherBatch?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var advancedOpen by rememberSaveable { mutableStateOf(false) }
@@ -192,6 +194,10 @@ fun VoucherStudioScreen(
             calendar.get(Calendar.DAY_OF_MONTH)
         ).show()
     }
+
+    if (shareOpen && batch != null) VoucherShareDialog(batch!!.vouchers, arabic,
+        provisionResult?.created == batch!!.vouchers.size && provisionResult?.failed == 0,
+        { shareOpen = false })
 
     toolsTab?.let { tab ->
         HotspotToolsScreen(arabic, hotspotManager, recentBatches, tab, { toolsTab = null }, advancedManager=advancedManager, onAdvancedSetup={toolsTab=null;onOpenAdvanced()})
@@ -675,6 +681,13 @@ fun VoucherStudioScreen(
         }
 
         if (batch != null) {
+            item {
+                OutlinedButton(onClick = { shareOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Outlined.Share, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(if(arabic) "مشاركة الكارت — واتساب والتطبيقات" else "Share voucher — WhatsApp & apps")
+                }
+            }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("PDF A4", "Thermal", "PNG").forEach { format ->
