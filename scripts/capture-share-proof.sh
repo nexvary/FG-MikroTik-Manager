@@ -33,8 +33,11 @@ PY
 assert_chooser() {
   sleep 4
   adb shell dumpsys activity activities > ui-proof/chooser-activity.txt
-  grep -Eq '(mResumedActivity|topResumedActivity).*ChooserActivity' ui-proof/chooser-activity.txt
   adb exec-out screencap -p > "ui-proof/$1.png"
+  adb shell uiautomator dump /sdcard/after-share.xml
+  adb pull /sdcard/after-share.xml "ui-proof/$1.xml"
+  adb logcat -d -s AndroidRuntime:E ActivityTaskManager:I > ui-proof/share-runtime.log
+  grep -Eq '(mResumedActivity|topResumedActivity).*ChooserActivity' ui-proof/chooser-activity.txt
   echo "System Android chooser opened for $1"
 }
 open_share
