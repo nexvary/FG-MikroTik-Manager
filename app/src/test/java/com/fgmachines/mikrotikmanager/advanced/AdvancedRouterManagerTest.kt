@@ -47,6 +47,32 @@ class AdvancedRouterManagerTest {
         val m=AdvancedRouterManager(Fake());val request=m.suggestion(m.evaluate(t,client="ether2"))
         assertEquals("172.16.4.1/16",request.gatewayCidr);assertEquals("172.16.0.0/16",request.networkCidr)
     }
+    @Test fun runtimeChangesAndUnrelatedFilesDoNotInvalidatePlan() {
+        val m=AdvancedRouterManager(Fake())
+        val before=configured()
+        val after=before.toMutableMap()
+        after["interface"]=before.getValue("interface").map { it+("running" to "false") }
+        after["ip/route"]=before.getValue("ip/route").map { it+("active" to "false") } + mapOf("dynamic" to "true", "dst-address" to "10.0.0.0/24")
+        after["file"]=before.getValue("file") + mapOf("name" to "automatic.backup", ".id" to "*99")
+        assertEquals(m.evaluate(before).signature,m.evaluate(after).signature)
+    }
+    @Test fun portalRemovalStillInvalidatesPlan() {
+        val m=AdvancedRouterManager(Fake());val before=configured()
+        val after=before.toMutableMap().apply { this["file"]=emptyList() }
+        assertNotEquals(m.evaluate(before).signature,m.evaluate(after).signature)
+    }
+    @Test fun failedFirewallReadDoesNotClaimNoRules() {
+        val report=AdvancedRouterManager(Fake()).evaluate(emptyMap(),setOf("ip/firewall/filter"))
+        assertEquals(CheckState.UNKNOWN,report.check("firewall")?.state)
+        assertTrue(report.check("firewall")!!.messageEn.contains("unknown"))
+    }
+    @Test fun connectionAndPermissionMessagesAreDistinct() {
+        val m=AdvancedRouterManager(Fake())
+        val connection=m.evaluate(emptyMap(),setOf("ip/dns"),readErrors=mapOf("ip/dns" to "connection"))
+        val permission=m.evaluate(emptyMap(),setOf("ip/dns"),readErrors=mapOf("ip/dns" to "permission"))
+        assertTrue(connection.check("dns")!!.messageEn.contains("Connection lost"))
+        assertTrue(permission.check("dns")!!.messageEn.contains("denied access"))
+    }
     private fun configured(): Map<String,List<RouterRow>> = mapOf(
         "interface" to listOf(mapOf("name" to "ether1","running" to "true"),mapOf("name" to "ether2","running" to "true")),
         "ip/route" to listOf(mapOf("dst-address" to "0.0.0.0/0","active" to "true","immediate-gw" to "10.0.2.2%ether1")),

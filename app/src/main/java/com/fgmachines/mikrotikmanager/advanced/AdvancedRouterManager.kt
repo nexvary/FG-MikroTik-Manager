@@ -15,7 +15,7 @@ data class ReadinessCheck(val key: String, val ar: String, val en: String, val s
 data class PingEvidence(val sent: Int, val received: Int, val latencyMs: Double?) {
     val lossPercent get() = if (sent > 0) 100 * (sent - received) / sent else null
 }
-data class ReadinessReport(val tables: Map<String, List<RouterRow>>, val checks: List<ReadinessCheck>, val clientInterface: String, val wanInterface: String, val internet: PingEvidence?, val signature: String, val unavailable: Set<String> = emptySet()) {
+data class ReadinessReport(val tables: Map<String, List<RouterRow>>, val checks: List<ReadinessCheck>, val clientInterface: String, val wanInterface: String, val internet: PingEvidence?, val signature: String, val unavailable: Set<String> = emptySet(), val readErrors: Map<String, String> = emptyMap()) {
     val required = setOf("route", "wan", "nat", "dns", "client", "ip", "dhcp", "dhcp-network", "pool", "hotspot", "profile", "files", "api")
     val blockers get() = checks.filter { it.key in required && it.state != CheckState.READY }
     val ready get() = blockers.isEmpty()
@@ -33,20 +33,21 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
     suspend fun inspect(client: String? = null, deep: Boolean = true): ReadinessReport {
         val tables = linkedMapOf<String, List<RouterRow>>()
         val errors = mutableSetOf<String>()
+        val reasons = mutableMapOf<String, String>()
         for (menu in menus) try { tables[menu] = transport.read(menu) } catch (e: Exception) {
             if (e is CancellationException) throw e
-            errors += menu; tables[menu] = emptyList()
+            errors += menu; reasons[menu] = failureKind(e); tables[menu] = emptyList()
         }
         val probe = if (deep) ping("1.1.1.1") else null
         val dnsProbe = if (deep) ping("one.one.one.one") else null
-        return evaluate(tables, errors, client, probe, dnsProbe)
+        return evaluate(tables, errors, client, probe, dnsProbe, reasons)
     }
     suspend fun preflight(): ReadinessReport = inspect(deep = false)
     private suspend fun ping(address: String): PingEvidence? = try {
         pingEvidence(transport.execute("/ping", mapOf("address" to address, "count" to "3", "interval" to "300ms")))
     } catch (e: Exception) { if (e is CancellationException) throw e; null }
 
-    fun evaluate(tables: Map<String, List<RouterRow>>, errors: Set<String> = emptySet(), client: String? = null, internet: PingEvidence? = null, dnsPing: PingEvidence? = null): ReadinessReport {
+    fun evaluate(tables: Map<String, List<RouterRow>>, errors: Set<String> = emptySet(), client: String? = null, internet: PingEvidence? = null, dnsPing: PingEvidence? = null, readErrors: Map<String, String> = emptyMap()): ReadinessReport {
         fun rows(menu: String) = tables[menu].orEmpty()
         val route = rows("ip/route").firstOrNull { it["dst-address"] == "0.0.0.0/0" && enabled(it) && it["active"] in listOf("true", "yes") }
         val wan = route?.get("immediate-gw")?.substringAfter('%', "")?.substringBefore(',').orEmpty().ifBlank {
@@ -69,9 +70,22 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         val checks = mutableListOf<ReadinessCheck>()
         fun check(key: String, ar: String, en: String, menu: String, ok: Boolean, missingAr: String, missingEn: String, technical: String = "", bad: Boolean = false) {
             val unknown = menu in errors
+            val failure = readErrors[menu]
+            val unknownAr = when (failure) {
+                "connection" -> "انقطع اتصال التطبيق بالراوتر أثناء القراءة. أعد الاتصال ثم حدّث الفحص."
+                "permission" -> "رفض الراوتر قراءة هذا القسم بسبب الصلاحيات. راجع مجموعة المستخدم."
+                "unsupported" -> "هذا القسم غير متاح في إصدار RouterOS أو الحزمة الحالية."
+                else -> "تعذّرت قراءة هذا القسم؛ لم نثبت وجود مشكلة في إعداداته."
+            }
+            val unknownEn = when (failure) {
+                "connection" -> "Connection lost while reading; reconnect and refresh the check."
+                "permission" -> "Router denied access to this section; check the user group."
+                "unsupported" -> "Section unavailable on this RouterOS version or package."
+                else -> "Section could not be read; its configuration has not been verified."
+            }
             checks += ReadinessCheck(key, ar, en, if (unknown) CheckState.UNKNOWN else if (ok) CheckState.READY else if (bad) CheckState.PROBLEM else CheckState.NEEDS_SETUP,
-                if (unknown) "لم نستطع التحقق؛ راجع صلاحية الحساب والاتصال." else if (ok) "جاهز" else missingAr,
-                if (unknown) "Could not verify; check account permissions and connection." else if (ok) "Ready" else missingEn, technical)
+                if (unknown) unknownAr else if (ok) "جاهز" else missingAr,
+                if (unknown) unknownEn else if (ok) "Ready" else missingEn, technical)
         }
         checks += ReadinessCheck("internet", "الإنترنت", "Internet", if (internet == null) CheckState.UNKNOWN else if (internet.received > 0) CheckState.READY else CheckState.PROBLEM,
             if (internet == null) "لم يتم قياس الوصول إلى الإنترنت." else if (internet.received > 0) "استجاب اختبار الإنترنت." else "لم يستجب اختبار الإنترنت عبر البوابة الحالية؛ قد يكون اختبار ICMP محجوبًا.",
@@ -102,8 +116,8 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         check("memory", "الذاكرة", "RAM", "system/resource", free != null && total != null && total > 0 && free.toDouble()/total > .1, "الذاكرة المتاحة منخفضة أو غير معروفة.", "Free memory is low or unknown.", if (free != null && total != null && total > 0) "${100-100*free/total}%" else "")
         val drops = rows("ip/firewall/filter").filter { enabled(it) && it["chain"] == "forward" && it["action"] in listOf("drop", "reject") }
         checks += ReadinessCheck("firewall", "قواعد حماية الشبكة", "Firewall review", if ("ip/firewall/filter" in errors) CheckState.UNKNOWN else if (drops.isEmpty()) CheckState.READY else CheckState.NEEDS_SETUP,
-            if (drops.isEmpty()) "لا توجد قواعد حجب مرور للمراجعة." else "توجد قواعد حجب؛ راجع ترتيبها. وجودها وحده لا يثبت تعارضًا مع HotSpot.", if (drops.isEmpty()) "No forwarding drop rules to review." else "Drop rules exist; review their order. Their presence alone does not establish a HotSpot conflict.", drops.size.toString())
-        return ReadinessReport(tables, checks, selected, resolvedWan, internet, signature(tables), errors)
+            if ("ip/firewall/filter" in errors) "تعذّرت قراءة قواعد الحماية؛ لا يمكن تحديد وجود قواعد حجب." else if (drops.isEmpty()) "لا توجد قواعد حجب مرور للمراجعة." else "توجد قواعد حجب؛ راجع ترتيبها. وجودها وحده لا يثبت تعارضًا مع HotSpot.", if ("ip/firewall/filter" in errors) "Firewall could not be read; forwarding rules are unknown." else if (drops.isEmpty()) "No forwarding drop rules to review." else "Drop rules exist; review their order. Their presence alone does not establish a HotSpot conflict.", drops.size.toString())
+        return ReadinessReport(tables, checks, selected, resolvedWan, internet, signature(tables), errors, readErrors)
     }
 
     fun suggestion(report: ReadinessReport, interfaceName: String = report.clientInterface): ClientSetupRequest {
@@ -165,6 +179,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
 
     suspend fun apply(plan: PreparationPlan, portalFiles: Map<String, String>, backupPassword: String, onChange: (ConfigurationChange, Boolean, String) -> Unit = { _,_,_ -> }, onBackup: (String) -> Unit = {}): PreparationResult {
         val current = inspect(plan.request.interfaceName, deep = false)
+        require(current.unavailable.isEmpty()) { "Configuration read failed; reconnect and review a fresh plan" }
         require(current.signature == plan.signature) { "Router configuration changed after preview; review a fresh plan" }
         val backup = backup(backupPassword)
         onBackup(backup)
@@ -241,9 +256,20 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
             val us = Regex("([0-9.]+)us").find(value)?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
             return if (ms > 0 || us > 0) ms + us / 1000 else value.toDoubleOrNull()
         }
+        private fun failureKind(error: Throwable): String {
+            val causes = generateSequence(error) { it.cause }.take(8).toList()
+            if (causes.any { it is java.io.IOException }) return "connection"
+            val message = causes.joinToString(" ") { it.message.orEmpty() }.lowercase()
+            return when {
+                "permission" in message || "not allowed" in message -> "permission"
+                "no such command" in message || "unknown command" in message -> "unsupported"
+                "connection" in message || "broken pipe" in message -> "connection"
+                else -> "unknown"
+            }
+        }
         private fun signature(tables: Map<String, List<RouterRow>>): String {
-            val keys = setOf(".id", "name", "interface", "address", "ranges", "profile", "address-pool", "disabled", "servers", "allow-remote-requests", "chain", "action", "src-address", "out-interface", "dst-address", "gateway", "login-by", "dns-name", "html-directory", "html-directory-override", "group", "network", "lease-time", "active", "invalid", "running")
-            val text = tables.filterKeys { it !in listOf("system/resource", "system/clock", "system/scheduler") }.toSortedMap().map { (menu, rows) -> menu + rows.map { row -> row.filterKeys { it in keys }.toSortedMap().toString() }.sorted().joinToString() }.joinToString()
+            val keys = setOf(".id", "name", "interface", "address", "ranges", "profile", "address-pool", "disabled", "servers", "allow-remote-requests", "chain", "action", "src-address", "out-interface", "dst-address", "gateway", "login-by", "dns-name", "html-directory", "html-directory-override", "group", "network", "lease-time", "dns-server", "netmask", "port", "certificate", "hotspot-address", "in-interface", "out-interface-list", "in-interface-list", "protocol", "dst-port", "src-port", "connection-state", "to-addresses", "to-ports", "list")
+            val text = tables.filterKeys { it !in listOf("system/resource", "system/clock", "system/scheduler") }.toSortedMap().map { (menu, rows) -> menu + rows.filter { row -> row["dynamic"] !in listOf("true", "yes") && (menu != "file" || row["name"].orEmpty().substringAfterLast('/') in setOf("login.html", "status.html", "md5.js")) }.map { row -> row.filterKeys { it in keys }.toSortedMap().toString() }.sorted().joinToString() }.joinToString()
             return MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
         }
         private fun servesClientNat(row: RouterRow, cidr: String, wan: String): Boolean {

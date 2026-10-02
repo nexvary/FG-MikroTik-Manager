@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.EOFException
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
@@ -46,15 +47,31 @@ class ApiRouterOsTransport(
     ): List<Map<String, String>> =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                ensureConnected()
                 val words = buildList {
                     add(command)
                     attributes.forEach { (key, value) ->
                         add("=" + key + "=" + value)
                     }
                 }
-                writeSentence(words)
-                readReply()
+                // Only reads may be replayed: a lost response to an add/set/remove
+                // cannot prove that RouterOS did not already apply the mutation.
+                val attempts = if (command.endsWith("/print")) 2 else 1
+                var result: List<Map<String, String>>? = null
+                for (attempt in 0 until attempts) {
+                    ensureConnected()
+                    try {
+                        writeSentence(words)
+                        result = readReply()
+                        break
+                    } catch (failure: IOException) {
+                        closeInternal()
+                        if (attempt == attempts - 1) throw RouterOsException(
+                            "RouterOS API connection lost; reconnect and verify the result before retrying changes",
+                            cause = failure
+                        )
+                    }
+                }
+                result ?: throw RouterOsException("RouterOS API returned no reply")
             }
         }
 
@@ -67,6 +84,7 @@ class ApiRouterOsTransport(
         val newSocket = Socket()
         try {
             newSocket.tcpNoDelay = true
+            newSocket.keepAlive = true
             newSocket.soTimeout = 20_000
             newSocket.connect(
                 InetSocketAddress(settings.normalizedHost(), settings.port),

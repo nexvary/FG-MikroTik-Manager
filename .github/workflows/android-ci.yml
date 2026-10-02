@@ -51,10 +51,19 @@ jobs:
       - name: Assemble debug APK
         run: gradle :app:assembleDebug --stacktrace
 
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FG-MTM-0.8.1-verification
+          path: |
+            app/build/test-results/testDebugUnitTest/*.xml
+            app/build/reports/lint-results-debug.*
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.0-debug
+          name: FG-MTM-0.8.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -87,7 +96,7 @@ jobs:
       - name: Download tested APK
         uses: actions/download-artifact@v4
         with:
-          name: FG-MTM-0.8.0-debug
+          name: FG-MTM-0.8.1-debug
           path: app/build/outputs/apk/debug
 
       - name: Enable KVM
@@ -109,6 +118,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.0-ui-proof
+          name: FG-MTM-0.8.1-ui-proof
           path: ui-proof/*.png
           if-no-files-found: error

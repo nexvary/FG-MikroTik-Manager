@@ -241,6 +241,7 @@ fun AdvancedSetupScreen(
 private fun friendlyAdvancedError(message: String,arabic: Boolean): String {
     if(!arabic)return message.ifBlank{"Operation could not be completed; check connection and permissions."}
     return when {
+        message.contains("connection",true)||message.contains("broken pipe",true)||message.contains("read failed",true)->"تعذّرت قراءة الراوتر أو انقطع الاتصال. أعد الاتصال ثم افتح خطة جديدة؛ لا تكرر أوامر التعديل قبل التحقق من نتيجتها."
         message.contains("backup",true)->"تعذّر إكمال العملية أو حفظ النسخة الاحتياطية. لم يعتمد التطبيق نجاح التعديل؛ راجع الاتصال والصلاحيات وآخر التغييرات."
         message.contains("overlap",true)->"شبكة العملاء تتداخل مع شبكة أخرى. اختر نطاقًا منفصلًا."
         message.contains("existing gateway",true)->"اختر عنوان البوابة الموجود على هذه الواجهة للحفاظ على اتصال الشبكة."
