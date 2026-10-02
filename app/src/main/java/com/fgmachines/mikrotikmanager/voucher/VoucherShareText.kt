@@ -1,13 +1,20 @@
 package com.fgmachines.mikrotikmanager.voucher
 
 object VoucherShareText {
+    fun allowance(voucher: VoucherDraft, arabic: Boolean): String {
+        val raw = voucher.limitUptime?.takeIf { it.isNotBlank() }
+        return if (raw in setOf("0", "0s", "00:00:00")) {
+            if(arabic) "بدون حد زمني" else "No time limit"
+        } else raw ?: voucher.displayDuration(arabic)
+    }
+
     fun build(voucher: VoucherDraft, arabic: Boolean, activated: Boolean): String = buildString {
         fun line(ar: String, en: String, value: String) { appendLine((if(arabic) ar else en) + ": " + value) }
         appendLine(voucher.branding.networkName.ifBlank { "FG Machines WiFi" })
         if (!activated) appendLine(if(arabic) "الكارت غير مؤكد التفعيل على الراوتر" else "Router activation is not confirmed")
         line("كود الكارت", "Voucher code", voucher.username)
         line("كلمة المرور", "Password", voucher.password)
-        line("مدة الاستخدام", "Usage allowance", voucher.limitUptime ?: voucher.displayDuration(arabic))
+        line("مدة الاستخدام", "Usage allowance", allowance(voucher,arabic))
         voucher.limitBytesTotal?.let { line("البيانات", "Data", "%.2f MB".format(java.util.Locale.US, it / 1048576.0)) }
         voucher.displayExpiry(arabic)?.let { line("تاريخ الانتهاء", "Expires", it) }
         if(voucher.branding.portalLoginUrl.isNotBlank() && voucher.mode == VoucherMode.HOTSPOT) {

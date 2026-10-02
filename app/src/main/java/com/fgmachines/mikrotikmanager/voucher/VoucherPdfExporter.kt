@@ -156,7 +156,7 @@ class VoucherPdfExporter {
 
         val metaY = bounds.bottom - 38f
         val plan = voucher.profile.ifBlank { "—" }.take(22)
-        val duration = voucher.displayDuration(arabic = false).take(18)
+        val duration = VoucherShareText.allowance(voucher, arabic = false).take(18)
         canvas.drawText("Plan: " + plan, left, metaY, small)
         canvas.drawText("Duration: " + duration, left, metaY + 11f, small)
         voucher.absoluteExpiryEpochMs?.let { expiry ->
