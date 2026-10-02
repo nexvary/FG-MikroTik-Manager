@@ -7,11 +7,13 @@ adb shell wm density 320
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell input keyevent 224
 adb shell wm dismiss-keyguard
+adb shell am force-stop com.android.launcher3
+sleep 8
 adb logcat -c
 open_share() {
   adb shell am force-stop "$package"
   adb shell am start -n "$package/.MainActivity" --ez ui_demo true --es demo_screen voucher-share
-  sleep 3
+  sleep 8
 }
 tap_text() {
   adb shell uiautomator dump /sdcard/action.xml
