@@ -101,7 +101,7 @@ assert y2 - y1 >= 120 and x2 > x1, 'Install button has no usable touch area'
 print('Portal install button remains above three-button system navigation')
 PYTEST
 adb logcat -d -s AndroidRuntime:E > ui-proof/android-runtime.log
-if rg -q 'FATAL EXCEPTION' ui-proof/android-runtime.log; then
+if grep -q 'FATAL EXCEPTION' ui-proof/android-runtime.log; then
   cat ui-proof/android-runtime.log
   exit 1
 fi

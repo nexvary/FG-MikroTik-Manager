@@ -33,7 +33,7 @@ PY
 assert_chooser() {
   sleep 4
   adb shell dumpsys activity activities > ui-proof/chooser-activity.txt
-  rg -q '(mResumedActivity|topResumedActivity).*ChooserActivity' ui-proof/chooser-activity.txt
+  grep -Eq '(mResumedActivity|topResumedActivity).*ChooserActivity' ui-proof/chooser-activity.txt
   adb exec-out screencap -p > "ui-proof/$1.png"
   echo "System Android chooser opened for $1"
 }
@@ -43,7 +43,7 @@ assert_chooser share-text-chooser
 open_share
 tap_text 'صورة + QR'
 assert_chooser share-image-chooser
-shared_file=$(adb shell run-as "$package" ls cache/exports | tr -d '\r' | rg '^voucher-.*\.png$' | tail -n 1)
+shared_file=$(adb shell run-as "$package" ls cache/exports | tr -d '\r' | grep -E '^voucher-.*\.png$' | tail -n 1)
 test -n "$shared_file"
 adb exec-out run-as "$package" cat "cache/exports/$shared_file" > ui-proof/shared-voucher.png
 python3 - <<'PY'
@@ -85,4 +85,4 @@ print('Large-font connect and offline buttons remain reachable above navigation'
 PY
 adb shell settings put system font_scale 1.0
 adb logcat -d -s AndroidRuntime:E > ui-proof/android-runtime.log
-if rg -q 'FATAL EXCEPTION' ui-proof/android-runtime.log; then cat ui-proof/android-runtime.log; exit 1; fi
+if grep -q 'FATAL EXCEPTION' ui-proof/android-runtime.log; then cat ui-proof/android-runtime.log; exit 1; fi
