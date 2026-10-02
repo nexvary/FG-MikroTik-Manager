@@ -19,16 +19,16 @@ jobs:
         with:
           fetch-depth: 0
       - name: Verify application source matches the tested APK
-        run: git diff --exit-code fad423b03187d58dda575693cce51f6c9d136174 HEAD -- app build.gradle.kts settings.gradle.kts gradle.properties gradle
+        run: git diff --exit-code 136d790eec42e5614f48e5ee2bfc03c30fa0f1d9 HEAD -- app build.gradle.kts settings.gradle.kts gradle.properties gradle
       - uses: android-actions/setup-android@v4
         with:
           packages: ""
       - name: Reuse APK from the successful build
         uses: actions/download-artifact@v4
         with:
-          name: FG-MTM-0.8.0-debug
+          name: FG-MTM-0.8.3-debug
           path: app/build/outputs/apk/debug
-          run-id: 36931898067
+          run-id: 36985813080
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Enable KVM
         run: |
@@ -47,6 +47,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.0-ui-proof
+          name: FG-MTM-0.8.3-ui-proof
           path: ui-proof/
           if-no-files-found: error
