@@ -112,9 +112,13 @@ fun AdvancedSetupScreen(
         }
         if(panel=="home") {
             report?.let { result -> item {
-                Text(if(result.ready) label("الراوتر جاهز لإنشاء الكروت ✓", "Router is ready for vouchers ✓") else label("الراوتر يحتاج ${result.blockers.size} خطوات قبل إنشاء الكروت", "Router needs ${result.blockers.size} setup steps"),color=if(result.ready) FgMint else FgAmber)
-                result.blockers.take(3).forEach { Text(if(arabic) it.messageAr else it.messageEn,color=FgSilver) }
-                if(!result.ready) Button(onClick={ startWizard() },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("جهّز الراوتر للكروت", "Prepare router for vouchers")) }
+                Text(if(result.voucherReady) label("الراوتر جاهز لإنشاء الكروت ✓", "Router is ready for vouchers ✓") else label("الراوتر يحتاج ${result.voucherBlockers.size} خطوات قبل إنشاء الكروت", "Router needs ${result.voucherBlockers.size} setup steps"),color=if(result.voucherReady) FgMint else FgAmber)
+                result.voucherBlockers.take(3).forEach { Text(if(arabic) it.messageAr else it.messageEn,color=FgSilver) }
+                if (result.voucherReady && !result.ready) {
+                    Text(label("صفحة العملاء تحتاج تحققًا؛ إنشاء الكروت متاح.", "Customer portal needs verification; vouchers are available."), color=FgAmber)
+                    OutlinedButton(onClick={tools="design"}) { Text(label("تثبيت صفحة العملاء", "Install customer portal")) }
+                }
+                if(!result.voucherReady) Button(onClick={ startWizard() },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("جهّز الراوتر للكروت", "Prepare router for vouchers")) }
             } }
             items(listOf("readiness" to label("فحص جاهزية الراوتر", "Router readiness check"),"wizard" to label("إعداد HotSpot لأول مرة", "First-time HotSpot setup"),"doctor" to label("تشخيص الشبكة", "Network Doctor"),"repair" to label("إصلاح تلقائي", "Auto repair"),"client" to label("اختبار شبكة العملاء", "Test client network"),"portal" to label("صفحة HotSpot للعملاء", "Customer HotSpot portal"),"backup" to label("نسخة احتياطية واستعادة", "Backup & recovery"),"quick" to label("أدوات سريعة", "Quick tools"),"technical" to label("الإعدادات التقنية", "Technical settings"))) { (key,title) ->
                 OutlinedButton(onClick={ when(key) { "wizard" -> startWizard(); "portal" -> tools="design"; "readiness","doctor","client" -> checkNetwork(key); else -> panel=key } },modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(horizontal=12.dp,vertical=12.dp)) { Text(title,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null) }

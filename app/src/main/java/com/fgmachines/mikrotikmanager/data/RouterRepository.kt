@@ -201,7 +201,7 @@ class RouterRepository private constructor(
 
         return try {
             val rows = when (command.action) {
-                "print" -> transport.read(command.menu)
+                "print" -> if (command.attributes.isEmpty()) transport.read(command.menu) else transport.execute("/" + command.menu.trim('/') + "/print", command.attributes)
                 "add" -> transport.create(command.menu, command.attributes)
                 "set", "enable", "disable", "remove", "renew", "release" -> {
                     val id = resolveCommandTarget(command)

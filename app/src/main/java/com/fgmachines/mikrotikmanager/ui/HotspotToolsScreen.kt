@@ -71,7 +71,7 @@ fun HotspotToolsScreen(
         if (manager != null) {
             snapshot = manager.load()
             serverProfiles = manager.serverProfiles()
-            if (selectedProfile.isBlank()) selectedProfile = serverProfiles.firstOrNull()?.get(".id").orEmpty()
+            if (selectedProfile.isBlank()) selectedProfile = manager.activeServerProfiles().singleOrNull()?.get(".id").orEmpty()
         }
     }
     fun run(work: suspend () -> String) {

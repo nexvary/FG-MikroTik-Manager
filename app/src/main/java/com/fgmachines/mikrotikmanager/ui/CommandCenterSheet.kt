@@ -393,6 +393,28 @@ private fun CommandPreviewCard(
     arabic: Boolean,
     result: CommandExecutionResult?
 ) {
+    var showDetails by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+    val details = remember(result?.rows) {
+        result?.rows.orEmpty().mapIndexed { rowIndex, row ->
+            (rowIndex + 1).toString() + ". " + row.entries.joinToString("\n") { (key, value) ->
+                val secret = listOf("password", "secret", "private-key", "passphrase", "contents").any { key.contains(it, true) }
+                key + "=" + if (secret) "[hidden]" else value
+            }
+        }
+    }
+    if (showDetails) AlertDialog(
+        onDismissRequest = { showDetails = false },
+        title = { Text(if (arabic) "نتيجة الأمر كاملة" else "Complete command result") },
+        text = {
+            LazyColumn(Modifier.height(360.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                itemsIndexed(details) { _, row -> Text(row, fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr)) }
+            }
+        },
+        confirmButton = { TextButton(onClick = { clipboard.setText(AnnotatedString(details.joinToString("\n\n"))) }) { Text(if (arabic) "نسخ النتيجة" else "Copy result") } },
+        dismissButton = { TextButton(onClick = { showDetails = false }) { Text(if (arabic) "إغلاق" else "Close") } }
+    )
     val accent = when (command.risk) {
         CommandRisk.SAFE -> FgMint
         CommandRisk.CHANGE -> FgBlue
@@ -444,6 +466,10 @@ private fun CommandPreviewCard(
                     fontWeight = FontWeight.Bold
                 )
                 if (it.rows.isNotEmpty()) {
+                    TextButton(onClick = { showDetails = true }) {
+                        Text(if (arabic) "عرض كل النتائج (" + it.rows.size + ")" else "Show all results (" + it.rows.size + ")")
+                    }
+
                     val sample = it.rows.take(2).joinToString("  •  ") { row ->
                         row["name"]
                             ?: row["address"]

@@ -1,6 +1,7 @@
 package com.fgmachines.mikrotikmanager.advanced
 
 import com.fgmachines.mikrotikmanager.hotspot.HotspotManager
+import com.fgmachines.mikrotikmanager.hotspot.PortalPaths
 import com.fgmachines.mikrotikmanager.network.RouterOsTransport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -19,6 +20,8 @@ data class ReadinessReport(val tables: Map<String, List<RouterRow>>, val checks:
     val required = setOf("route", "wan", "nat", "dns", "client", "ip", "dhcp", "dhcp-network", "pool", "hotspot", "profile", "files", "api")
     val blockers get() = checks.filter { it.key in required && it.state != CheckState.READY }
     val ready get() = blockers.isEmpty()
+    val voucherBlockers get() = blockers.filter { it.key != "files" }
+    val voucherReady get() = voucherBlockers.isEmpty()
     fun rows(menu: String) = tables[menu].orEmpty()
     fun check(key: String) = checks.firstOrNull { it.key == key }
 }
@@ -103,7 +106,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         check("pool", "مدى عناوين العملاء", "Client address pool", "ip/pool", dhcp != null && rows("ip/pool").any { it["name"] == dhcp["address-pool"] && !it["ranges"].isNullOrBlank() }, "مدى العناوين غير موجود أو غير مرتبط بالتوزيع.", "DHCP pool is missing or not assigned.")
         check("hotspot", "دخول العملاء بالكروت", "HotSpot", "ip/hotspot", hotspot != null, "HotSpot غير مفعّل على شبكة العملاء.", "HotSpot is not enabled on the client network.")
         check("profile", "إعداد دخول العملاء", "HotSpot profile", "ip/hotspot/profile", profile != null && rows("ip/hotspot/user/profile").isNotEmpty() && profile["login-by"].orEmpty().split(',').any { it in listOf("http-chap", "https") }, "إعداد الخادم أو باقة المستخدمين ناقصة.", "Server profile or user profiles are missing.", profile?.get("name").orEmpty())
-        check("files", "صفحة دخول العملاء", "Customer login page", "file", loginFiles, "ملفات صفحة الدخول والحالة غير موجودة.", "Login/status page files are missing.")
+        check("files", "صفحة دخول العملاء", "Customer login page", "file", loginFiles, "لم نتحقق من ملفات الدخول والحالة في مجلد الصفحة المحدد.", "Login/status files were not verified in the configured directory.", profile?.let { PortalPaths.configured(it) }.orEmpty())
         check("api", "اتصال إدارة الراوتر", "RouterOS API", "ip/service", api, "الخدمة غير متاحة أو لا يمكن التحقق منها.", "Management service unavailable or could not be verified.")
         check("admins", "مديرو الراوتر", "Router administrators", "user", rows("user").any { enabled(it) && it["group"] == "full" }, "لم نتحقق من وجود مدير بصلاحية كاملة.", "No enabled full administrator verified.")
         val clock = rows("system/clock").firstOrNull().orEmpty()
@@ -241,8 +244,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
     companion object {
         fun enabled(row: RouterRow) = row["disabled"] !in listOf("yes", "true")
         fun portalFilesPresent(profile: RouterRow, files: List<RouterRow>): Boolean {
-            val path = profile["html-directory-override"].orEmpty().ifBlank { profile["html-directory"].orEmpty().ifBlank { "hotspot" } }.trimEnd('/')
-            return listOf("login.html", "status.html").all { file -> files.any { it["name"] == "$path/$file" || it["name"] == "flash/$path/$file" } }
+            return PortalPaths.present(profile, files)
         }
         fun pingEvidence(rows: List<RouterRow>): PingEvidence {
             val summary = rows.lastOrNull { it["sent"]?.toIntOrNull() != null }

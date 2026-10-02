@@ -94,7 +94,7 @@ class HotspotManager(private val transport: RouterOsTransport) {
         val profile = transport.read("ip/hotspot/profile").firstOrNull { it[".id"] == profileId } ?: error("HotSpot profile not found")
         require(files.keys.containsAll(listOf("login.html", "status.html", "md5.js")))
         require(files.values.all { it.toByteArray().size < 60_000 }) { "Portal file exceeds RouterOS API content limit" }
-        val hasFlash = transport.read("file").any { it["name"] == "flash" && it["type"] == "directory" }
+        val hasFlash = transport.read("file").any { PortalPaths.normalize(it["name"].orEmpty()) == "flash" }
         val directory = (if (hasFlash) "flash/" else "") + "fg-mtm-" + System.currentTimeMillis()
         transport.create("file", mapOf("name" to directory, "type" to "directory"))
         for ((name, contents) in files) {
@@ -111,8 +111,37 @@ class HotspotManager(private val transport: RouterOsTransport) {
         transport.create("file", mapOf("name" to pointer, "type" to "file"))
         val pointerId = transport.read("file").firstOrNull { it["name"] == pointer }?.get(".id") ?: error("Cannot save rollback pointer")
         transport.execute("/file/set", mapOf(".id" to pointerId, "contents" to "profile=${profile["name"]}\nhtml-directory=${profile["html-directory"]}\nhtml-directory-override=${profile["html-directory-override"].orEmpty()}"))
-        transport.execute("/ip/hotspot/profile/set", mapOf(".id" to profileId, "html-directory-override" to directory))
+        transport.execute("/ip/hotspot/profile/set", mapOf(".id" to profileId, "html-directory" to directory, "html-directory-override" to ""))
+        try {
+            var verified = false
+            for (attempt in 0..3) {
+                if (attempt > 0) kotlinx.coroutines.delay(300)
+                val current = transport.read("ip/hotspot/profile").firstOrNull { it[".id"] == profileId }
+                if (current != null && PortalPaths.configured(current) == directory &&
+                    PortalPaths.present(current, transport.read("file"))) {
+                    verified = true
+                    break
+                }
+            }
+            check(verified) { "HotSpot portal binding could not be verified" }
+        } catch (failure: Exception) {
+            if (failure is kotlinx.coroutines.CancellationException) throw failure
+            val rollback = runCatching { transport.execute("/ip/hotspot/profile/set", mapOf(
+                ".id" to profileId, "html-directory" to profile["html-directory"].orEmpty(),
+                "html-directory-override" to profile["html-directory-override"].orEmpty()
+            )) }
+            throw IllegalStateException(if (rollback.isSuccess)
+                "Portal verification failed; previous page restored"
+                else "Portal verification failed; review profile binding before retrying", failure)
+        }
         return directory
+    }
+
+    suspend fun activeServerProfiles(): List<Map<String, String>> {
+        val names = transport.read("ip/hotspot").filter {
+            it["disabled"] !in listOf("yes", "true") && it["invalid"] !in listOf("yes", "true")
+        }.mapNotNull { it["profile"] }.toSet()
+        return serverProfiles().filter { it["name"] in names }
     }
 
     suspend fun serverProfiles(): List<Map<String, String>> = transport.read("ip/hotspot/profile")

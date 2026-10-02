@@ -147,7 +147,7 @@ fun VoucherStudioScreen(
         }
     }
 
-    var expiryEnabled by rememberSaveable { mutableStateOf(true) }
+    var expiryEnabled by rememberSaveable { mutableStateOf(false) }
     var expiryEpochMs by rememberSaveable {
         mutableStateOf(System.currentTimeMillis() + 24L * 60L * 60L * 1000L)
     }
@@ -221,8 +221,11 @@ fun VoucherStudioScreen(
         }
 
         if (connected && mode == VoucherMode.HOTSPOT) item {
-            Text(if(checkingPreflight) { if(arabic) "جاري فحص جاهزية HotSpot..." else "Checking HotSpot readiness..." } else if(preflight?.ready == true) { if(arabic) "HotSpot جاهز ✓" else "HotSpot ready ✓" } else { if(arabic) "الراوتر غير جاهز لتفعيل كروت HotSpot" else "Router is not ready to activate HotSpot vouchers" }, color = if(preflight?.ready == true) FgMint else FgAmber)
-            if(preflight?.ready != true && !checkingPreflight) OutlinedButton(onClick = onOpenAdvanced, modifier = Modifier.fillMaxWidth()) { Text(if(arabic) "فتح الإعداد المتقدم" else "Open Advanced Setup") }
+            Text(if(checkingPreflight) { if(arabic) "جاري فحص جاهزية HotSpot..." else "Checking HotSpot readiness..." } else if(preflight?.voucherReady == true) { if(arabic) "HotSpot جاهز ✓" else "HotSpot ready ✓" } else { if(arabic) "الراوتر غير جاهز لتفعيل كروت HotSpot" else "Router is not ready to activate HotSpot vouchers" }, color = if(preflight?.voucherReady == true) FgMint else FgAmber)
+            if (preflight?.voucherReady == true && preflight?.check("files")?.state != com.fgmachines.mikrotikmanager.advanced.CheckState.READY) {
+                Text(if (arabic) "إنشاء الكروت متاح؛ تصميم صفحة العملاء يحتاج تحققًا منفصلًا." else "Voucher creation is available; customer portal design needs separate verification.", color = FgSilver)
+            }
+            if(preflight?.voucherReady != true && !checkingPreflight) OutlinedButton(onClick = onOpenAdvanced, modifier = Modifier.fillMaxWidth()) { Text(if(arabic) "فتح الإعداد المتقدم" else "Open Advanced Setup") }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -617,7 +620,7 @@ fun VoucherStudioScreen(
                         error = t.message ?: "Invalid voucher settings"
                     }
                 },
-                enabled = !provisioning && !(connected && mode == VoucherMode.HOTSPOT && preflight?.ready != true),
+                enabled = !provisioning && !(connected && mode == VoucherMode.HOTSPOT && preflight?.voucherReady != true),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (provisioning) {

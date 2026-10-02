@@ -73,6 +73,13 @@ class AdvancedRouterManagerTest {
         assertTrue(connection.check("dns")!!.messageEn.contains("Connection lost"))
         assertTrue(permission.check("dns")!!.messageEn.contains("denied access"))
     }
+    @Test fun workingHotspotCanProvisionWhenPortalFilesAreNotVerified() {
+        val tables=configured().toMutableMap();tables["file"]=emptyList()
+        val report=AdvancedRouterManager(Fake()).evaluate(tables)
+        assertFalse(report.ready);assertTrue(report.voucherReady)
+        tables["ip/hotspot"]=emptyList()
+        assertFalse(AdvancedRouterManager(Fake()).evaluate(tables).voucherReady)
+    }
     private fun configured(): Map<String,List<RouterRow>> = mapOf(
         "interface" to listOf(mapOf("name" to "ether1","running" to "true"),mapOf("name" to "ether2","running" to "true")),
         "ip/route" to listOf(mapOf("dst-address" to "0.0.0.0/0","active" to "true","immediate-gw" to "10.0.2.2%ether1")),
