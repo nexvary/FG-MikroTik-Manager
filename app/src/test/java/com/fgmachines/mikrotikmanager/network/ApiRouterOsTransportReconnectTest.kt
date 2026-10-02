@@ -13,7 +13,7 @@ class ApiRouterOsTransportReconnectTest {
     @Test fun readReconnectsAfterPeerClosesWithoutAReply() = exercise(false)
     @Test fun lostMutationReplyIsNotReplayedAndNextReadReconnects() = exercise(true)
 
-    private fun exercise(mutation: Boolean) = runBlocking {
+    private fun exercise(mutation: Boolean): Unit = runBlocking {
         val listener = ServerSocket(0).apply { soTimeout = 5000 }
         val executor = Executors.newSingleThreadExecutor()
         val transport = ApiRouterOsTransport(RouterConnectionSettings("127.0.0.1", listener.localPort, "admin", "test-only"))
@@ -38,6 +38,7 @@ class ApiRouterOsTransportReconnectTest {
             }
             assertEquals("7.16.2", transport.read("system/resource").single()["version"])
             server.get(6, TimeUnit.SECONDS)
+            Unit
         } finally {
             transport.close(); listener.close(); executor.shutdownNow()
         }
