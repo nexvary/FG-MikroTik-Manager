@@ -468,7 +468,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
             )
 
             runCatching {
-                if (batch.request.mode == VoucherMode.HOTSPOT) require(repo.advanced.preflight().ready) { "الراوتر غير جاهز لتفعيل كروت HotSpot — افتح الإعداد المتقدم / Router is not ready; open Advanced Setup" }
+                if (batch.request.mode == VoucherMode.HOTSPOT) require(repo.advanced.preflight().voucherReady) { "الراوتر غير جاهز لتفعيل كروت HotSpot — افتح الإعداد المتقدم / Router is not ready; open Advanced Setup" }
                 repo.provisionVoucherBatch(batch)
             }.onSuccess { summary ->
                 _state.value = _state.value.copy(
