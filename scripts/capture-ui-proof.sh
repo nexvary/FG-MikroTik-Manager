@@ -26,6 +26,7 @@ capture system 03-system-security
 capture admin-users 04-admin-users
 capture vouchers 05-vouchers
 capture about 06-about
+capture portal-design portal-design
 capture commands 07-command-center
 for screen in routes active-vouchers portal-login portal-status advanced readiness doctor wizard repair backup; do
   capture "$screen" "$screen"
@@ -36,6 +37,18 @@ adb shell wm density 480
 capture vouchers vouchers-1080
 capture login login-1080
 capture about about-1080
+capture portal-design portal-design-1080
+adb shell uiautomator dump /sdcard/portal-design.xml
+adb pull /sdcard/portal-design.xml ui-proof/portal-design.xml
+python3 - <<'PYTEST'
+import xml.etree.ElementTree as ET, re
+nodes = ET.parse('ui-proof/portal-design.xml').getroot().iter('node')
+button = next(n for n in nodes if 'تثبيت صفحة HotSpot' in n.get('text', ''))
+x1, y1, x2, y2 = map(int, re.findall(r'\d+', button.get('bounds')))
+assert y2 <= 2256, f'Install button overlaps system navigation: {button.attrib}'
+assert y2 - y1 >= 60 and x2 > x1, 'Install button has no usable touch area'
+print('Portal install button remains above three-button system navigation')
+PYTEST
 adb logcat -d -s AndroidRuntime:E > ui-proof/android-runtime.log
 if rg -q 'FATAL EXCEPTION' ui-proof/android-runtime.log; then
   cat ui-proof/android-runtime.log

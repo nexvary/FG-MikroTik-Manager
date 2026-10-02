@@ -170,6 +170,22 @@ fun AdvancedSetupScreen(
                 }
             }
         }
+        if(panel in listOf("quick","technical","repair","readiness")) {
+            item { OutlinedButton(onClick={ run("ضبط الوقت تلقائيًا", "Automatic clock setup") {
+                protectedBackup(freshSecret())
+                val synced = manager!!.synchronizeClock()
+                label(if(synced) "تم ضبط الوقت والتاريخ وتأكيد المزامنة بالإنترنت." else "تم ضبط الوقت والتاريخ من الهاتف وتفعيل المزامنة المستمرة؛ مزامنة الإنترنت قيد الانتظار.", if(synced) "Clock set and NTP synchronization confirmed." else "Clock set from phone; continuous NTP enabled, awaiting synchronization.")
+            } },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("ضبط الوقت والتاريخ تلقائيًا", "Set date and time automatically")) } }
+            item { OutlinedButton(onClick={ run("اكتشاف منافذ العملاء", "Detect customer ports",false) {
+                val ports=manager!!.planClientPorts()
+                if(ports.changes.isEmpty()) label("منافذ العملاء مجهزة بالفعل", "Customer ports already configured") else {
+                    confirm("سيتم تجهيز شبكة العملاء: ${ports.bridge}\nالمنافذ: ${ports.ports.joinToString()}\n${ports.changes.joinToString("\n") { it.ar }}\nسيتم حفظ نسخة احتياطية. لن يُضم منفذ الإنترنت. قد ينقطع اتصال العملاء مؤقتًا. تنفيذ؟", "Customer bridge: ${ports.bridge}\nPorts: ${ports.ports.joinToString()}\nBack up and preserve WAN. Customers may briefly disconnect. Apply?") {
+                        run("تجهيز منافذ العملاء", "Configure customer ports") { val secret=freshSecret();manager!!.applyClientPorts(ports,secret) { vault.rememberBackup(it,secret);record("نسخة قبل تجهيز المنافذ", "Backup before port setup",true,it) } }
+                    }
+                    label("اكتمل اكتشاف المنافذ؛ راجع الخطة", "Ports detected; review the plan")
+                }
+            } },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("تجهيز منافذ العملاء تلقائيًا", "Configure customer ports automatically")) } }
+        }
         if(panel in listOf("quick","technical")) {
             item { Text(label("الأدوات والإعدادات", "Tools & settings"),color=FgBlue,fontWeight=FontWeight.Bold) }
             item { OutlinedButton(onClick={ panel="backup" },modifier=Modifier.fillMaxWidth()) { Text("Backup Now") } }
@@ -185,8 +201,9 @@ fun AdvancedSetupScreen(
             val steps=listOf(label("شبكة العملاء", "Client network"),label("عنوان الشبكة", "Client address"),label("مدى العناوين", "Address pool"),"HotSpot",label("صفحة العملاء", "Customer portal"),label("مراجعة", "Review"),label("تنفيذ", "Apply"),label("اختبار", "Test"))
             item { Text("${wizardStep+1}/8 — ${steps[wizardStep]}",color=FgBlue,fontWeight=FontWeight.Bold) }
             if(wizardStep==0) {
+                item { Text(label("تم اقتراح شبكة العملاء تلقائيًا. يمكنك متابعة الإعداد بالقيمة المختارة أو تغييرها.", "Customer network detected automatically; continue with the selection or change it."), color=FgSilver) }
                 item { Text(label("اختر شبكة العملاء. لا تختَر منفذ الإنترنت أو اتصال الإدارة الحالي؛ تشغيل HotSpot قد يفصل الهاتف.", "Select the client network. Avoid the internet or current management interface; enabling HotSpot may disconnect this phone."),color=FgAmber) }
-                items(report?.rows("interface").orEmpty().filter { it["name"] != report?.wanInterface && AdvancedRouterManager.enabled(it) }) { row ->
+                items(report?.let { RouterAutomation.clientCandidates(it) }.orEmpty()) { row ->
                     val name=row["name"].orEmpty();OutlinedButton(onClick={ request=manager?.suggestion(report!!,name) ?: request?.copy(interfaceName=name) },modifier=Modifier.fillMaxWidth()) { Text((if(request?.interfaceName==name) "✓ " else "")+name) }
                 }
             }
@@ -209,9 +226,10 @@ fun AdvancedSetupScreen(
                 if(wizardStep in listOf(5,6)) item {
                     plan?.let { proposed -> AdvancedCard {
                         Text(label("سيتم تنفيذ:", "Planned changes:"),color=FgWhite)
+                        if(proposed.request.synchronizeTime) Text(label("• ضبط الوقت والتاريخ تلقائيًا وتفعيل المزامنة بالإنترنت", "• Set clock automatically and enable continuous NTP"),color=FgSilver)
                         proposed.changes.forEach { Text("• "+if(arabic) it.ar else it.en,color=FgSilver) }
                         if(proposed.installPortal) Text(label("• تثبيت صفحة العملاء في مجلد جديد", "• Install customer portal into a new directory"),color=FgSilver)
-                        if(proposed.changes.isEmpty()&&!proposed.installPortal) Text(label("لا توجد إعدادات ناقصة لإنشائها.", "No missing setup items to create."),color=FgMint)
+                        if(proposed.changes.isEmpty()&&!proposed.installPortal&&!proposed.request.synchronizeTime) Text(label("لا توجد إعدادات ناقصة لإنشائها.", "No missing setup items to create."),color=FgMint)
                         Text(label("سيتم حفظ Backup مشفّر أولًا. لن يتم تعديل اتصال الإنترنت أو المديرين أو قواعد المشاركة العاملة. قد ينقطع اتصال الهاتف على شبكة العملاء؛ استخدم منفذ إدارة منفصلًا. الرجوع: النسخة الاحتياطية محفوظة في تبويب الاستعادة.", "An encrypted backup is required first. WAN, administrators and existing working NAT rules are preserved. Client-network connectivity may be interrupted; use a separate management interface. Recovery: restore the saved backup from Backup & recovery."),color=FgAmber)
                     } }
                 }
@@ -245,6 +263,10 @@ fun AdvancedSetupScreen(
 private fun friendlyAdvancedError(message: String,arabic: Boolean): String {
     if(!arabic)return message.ifBlank{"Operation could not be completed; check connection and permissions."}
     return when {
+        message.contains("management connection",true)->"أنت متصل عبر شبكة العملاء المراد تعديلها. اتصل بالراوتر من شبكة الإنترنت الرئيسية أولًا حتى نحافظ على اتصال الإدارة أثناء تجهيز المنافذ."
+        message.contains("firewall rules",true)->"توجد قواعد حماية مرتبطة بمنفذ العملاء مباشرة؛ لا يمكن نقلها تلقائيًا دون مراجعة حتى لا تتعطل الشبكة."
+        message.contains("clock",true)||message.contains("time synchronization",true)->"لم نتمكن من تأكيد ضبط الساعة أو تفعيل المزامنة. تأكد من صحة وقت الهاتف وصلاحية الحساب؛ لن نعرض الساعة جاهزة دون تحقق."
+        message.contains("safely detect",true)||message.contains("must be detected",true)->"تعذّر تحديد منافذ الإنترنت والعملاء بأمان. أعد فحص الشبكة؛ لن نضم منافذ مجهولة أو مستخدمة لشبكة أخرى."
         message.contains("connection",true)||message.contains("broken pipe",true)||message.contains("read failed",true)->"تعذّرت قراءة الراوتر أو انقطع الاتصال. أعد الاتصال ثم افتح خطة جديدة؛ لا تكرر أوامر التعديل قبل التحقق من نتيجتها."
         message.contains("backup",true)->"تعذّر إكمال العملية أو حفظ النسخة الاحتياطية. لم يعتمد التطبيق نجاح التعديل؛ راجع الاتصال والصلاحيات وآخر التغييرات."
         message.contains("overlap",true)->"شبكة العملاء تتداخل مع شبكة أخرى. اختر نطاقًا منفصلًا."

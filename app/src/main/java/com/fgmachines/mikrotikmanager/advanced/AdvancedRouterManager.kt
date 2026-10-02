@@ -25,14 +25,14 @@ data class ReadinessReport(val tables: Map<String, List<RouterRow>>, val checks:
     fun rows(menu: String) = tables[menu].orEmpty()
     fun check(key: String) = checks.firstOrNull { it.key == key }
 }
-data class ClientSetupRequest(val interfaceName: String, val gatewayCidr: String, val networkCidr: String, val poolRange: String, val dnsName: String, val replacePortal: Boolean = false)
+data class ClientSetupRequest(val interfaceName: String, val gatewayCidr: String, val networkCidr: String, val poolRange: String, val dnsName: String, val replacePortal: Boolean = false, val synchronizeTime: Boolean = true)
 data class ConfigurationChange(val menu: String, val command: String, val attributes: Map<String, String>, val ar: String, val en: String, val undo: Map<String, String>? = null)
 data class PreparationPlan(val request: ClientSetupRequest, val changes: List<ConfigurationChange>, val profileName: String, val installPortal: Boolean, val signature: String)
 data class PreparationResult(val backupName: String, val changes: Int, val portalDirectory: String?, val readiness: ReadinessReport)
 
 /** Diagnostics and reviewed repairs over the existing authenticated transport. */
 class AdvancedRouterManager(private val transport: RouterOsTransport, val routerKey: String = "router") {
-    private val menus = listOf("system/resource", "system/clock", "interface", "interface/bridge", "interface/list/member", "ip/address", "ip/route", "ip/firewall/nat", "ip/firewall/filter", "ip/dns", "ip/dhcp-server", "ip/dhcp-server/network", "ip/pool", "ip/hotspot", "ip/hotspot/profile", "ip/hotspot/user/profile", "ip/service", "user", "system/scheduler", "file")
+    private val menus = listOf("system/resource", "system/clock", "interface", "interface/bridge", "interface/bridge/port", "interface/vlan", "ip/dhcp-client", "interface/pppoe-client", "interface/list/member", "ip/address", "ip/route", "ip/firewall/nat", "ip/firewall/filter", "ip/dns", "ip/dhcp-server", "ip/dhcp-server/network", "ip/pool", "ip/hotspot", "ip/hotspot/profile", "ip/hotspot/user/profile", "ip/service", "user", "system/scheduler", "file")
     suspend fun inspect(client: String? = null, deep: Boolean = true): ReadinessReport {
         val tables = linkedMapOf<String, List<RouterRow>>()
         val errors = mutableSetOf<String>()
@@ -60,7 +60,14 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         val selected = client?.takeIf { rows("interface").any { row -> row["name"] == it } }
             ?: rows("ip/hotspot").firstOrNull()?.get("interface")
             ?: rows("interface/bridge").firstOrNull { it["name"] != wan }?.get("name")
-            ?: rows("ip/address").firstOrNull { it["interface"] != wan && it["dynamic"] != "true" }?.get("interface").orEmpty()
+            ?: rows("ip/address").firstOrNull { it["interface"] != resolvedWan && it["dynamic"] !in listOf("true", "yes") }?.get("interface")
+            ?: rows("interface").firstOrNull { row ->
+                val name = row["name"].orEmpty()
+                name != resolvedWan && enabled(row) && (row["type"] == "ether" || name.matches(Regex("ether[0-9]+"))) &&
+                    rows("interface/bridge/port").none { it["interface"] == name } &&
+                    rows("ip/dhcp-client").none { it["interface"] == name } &&
+                    rows("interface/pppoe-client").none { it["interface"] == name }
+            }?.get("name").orEmpty()
         val address = rows("ip/address").firstOrNull { it["interface"] == selected && enabled(it) }
         val dhcp = rows("ip/dhcp-server").firstOrNull { it["interface"] == selected && enabled(it) && it["invalid"] !in listOf("true", "yes") }
         val hotspot = rows("ip/hotspot").firstOrNull { it["interface"] == selected && enabled(it) && it["invalid"] !in listOf("true", "yes") }
@@ -110,8 +117,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         check("api", "اتصال إدارة الراوتر", "RouterOS API", "ip/service", api, "الخدمة غير متاحة أو لا يمكن التحقق منها.", "Management service unavailable or could not be verified.")
         check("admins", "مديرو الراوتر", "Router administrators", "user", rows("user").any { enabled(it) && it["group"] == "full" }, "لم نتحقق من وجود مدير بصلاحية كاملة.", "No enabled full administrator verified.")
         val clock = rows("system/clock").firstOrNull().orEmpty()
-        val year = Regex("(?:19|20)[0-9]{2}").find(clock["date"].orEmpty())?.value?.toIntOrNull()
-        check("clock", "الساعة والتاريخ", "Clock", "system/clock", year != null && year >= 2024, "اضبط ساعة الراوتر قبل استخدام الانتهاء المطلق للكروت.", "Set router clock before using absolute voucher expiry.", clock["date"].orEmpty()+" "+clock["time"].orEmpty())
+        check("clock", "الساعة والتاريخ", "Clock", "system/clock", RouterAutomation.clockInstant(clock)?.let { kotlin.math.abs(java.time.Duration.between(it, java.time.Instant.now()).seconds) < 300 } == true, "اضبط ساعة الراوتر قبل استخدام الانتهاء المطلق للكروت.", "Set router clock before using absolute voucher expiry.", clock["date"].orEmpty()+" "+clock["time"].orEmpty())
         check("scheduler", "جدولة انتهاء الكروت", "Scheduler", "system/scheduler", "system/scheduler" !in errors, "تعذّر الوصول إلى الجدولة.", "Scheduler access is unavailable.")
         check("storage", "المساحة المتاحة", "Free storage", "system/resource", (resource["free-hdd-space"]?.toLongOrNull() ?: 0) > 2_000_000, "المساحة منخفضة أو غير معروفة؛ راجع الملفات قبل التثبيت.", "Free storage is low or unknown; review files before installing.", resource["free-hdd-space"].orEmpty()+" B")
         check("cpu", "المعالج", "CPU", "system/resource", (resource["cpu-load"]?.toIntOrNull() ?: 100) < 90, "حمل المعالج مرتفع أو غير معروف.", "CPU load is high or unknown.", resource["cpu-load"].orEmpty()+"%")
@@ -186,6 +192,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         require(current.signature == plan.signature) { "Router configuration changed after preview; review a fresh plan" }
         val backup = backup(backupPassword)
         onBackup(backup)
+        if (plan.request.synchronizeTime) synchronizeClock()
         val undo = mutableListOf<suspend () -> Unit>()
         var directory: String? = null
         try {
@@ -210,6 +217,39 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
             withContext(NonCancellable) { for (action in undo.asReversed()) try { action() } catch (_: Exception) { failedRollback += "rollback" } }
             if (failure is CancellationException) throw failure
             throw IllegalStateException("${failure.message} — ${if (failedRollback.isEmpty()) "new changes rolled back" else "rollback needs review"}; backup: $backup", failure)
+        }
+    }
+    suspend fun synchronizeClock(): Boolean = RouterAutomation(transport).synchronizeClock()
+    fun clientCandidates(report: ReadinessReport) = RouterAutomation.clientCandidates(report)
+    suspend fun planClientPorts(): ClientPortsPlan = RouterAutomation.planPorts(inspect(deep = false), routerKey)
+    suspend fun applyClientPorts(plan: ClientPortsPlan, password: String, onBackup: (String) -> Unit = {}): String {
+        val current = inspect(deep = false)
+        require(current.signature == plan.signature) { "Router configuration changed; review customer ports again" }
+        val reviewed = RouterAutomation.planPorts(current, routerKey)
+        require(reviewed.ports == plan.ports && reviewed.changes == plan.changes) { "Customer port availability changed; review again" }
+        if (plan.changes.isEmpty()) return "منافذ العملاء مجهزة بالفعل / Customer ports already configured"
+        val file = backup(password); onBackup(file)
+        val undo = mutableListOf<suspend () -> Unit>()
+        try {
+            for (change in plan.changes) {
+                if (change.command == "add") {
+                    val result = transport.create(change.menu, change.attributes)
+                    val id = result.firstOrNull()?.get(".id") ?: transport.read(change.menu).firstOrNull { row -> change.attributes.all { (key, value) -> row[key] == value } }?.get(".id") ?: error("Cannot verify customer port change")
+                    undo += { transport.execute("/${change.menu}/remove", mapOf(".id" to id)); Unit }
+                } else {
+                    transport.execute("/${change.menu}/set", change.attributes)
+                    change.undo?.let { old -> undo += { transport.execute("/${change.menu}/set", old); Unit } }
+                }
+            }
+            val ports = transport.read("interface/bridge/port")
+            require(plan.ports.all { name -> ports.any { it["interface"] == name && it["bridge"] == plan.bridge } }) { "Customer port grouping could not be verified" }
+            for (change in plan.changes.filter { it.command == "set" }) require(transport.read(change.menu).any { row -> change.attributes.all { (key, value) -> row[key] == value } }) { "Customer settings migration could not be verified" }
+            return "تم تجهيز منافذ العملاء / Customer ports configured: " + plan.ports.joinToString() + " • " + file
+        } catch (failure: Exception) {
+            var failed = false
+            withContext(NonCancellable) { for (action in undo.asReversed()) try { action() } catch (_: Exception) { failed = true } }
+            if (failure is CancellationException) throw failure
+            throw IllegalStateException("${failure.message}; ${if (failed) "rollback needs review" else "new changes rolled back"}; backup: $file", failure)
         }
     }
     suspend fun backup(password: String): String {
@@ -270,7 +310,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
             }
         }
         private fun signature(tables: Map<String, List<RouterRow>>): String {
-            val keys = setOf(".id", "name", "interface", "address", "ranges", "profile", "address-pool", "disabled", "servers", "allow-remote-requests", "chain", "action", "src-address", "out-interface", "dst-address", "gateway", "login-by", "dns-name", "html-directory", "html-directory-override", "group", "network", "lease-time", "dns-server", "netmask", "port", "certificate", "hotspot-address", "in-interface", "out-interface-list", "in-interface-list", "protocol", "dst-port", "src-port", "connection-state", "to-addresses", "to-ports", "list")
+            val keys = setOf(".id", "name", "interface", "address", "ranges", "profile", "address-pool", "disabled", "servers", "allow-remote-requests", "chain", "action", "src-address", "out-interface", "dst-address", "gateway", "login-by", "dns-name", "html-directory", "html-directory-override", "group", "network", "lease-time", "dns-server", "netmask", "port", "certificate", "hotspot-address", "in-interface", "out-interface-list", "in-interface-list", "protocol", "dst-port", "src-port", "bridge", "pvid", "vlan-id", "vlan-filtering", "connection-state", "to-addresses", "to-ports", "list")
             val text = tables.filterKeys { it !in listOf("system/resource", "system/clock", "system/scheduler") }.toSortedMap().map { (menu, rows) -> menu + rows.filter { row -> row["dynamic"] !in listOf("true", "yes") && (menu != "file" || row["name"].orEmpty().substringAfterLast('/') in setOf("login.html", "status.html", "md5.js")) }.map { row -> row.filterKeys { it in keys }.toSortedMap().toString() }.sorted().joinToString() }.joinToString()
             return MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
         }

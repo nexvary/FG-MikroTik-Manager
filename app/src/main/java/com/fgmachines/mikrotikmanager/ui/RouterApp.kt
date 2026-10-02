@@ -163,9 +163,9 @@ fun RouterDemoApp(screen: String) {
         }
         return
     }
-    if (screen in setOf("active-vouchers", "portal-login", "portal-status")) {
+    if (screen in setOf("active-vouchers", "portal-login", "portal-status", "portal-design")) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            FgMikroTikTheme { HotspotToolsScreen(true, null, emptyList(), if(screen == "active-vouchers") "active" else screen, {}, demo = true) }
+            FgMikroTikTheme { HotspotToolsScreen(true, null, emptyList(), if(screen == "active-vouchers") "active" else if(screen == "portal-design") "design" else screen, {}, demo = true) }
         }
         return
     }

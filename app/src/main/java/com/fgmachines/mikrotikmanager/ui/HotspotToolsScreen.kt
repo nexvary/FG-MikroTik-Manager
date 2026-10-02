@@ -100,12 +100,34 @@ fun HotspotToolsScreen(
     }
     LaunchedEffect(manager) {
         if (demo) {
+            serverProfiles = listOf(mapOf(".id" to "*P", "name" to "fg-mtm-demo"))
+            selectedProfile = "*P"
             snapshot = HotspotSnapshot(listOf(mapOf(".id" to "*A", "name" to "123456", "profile" to "Kids-60m", "limit-uptime" to "1h", "uptime" to "12m", "bytes-in" to "1048576", "bytes-out" to "25165824", "limit-bytes-total" to "104857600", "disabled" to "false")), listOf(mapOf("user" to "123456", "uptime" to "2m")), emptyList(), emptyList(), emptyList())
         } else if (manager != null) run { reload(); label("تم التحديث", "Refreshed") }
     }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Scaffold(containerColor = FgBlack, topBar = {
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize().safeDrawingPadding().imePadding(),
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            containerColor = FgBlack,
+            bottomBar = {
+                if (tab == "design") {
+                    Surface(color = FgBlack) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                        Button(onClick = { confirm(label("سيتم تثبيت الصفحة في مجلد جديد وربط Profile المختار به. تبقى الملفات السابقة محفوظة للرجوع. متابعة؟", "Install into a new directory and switch the selected server profile? Old files remain available for rollback.")) { run { if(advancedManager != null) {
+                                        val secret=java.util.UUID.randomUUID().toString().replace("-", "")
+                                        val file=advancedManager.backup(secret)
+                                        val vault=com.fgmachines.mikrotikmanager.advanced.RouterChangeVault(context,advancedManager.routerKey)
+                                        vault.rememberBackup(file,secret);vault.record("نسخة قبل تثبيت صفحة العملاء","Backup before portal installation",true,file)
+                                        advancedManager.synchronizeClock()
+                                    }
+                                    val directory = manager!!.installPortal(selectedProfile, PortalTemplates.render(assets(), design)); advancedManager?.let { com.fgmachines.mikrotikmanager.advanced.RouterChangeVault(context,it.routerKey).record("تثبيت صفحة العملاء","Install customer portal",true) }; prefs.edit().putString("design", Json.encodeToString(design)).apply(); label("تم التثبيت في ", "Installed in ") + directory } } }, enabled = manager != null && selectedProfile.isNotBlank() && !busy, modifier = Modifier.fillMaxWidth()) { Text(label("تثبيت صفحة HotSpot على الراوتر", "Install HotSpot portal on router")) }
+                        }
+                    }
+                }
+            },
+            topBar = {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text("FG MTM", color = FgBlue, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 TextButton(onClick = onDismiss) { Text(label("رجوع", "Back")) }
             }
@@ -189,15 +211,7 @@ fun HotspotToolsScreen(
                     items(serverProfiles) { profile ->
                         FilterChip(selectedProfile == profile[".id"], { selectedProfile = profile[".id"].orEmpty() }, label = { Text(label("Profile الخادم: ", "Server profile: ") + profile["name"].orEmpty()) })
                     }
-                    item {
-                        Button(onClick = { confirm(label("سيتم تثبيت الصفحة في مجلد جديد وربط Profile المختار به. تبقى الملفات السابقة محفوظة للرجوع. متابعة؟", "Install into a new directory and switch the selected server profile? Old files remain available for rollback.")) { run { if(advancedManager != null) {
-                                        val secret=java.util.UUID.randomUUID().toString().replace("-", "")
-                                        val file=advancedManager.backup(secret)
-                                        val vault=com.fgmachines.mikrotikmanager.advanced.RouterChangeVault(context,advancedManager.routerKey)
-                                        vault.rememberBackup(file,secret);vault.record("نسخة قبل تثبيت صفحة العملاء","Backup before portal installation",true,file)
-                                    }
-                                    val directory = manager!!.installPortal(selectedProfile, PortalTemplates.render(assets(), design)); advancedManager?.let { com.fgmachines.mikrotikmanager.advanced.RouterChangeVault(context,it.routerKey).record("تثبيت صفحة العملاء","Install customer portal",true) }; prefs.edit().putString("design", Json.encodeToString(design)).apply(); label("تم التثبيت في ", "Installed in ") + directory } } }, enabled = manager != null && selectedProfile.isNotBlank() && !busy, modifier = Modifier.fillMaxWidth()) { Text(label("تثبيت صفحة HotSpot على الراوتر", "Install HotSpot portal on router")) }
-                    }
+
                 }
                 if (tab == "setup") {
                     item { Text(label("إعداد HotSpot", "HotSpot setup"), color = FgBlue, style = MaterialTheme.typography.titleLarge) }
@@ -237,8 +251,8 @@ fun HotspotToolsScreen(
         }, confirmButton = { TextButton(onClick = { val request=VoucherBatchRequest(1,6,profile=voucher.profile,mode=voucher.mode); run { val file=VoucherPdfExporter().export(context,VoucherBatch(request,listOf(voucher))); VoucherShareManager.shareFile(context,file,"application/pdf"); label("تم تجهيز الطباعة", "Print file ready") } }) { Text("PDF / " + label("طباعة", "Print")) } }, dismissButton = { TextButton(onClick = { qrVoucher = null }) { Text(label("رجوع", "Back")) } })
     }
     preview?.let { page ->
-        Dialog(onDismissRequest = { preview = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        Dialog(onDismissRequest = { preview = null }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
                 TextButton(onClick = { preview = null }) { Text(label("معاينة فقط — رجوع", "Preview only — Back")) }
                 AndroidView(factory = { ctx -> WebView(ctx).apply {
                     settings.javaScriptEnabled = true
