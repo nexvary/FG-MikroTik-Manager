@@ -59,6 +59,7 @@ class BusinessStoreTest {
     }
     @Test fun ledgerCannotBeDeletedEditedOrReversedAcrossSubscribers() {
         sub(); sub("other"); store.post(scope,"s","c",LedgerKind.CHARGE,500,"Charge")
+        reject { helper.writableDatabase.execSQL("UPDATE subscribers SET currency='USD' WHERE id='s'") }
         reject { helper.writableDatabase.execSQL("UPDATE ledger SET amount_minor=1 WHERE id='c'") }
         reject { helper.writableDatabase.execSQL("DELETE FROM ledger WHERE id='c'") }
         reject { store.reverse(scope,"other","c","r","Wrong account") }

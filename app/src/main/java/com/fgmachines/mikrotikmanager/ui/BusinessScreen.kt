@@ -61,7 +61,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
                     OutlinedButton(onClick={ model.search(search) },enabled=!state.busy,modifier=Modifier.weight(1f)) { Text(tr("بحث","Search")) }
                     Button(onClick={ editor="subscriber" },enabled=!state.busy,modifier=Modifier.weight(1f)) { Icon(Icons.Outlined.Add,null); Text(tr("مشترك جديد","Add subscriber")) }
                 } }
-                if(state.subscribers.isEmpty() && !state.busy) item { Text(tr("لا يوجد مشتركون هنا. أضف مشتركًا أو غيّر البحث.","No subscribers here. Add one or change your search."),color=FgSilver) }
+                if(state.subscribers.isEmpty() && !state.busy && state.error==null) item { Text(tr("لا يوجد مشتركون هنا. أضف مشتركًا أو غيّر البحث.","No subscribers here. Add one or change your search."),color=FgSilver) }
                 items(state.subscribers,key={it.id}) { record ->
                     Card(modifier=Modifier.fillMaxWidth().clickable(enabled=!state.busy) { model.select(record.id) },colors=CardDefaults.cardColors(containerColor=FgPanel)) {
                         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
@@ -85,7 +85,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
                     Button(onClick={ editor="payment" },enabled=!state.busy,modifier=Modifier.weight(1f)) { Text(tr("تسجيل دفعة","Record payment")) }
                     OutlinedButton(onClick={ editor="charge" },enabled=!state.busy,modifier=Modifier.weight(1f)) { Text(tr("إضافة مستحق","Add charge")) }
                 } }
-                if(state.entries.isEmpty() && !state.busy) item { Text(tr("لا توجد عمليات مسجلة لهذا المشترك.","No entries recorded for this subscriber."),color=FgSilver) }
+                if(state.entries.isEmpty() && !state.busy && state.error==null) item { Text(tr("لا توجد عمليات مسجلة لهذا المشترك.","No entries recorded for this subscriber."),color=FgSilver) }
                 items(state.entries,key={it.id}) { entry ->
                     Card(colors=CardDefaults.cardColors(containerColor=FgPanel),modifier=Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {

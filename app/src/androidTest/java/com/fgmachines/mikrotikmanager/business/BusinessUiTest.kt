@@ -39,6 +39,8 @@ class BusinessUiTest {
         tap("Record payment")
         compose.onNodeWithText("Amount EGP").performTextInput("400.05")
         compose.onNodeWithText("Description / reason").performTextInput("Demo cash payment")
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithText("400.05").assertExists()
         tap("Save"); waitText("Balance due: 600.05 EGP")
         capture("business-en.png")
         compose.onAllNodesWithText("Correct with reversal").onFirst().performScrollTo().performClick()

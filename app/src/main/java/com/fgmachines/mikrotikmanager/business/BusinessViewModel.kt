@@ -1,6 +1,7 @@
 package com.fgmachines.mikrotikmanager.business
 
 import android.app.Application
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
@@ -16,14 +17,17 @@ data class BusinessState(
     val selected: Subscriber? = null, val entries: List<LedgerEntry> = emptyList(),
     val moreEntries: Boolean = false, val ledgerPage: Int = 1, val balance: Long? = null, val saved: Int = 0
 )
-class BusinessViewModel(application: Application) : AndroidViewModel(application) {
+class BusinessViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
     private val store=BusinessStore(BusinessDatabase(application))
     private var scope: BusinessScope? = null
     private val mutable=MutableStateFlow(BusinessState())
     val state=mutable.asStateFlow()
     private val subscriberCursors=mutableListOf<Pair<String,String>?>(null)
     private val ledgerCursors=mutableListOf<Long?>(null)
-    init { search("") }
+    init {
+        val selectedId=savedState.get<String>("subscriber")
+        if(selectedId==null) search(savedState.get<String>("query") ?: "") else select(selectedId)
+    }
     private fun run(action: suspend ()->Unit) {
         if(mutable.value.busy) return
         mutable.value=mutable.value.copy(busy=true,error=null)
@@ -44,6 +48,7 @@ class BusinessViewModel(application: Application) : AndroidViewModel(application
     }
     fun search(query: String) = run {
         subscriberCursors.clear(); subscriberCursors.add(null)
+        savedState["query"]=query.trim().take(120); savedState.remove<String>("subscriber")
         mutable.value=mutable.value.copy(query=query.trim().take(120),selected=null)
         loadSubscribers()
     }
@@ -55,12 +60,13 @@ class BusinessViewModel(application: Application) : AndroidViewModel(application
     }
     fun select(id: String) = run {
         val sub=withContext(Dispatchers.IO) { store.subscriber(scope!!,id) }
+        savedState["subscriber"]=sub.id
         ledgerCursors.clear(); ledgerCursors.add(null)
         // Clear the previous subscriber's financial state before loading the new one.
         mutable.value=mutable.value.copy(selected=sub,entries=emptyList(),balance=null,moreEntries=false,ledgerPage=1)
         loadLedger()
     }
-    fun back() = run { mutable.value=mutable.value.copy(selected=null); loadSubscribers() }
+    fun back() = run { savedState.remove<String>("subscriber"); mutable.value=mutable.value.copy(selected=null); loadSubscribers() }
     private suspend fun loadLedger() {
         val id=mutable.value.selected!!.id
         mutable.value=mutable.value.copy(balance=null)
@@ -75,6 +81,7 @@ class BusinessViewModel(application: Application) : AndroidViewModel(application
     }
     fun addSubscriber(id: String,name: String,phone: String,service: String,account: String,currency: String) = run {
         val sub=withContext(Dispatchers.IO) { store.addSubscriber(scope!!,id,name,phone,service,account,currency) }
+        savedState["subscriber"]=sub.id
         mutable.value=mutable.value.copy(selected=sub,entries=emptyList(),balance=null)
         ledgerCursors.clear(); ledgerCursors.add(null); loadLedger()
         mutable.value=mutable.value.copy(saved=mutable.value.saved+1)
