@@ -8,11 +8,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.fgmachines.mikrotikmanager.voucher.*
 
 @Composable
 fun VoucherShareDialog(vouchers: List<VoucherDraft>, arabic: Boolean, activated: Boolean, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<VoucherDraft?>(vouchers.singleOrNull()) }
     var error by remember { mutableStateOf<String?>(null) }
     val voucher = selected
@@ -33,7 +36,7 @@ fun VoucherShareDialog(vouchers: List<VoucherDraft>, arabic: Boolean, activated:
                 LazyColumn(Modifier.heightIn(max = 260.dp)) { item { Text(text) } }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { runCatching { VoucherShareManager.shareVoucherText(context,text,label("مشاركة الكارت", "Share voucher")) }.onFailure { error = it.message } }, modifier = Modifier.weight(1f)) { Text(label("نص", "Text")) }
-                    OutlinedButton(onClick = { runCatching { VoucherShareManager.shareFile(context,VoucherImageExporter.export(context,voucher),"image/png") }.onFailure { error = it.message } }, modifier = Modifier.weight(1f)) { Text(label("صورة + QR", "Image + QR")) }
+                    OutlinedButton(enabled = !busy, onClick = { scope.launch { busy = true; runCatching { VoucherShareManager.shareFile(context,VoucherImageExporter.export(context,voucher),"image/png") }.onFailure { error = it.message }; busy = false } }, modifier = Modifier.weight(1f)) { Text(label("صورة + QR", "Image + QR")) }
                 }
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

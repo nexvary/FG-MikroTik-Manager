@@ -16,7 +16,7 @@ object VoucherImageExporter {
         canvas.scale(3f,3f)
         VoucherPdfExporter().drawVoucher(canvas,voucher,RectF(8f,8f,292f,232f))
         val dir = File(context.cacheDir,"exports").apply { mkdirs() }
-        val file = File(dir,"voucher.png")
+        val file = File(dir,"voucher-" + java.util.UUID.randomUUID().toString() + ".png")
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) };bitmap.recycle();file
     }
 }
