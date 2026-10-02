@@ -16,6 +16,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import android.view.WindowManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -105,7 +108,7 @@ fun HotspotToolsScreen(
             snapshot = HotspotSnapshot(listOf(mapOf(".id" to "*A", "name" to "123456", "profile" to "Kids-60m", "limit-uptime" to "1h", "uptime" to "12m", "bytes-in" to "1048576", "bytes-out" to "25165824", "limit-bytes-total" to "104857600", "disabled" to "false")), listOf(mapOf("user" to "123456", "uptime" to "2m")), emptyList(), emptyList(), emptyList())
         } else if (manager != null) run { reload(); label("تم التحديث", "Refreshed") }
     }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    FgFullScreenDialog(onDismiss) {
         Scaffold(
             modifier = Modifier.fillMaxSize().safeDrawingPadding().imePadding(),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -251,7 +254,7 @@ fun HotspotToolsScreen(
         }, confirmButton = { TextButton(onClick = { val request=VoucherBatchRequest(1,6,profile=voucher.profile,mode=voucher.mode); run { val file=VoucherPdfExporter().export(context,VoucherBatch(request,listOf(voucher))); VoucherShareManager.shareFile(context,file,"application/pdf"); label("تم تجهيز الطباعة", "Print file ready") } }) { Text("PDF / " + label("طباعة", "Print")) } }, dismissButton = { TextButton(onClick = { qrVoucher = null }) { Text(label("رجوع", "Back")) } })
     }
     preview?.let { page ->
-        Dialog(onDismissRequest = { preview = null }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        FgFullScreenDialog({ preview = null }) {
             Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
                 TextButton(onClick = { preview = null }) { Text(label("معاينة فقط — رجوع", "Preview only — Back")) }
                 AndroidView(factory = { ctx -> WebView(ctx).apply {
@@ -268,5 +271,20 @@ fun HotspotToolsScreen(
                 } }, modifier = Modifier.weight(1f).fillMaxWidth())
             }
         }
+    }
+}
+
+/** Keep Compose's dialog measurement bounded by the real window, including on API 35. */
+@Composable
+private fun FgFullScreenDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = true, decorFitsSystemWindows = false)) {
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.let { window ->
+                window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
+                window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            }
+        }
+        content()
     }
 }

@@ -119,5 +119,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FG-MTM-0.8.3-ui-proof
-          path: ui-proof/*.png
+          path: ui-proof/*
           if-no-files-found: error

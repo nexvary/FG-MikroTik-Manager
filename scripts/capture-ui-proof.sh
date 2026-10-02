@@ -42,11 +42,16 @@ adb shell uiautomator dump /sdcard/portal-design.xml
 adb pull /sdcard/portal-design.xml ui-proof/portal-design.xml
 python3 - <<'PYTEST'
 import xml.etree.ElementTree as ET, re
-nodes = ET.parse('ui-proof/portal-design.xml').getroot().iter('node')
-button = next(n for n in nodes if 'تثبيت صفحة HotSpot' in n.get('text', ''))
+root = ET.parse('ui-proof/portal-design.xml').getroot()
+parents = {child: parent for parent in root.iter() for child in parent}
+label = next(n for n in root.iter('node') if 'تثبيت صفحة HotSpot' in n.get('text', ''))
+button = label
+while button.get('class') != 'android.widget.Button' and button in parents:
+    button = parents[button]
+assert button.get('class') == 'android.widget.Button', 'No accessible install button'
 x1, y1, x2, y2 = map(int, re.findall(r'\d+', button.get('bounds')))
 assert y2 <= 2256, f'Install button overlaps system navigation: {button.attrib}'
-assert y2 - y1 >= 60 and x2 > x1, 'Install button has no usable touch area'
+assert y2 - y1 >= 120 and x2 > x1, 'Install button has no usable touch area'
 print('Portal install button remains above three-button system navigation')
 PYTEST
 adb logcat -d -s AndroidRuntime:E > ui-proof/android-runtime.log
