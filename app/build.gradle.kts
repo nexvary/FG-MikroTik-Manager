@@ -5,6 +5,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+val releaseStore = System.getenv("FG_MTM_STORE_FILE")
+val releaseStorePassword = System.getenv("FG_MTM_STORE_PASSWORD")
+val releaseAlias = System.getenv("FG_MTM_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("FG_MTM_KEY_PASSWORD")
+val releaseSigningReady = listOf(releaseStore, releaseStorePassword, releaseAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.fgmachines.mikrotikmanager"
     compileSdk = 35
@@ -13,8 +19,23 @@ android {
         applicationId = "com.fgmachines.mikrotikmanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.8.6"
+        versionCode = 16
+        versionName = "0.9.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (releaseSigningReady) create("protectedRelease") {
+            storeFile = file(releaseStore!!)
+            storePassword = releaseStorePassword
+            keyAlias = releaseAlias
+            keyPassword = releaseKeyPassword
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("protectedRelease")
+        }
     }
 
     buildFeatures {
@@ -56,7 +77,21 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+}
+
+// Fail closed: never produce an unsigned release that could be mistaken for an upgrade.
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.project == project && it.name.contains("Release") &&
+            (it.name.startsWith("assemble") || it.name.startsWith("bundle") || it.name.startsWith("package")) }) {
+        check(releaseSigningReady && file(releaseStore!!).isFile) {
+            "Release requires the original signing key and all FG_MTM signing environment variables."
+        }
+    }
 }

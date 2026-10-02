@@ -10,3 +10,7 @@ captures/
 app/build/
 
 .kotlin/
+
+*.jks
+*.keystore
+keystore.properties

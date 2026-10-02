@@ -30,6 +30,7 @@ enum class AppSection(val title: String) {
     NETWORK("Network"),
     SYSTEM("System"),
     VOUCHERS("Vouchers"),
+    BUSINESS("Business"),
     ABOUT("About")
 }
 

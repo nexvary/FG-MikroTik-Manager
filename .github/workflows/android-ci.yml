@@ -52,21 +52,28 @@ jobs:
         run: gradle :app:lintDebug --stacktrace
 
       - name: Assemble debug APK
-        run: gradle :app:assembleDebug --stacktrace
+        run: gradle :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
       - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.6-verification
+          name: FG-MTM-0.9.0-verification
           path: |
             app/build/test-results/testDebugUnitTest/*.xml
             app/build/reports/lint-results-debug.*
 
+      - name: Upload instrumentation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FG-MTM-0.9.0-android-tests
+          path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.6-debug
+          name: FG-MTM-0.9.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -99,8 +106,14 @@ jobs:
       - name: Download tested APK
         uses: actions/download-artifact@v4
         with:
-          name: FG-MTM-0.8.6-debug
+          name: FG-MTM-0.9.0-debug
           path: app/build/outputs/apk/debug
+
+      - name: Download instrumentation APK
+        uses: actions/download-artifact@v4
+        with:
+          name: FG-MTM-0.9.0-android-tests
+          path: app/build/outputs/apk/androidTest/debug
 
       - name: Enable KVM
         run: |
@@ -115,12 +128,12 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: bash scripts/capture-ui-proof.sh
+          script: bash scripts/capture-ui-proof.sh && bash scripts/test-business-device.sh
 
       - name: Upload UI proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-0.8.6-ui-proof
+          name: FG-MTM-0.9.0-ui-proof
           path: ui-proof/*
           if-no-files-found: error

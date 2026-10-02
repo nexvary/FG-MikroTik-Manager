@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Logout
@@ -102,12 +103,14 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
         mutableStateOf(Locale.getDefault().language.equals("ar", ignoreCase = true))
     }
     var offlineStudio by rememberSaveable { mutableStateOf(false) }
+    var businessOpen by rememberSaveable { mutableStateOf(false) }
 
     CompositionLocalProvider(
         LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr
     ) {
         FgMikroTikTheme {
             when {
+                businessOpen -> BusinessScreen(arabic, { businessOpen=false }, { arabic=!arabic })
                 offlineStudio -> OfflineVoucherShell(
                     arabic = arabic,
                     historyCount = state.voucherHistoryCount,
@@ -125,7 +128,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     onLanguageToggle = { arabic = !arabic },
                     onRefresh = viewModel::refresh,
                     onDisconnect = viewModel::disconnect,
-                    onSection = viewModel::selectSection,
+                    onSection = { if(it==AppSection.BUSINESS) businessOpen=true else viewModel.selectSection(it) },
                     onOpenAdminModule = viewModel::openAdminModule,
                     onRefreshAdminModule = viewModel::refreshAdminModule,
                     onCloseAdminModule = viewModel::closeAdminModule,
@@ -153,7 +156,8 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     onDiscover = viewModel::discoverRouters,
                     onOfflineStudio = { offlineStudio = true },
                     onConnect = viewModel::connect,
-                    onClearError = viewModel::clearError
+                    onClearError = viewModel::clearError,
+                    onBusiness = { businessOpen=true }
                 )
             }
         }
@@ -305,7 +309,8 @@ private fun ConnectionScreen(
     onDiscover: () -> Unit,
     onOfflineStudio: () -> Unit,
     onConnect: (RouterConnectionSettings) -> Unit,
-    onClearError: () -> Unit
+    onClearError: () -> Unit,
+    onBusiness: () -> Unit = {}
 ) {
     var host by rememberSaveable { mutableStateOf("") }
     var username by rememberSaveable { mutableStateOf("admin") }
@@ -579,6 +584,11 @@ private fun ConnectionScreen(
                 }
             }
 
+            item {
+                OutlinedButton(onClick=onBusiness,enabled=!connecting,modifier=Modifier.fillMaxWidth()) {
+                    Text(if(arabic) "المشتركون والحسابات" else "Subscribers & accounts")
+                }
+            }
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
@@ -861,6 +871,7 @@ private fun RouterContent(
             modifier = modifier
         )
 
+        AppSection.BUSINESS -> BusinessScreen(arabic, { onSection(AppSection.MENU) }, {})
         AppSection.ABOUT -> AboutDeveloperScreen(
             arabic = arabic,
             modifier = modifier
@@ -904,6 +915,13 @@ private fun MainMenuScreen(
             if (arabic) "كروت احترافية مع المدة والسعر والانتهاء والتفعيل المباشر" else "Professional vouchers with duration, price, expiry and direct activation",
             Icons.Outlined.ConfirmationNumber,
             FgPurple
+        ),
+        MenuEntry(
+            AppSection.BUSINESS,
+            if (arabic) "المشتركون والحسابات" else "Subscribers & accounts",
+            if (arabic) "سجل المشتركين • المستحقات • المدفوعات • كشف الحساب" else "Subscribers • Charges • Payments • Account ledger",
+            Icons.Outlined.People,
+            FgMint
         ),
         MenuEntry(
             AppSection.ABOUT,
@@ -1038,6 +1056,7 @@ private fun PersistentMainMenu(
             AppSection.NETWORK,
             AppSection.SYSTEM,
             AppSection.VOUCHERS,
+            AppSection.BUSINESS,
             AppSection.ABOUT
         ).forEach { section ->
             val selected = state.section == section
@@ -1274,6 +1293,7 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
         AppSection.NETWORK -> if (arabic) "الشبكة والاتصال" else "Network & connectivity"
         AppSection.SYSTEM -> if (arabic) "النظام والأمان" else "System & security"
         AppSection.VOUCHERS -> if (arabic) "الكروت" else "Vouchers"
+        AppSection.BUSINESS -> if(arabic) "المشتركون والحسابات" else "Subscribers & accounts"
         AppSection.ABOUT -> if (arabic) "عن المطور" else "About developer"
     }
 
@@ -1284,6 +1304,7 @@ private fun sectionIcon(section: AppSection): ImageVector =
         AppSection.NETWORK -> Icons.Outlined.Wifi
         AppSection.SYSTEM -> Icons.Outlined.Security
         AppSection.VOUCHERS -> Icons.Outlined.ConfirmationNumber
+        AppSection.BUSINESS -> Icons.Outlined.People
         AppSection.ABOUT -> Icons.Outlined.Info
     }
 
@@ -1294,5 +1315,6 @@ private fun sectionAccent(section: AppSection): Color =
         AppSection.NETWORK -> FgMint
         AppSection.SYSTEM -> FgAmber
         AppSection.VOUCHERS -> FgPurple
+        AppSection.BUSINESS -> FgMint
         AppSection.ABOUT -> FgCyan
     }
