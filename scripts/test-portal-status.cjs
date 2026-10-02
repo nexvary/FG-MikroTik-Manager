@@ -4,7 +4,7 @@ const document={documentElement:{lang:'ar',dir:'rtl'},querySelectorAll:selector=
 const storage={};const context={document,localStorage:{getItem:()=>null},sessionStorage:{getItem:k=>storage[k]||null},decodeURIComponent,Number,Date,console};
 vm.createContext(context);vm.runInContext(fs.readFileSync('app/src/main/assets/hotspot/fg.js','utf8'),context);
 assert.equal(context.fgBytes('524281093',true),'499.99 MB');assert.equal(context.fgBytes('0',true),'0 B');
-assert.equal(context.fgBytes('---',true),'No total data limit');assert.equal(context.fgDuration('6h',false),'6 ساعة');
+assert.equal(context.fgBytes('---',true),'No total data limit');assert.equal(context.fgBytes('$(remain-bytes-total)',true),'Allowance unavailable');assert.equal(context.fgDuration('6h',false),'6 ساعة');
 assert.equal(context.fgDuration('0s',true),'0 s');assert.equal(context.fgDuration('1d2h3m',true),'1 day 2 h 3 min');
 function el(raw,classes){return {textContent:raw,dataset:{},hidden:true,previousElementSibling:{hidden:true},classList:{contains:x=>classes.includes(x)}}}
 const quota=el('524281093',['bytes','quota']),optional=el('---',['bytes','optional-quota']);elements.push(quota,optional);
