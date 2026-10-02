@@ -448,10 +448,11 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
 
     fun saveGeneratedBatch(batch: VoucherBatch) {
         viewModelScope.launch {
-            runCatching { voucherHistory.save(batch) }
+            val saved = runCatching { voucherHistory.save(batch) }
             _state.value = _state.value.copy(
                 voucherHistoryCount = voucherHistory.count(),
-                recentVoucherBatches = voucherHistory.recent()
+                recentVoucherBatches = voucherHistory.recent(),
+                error = saved.exceptionOrNull()?.let { "Could not save voucher archive: " + it.message } ?: _state.value.error
             )
         }
     }

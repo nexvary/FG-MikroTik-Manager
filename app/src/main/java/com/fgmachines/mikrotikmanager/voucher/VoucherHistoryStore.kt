@@ -29,17 +29,16 @@ class VoucherHistoryStore(context: Context) {
 
     suspend fun save(batch: VoucherBatch): String = withContext(Dispatchers.IO) {
         val timestamp = System.currentTimeMillis()
-        val id = timestamp.toString()
+        val id = VoucherHistoryIndex.newId(timestamp)
         val plaintext = json.encodeToString(batch).toByteArray(Charsets.UTF_8)
-        val encrypted = encrypt(plaintext)
-
-        synchronized(this@VoucherHistoryStore) {
+        synchronized(WRITE_LOCK) {
+            val encrypted = encrypt(plaintext)
             val index = prefs.getStringSet(KEY_INDEX, emptySet()).orEmpty().toMutableSet()
             index += id
-            prefs.edit()
+            check(prefs.edit()
                 .putString(KEY_PREFIX + id, encrypted)
                 .putStringSet(KEY_INDEX, index)
-                .apply()
+                .commit()) { "Could not save encrypted voucher history" }
         }
 
         id
@@ -49,10 +48,12 @@ class VoucherHistoryStore(context: Context) {
         prefs.getStringSet(KEY_INDEX, emptySet()).orEmpty().size
     }
 
-    suspend fun recent(limit: Int = 20): List<SavedVoucherBatch> =
+    suspend fun recent(limit: Int = 20): List<SavedVoucherBatch> = page(limit.coerceIn(1, 100))
+
+    /** Decrypt only this bounded page, never the entire archive. beforeId is the previous page cursor. */
+    suspend fun page(limit: Int = 20, beforeId: String? = null): List<SavedVoucherBatch> =
         withContext(Dispatchers.IO) {
-            prefs.getStringSet(KEY_INDEX, emptySet())
-                .orEmpty()
+            VoucherHistoryIndex.page(prefs.getStringSet(KEY_INDEX, emptySet()).orEmpty(), limit, beforeId)
                 .mapNotNull { id ->
                     val encoded = prefs.getString(KEY_PREFIX + id, null) ?: return@mapNotNull null
                     runCatching {
@@ -61,13 +62,12 @@ class VoucherHistoryStore(context: Context) {
                         )
                         SavedVoucherBatch(
                             id = id,
-                            createdAtEpochMs = id.toLongOrNull() ?: 0L,
+                            createdAtEpochMs = VoucherHistoryIndex.timestamp(id),
                             batch = batch
                         )
                     }.getOrNull()
                 }
-                .sortedByDescending { it.createdAtEpochMs }
-                .take(limit.coerceIn(1, 100))
+
         }
 
     private fun encrypt(plaintext: ByteArray): String {
@@ -126,6 +126,7 @@ class VoucherHistoryStore(context: Context) {
     }
 
     private companion object {
+        val WRITE_LOCK = Any()
         const val PREFS_NAME = "fg_voucher_history"
         const val KEY_INDEX = "batch_index"
         const val KEY_PREFIX = "batch_"

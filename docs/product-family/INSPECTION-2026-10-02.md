@@ -104,3 +104,7 @@ No capacity claim is made and no licensing caps are introduced. Current generati
 7. Windows architecture decision after reusable domain contracts exist; implement real tables/printing/secure storage/installer and Windows 10/11 validation. Android remains a client.
 
 Competitive feature names in the specification are requirements, not independently verified claims about other vendors. No proprietary code/assets/branding is copied.
+
+## Subsequent archive stabilization
+
+VoucherHistoryStore now selects a bounded page of encrypted batch IDs before decrypting. New IDs combine timestamp and UUID; existing timestamp IDs remain readable with the original Keystore alias/cipher/preferences unchanged. Writes are serialized across instances and committed durably; save failures are surfaced instead of silently discarded. VoucherHistoryIndex tests exercise 80,000 synthetic ID entries, not 80,000 stored/activated vouchers, database scale, or 80 routers. Sorting the preference index remains O(N log N); this is a mitigation, not the final indexed business database or an enterprise-readiness claim. The archive UI still shows recent batches; the cursor API prepares safe further paging without adding an unsupported button.
