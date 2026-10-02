@@ -20,7 +20,7 @@ data class BusinessState(
 class BusinessViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
     private val store=BusinessStore(BusinessDatabase(application))
     private var scope: BusinessScope? = null
-    private val mutable=MutableStateFlow(BusinessState())
+    private val mutable=MutableStateFlow(BusinessState(saved=savedState.get<Int>("saved") ?: 0))
     val state=mutable.asStateFlow()
     private val subscriberCursors=mutableListOf<Pair<String,String>?>(null)
     private val ledgerCursors=mutableListOf<Long?>(null)
@@ -84,19 +84,24 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
         savedState["subscriber"]=sub.id
         mutable.value=mutable.value.copy(selected=sub,entries=emptyList(),balance=null)
         ledgerCursors.clear(); ledgerCursors.add(null); loadLedger()
-        mutable.value=mutable.value.copy(saved=mutable.value.saved+1)
+        markSaved()
     }
     fun post(id: String,kind: LedgerKind,amount: Long,note: String) = run {
         val sub=mutable.value.selected!!.id
         withContext(Dispatchers.IO) { store.post(scope!!,sub,id,kind,amount,note) }
         ledgerCursors.clear(); ledgerCursors.add(null); loadLedger()
-        mutable.value=mutable.value.copy(saved=mutable.value.saved+1)
+        markSaved()
     }
     fun reverse(entry: String,id: String,reason: String) = run {
         val sub=mutable.value.selected!!.id
         withContext(Dispatchers.IO) { store.reverse(scope!!,sub,entry,id,reason) }
         ledgerCursors.clear(); ledgerCursors.add(null); loadLedger()
-        mutable.value=mutable.value.copy(saved=mutable.value.saved+1)
+        markSaved()
+    }
+    private fun markSaved() {
+        val next=mutable.value.saved+1
+        savedState["saved"]=next
+        mutable.value=mutable.value.copy(saved=next)
     }
     override fun onCleared() { store.close(); super.onCleared() }
 }

@@ -32,10 +32,11 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
     var editor by rememberSaveable { mutableStateOf<String?>(null) }
     var reverseId by rememberSaveable { mutableStateOf<String?>(null) }
     var search by rememberSaveable { mutableStateOf("") }
+    var handledSave by rememberSaveable { mutableStateOf(state.saved) }
     fun tr(ar: String,en: String)=if(arabic) ar else en
     fun back() { if(!state.busy) { if(state.selected != null) model.back() else onBack() } }
     BackHandler { back() }
-    LaunchedEffect(state.saved) { if(state.saved>0) { editor=null; reverseId=null } }
+    LaunchedEffect(state.saved) { if(state.saved!=handledSave) { editor=null; reverseId=null; handledSave=state.saved } }
     val error=state.error?.let { code -> when(code) {
         "INVALID_AMOUNT" -> tr("اكتب مبلغًا صحيحًا أكبر من صفر، بحد أقصى منزلتين عشريتين.","Enter a positive amount with at most two decimal places.")
         "INVALID_TEXT" -> tr("راجع الحقول المطلوبة وطول النص.","Check required fields and text length.")

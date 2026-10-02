@@ -40,6 +40,7 @@ class BusinessUiTest {
         compose.onNodeWithText("Amount EGP").performTextInput("400.05")
         compose.onNodeWithText("Description / reason").performTextInput("Demo cash payment")
         compose.activityRule.scenario.recreate()
+        waitText("400.05")
         compose.onNodeWithText("400.05").assertExists()
         tap("Save"); waitText("Balance due: 600.05 EGP")
         capture("business-en.png")
