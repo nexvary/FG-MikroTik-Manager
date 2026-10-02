@@ -58,8 +58,8 @@ fun AboutDeveloperScreen(
                     )
                 )
             )
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         item {
             Card(
@@ -72,13 +72,13 @@ fun AboutDeveloperScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
+                            .size(40.dp)
                             .background(
                                 Brush.sweepGradient(
                                     listOf(FgBlue, FgCyan, FgMint, FgBlue)
@@ -92,7 +92,7 @@ fun AboutDeveloperScreen(
                         Text(
                             "FG",
                             color = FgMint,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black
                         )
                     }
@@ -103,7 +103,7 @@ fun AboutDeveloperScreen(
                     ) {
                         Text(
                             if (arabic) "عن المطور" else "About the developer",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black,
                             color = FgWhite
                         )
@@ -157,15 +157,6 @@ fun AboutDeveloperScreen(
         }
 
         item {
-            Text(
-                if (arabic) "روابط المطور" else "Developer links",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-                color = FgBlue
-            )
-        }
-
-        item {
             DeveloperLinkButton(
                 title = if (arabic) "الموقع الرسمي · fgmachines.org" else "Official website · fgmachines.org",
                 subtitle = "https://fgmachines.org",
@@ -205,7 +196,7 @@ fun AboutDeveloperScreen(
             )
         }
 
-        item { Spacer(Modifier.height(10.dp)) }
+
     }
 }
 
@@ -226,21 +217,21 @@ private fun AccentInfoCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
                     .background(accent.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
-                    .padding(10.dp),
+                    .padding(6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 icon()
             }
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(7.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     title,
@@ -250,7 +241,7 @@ private fun AccentInfoCard(
                 )
                 Text(
                     body,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = FgSilver
                 )
             }
@@ -275,7 +266,7 @@ private fun DeveloperLinkButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 7.dp),
+                .padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {

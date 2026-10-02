@@ -19,6 +19,7 @@ capture() {
   test -s "ui-proof/$file.png"
 }
 
+capture login 00-login
 capture menu 01-main-menu
 capture network 02-network
 capture system 03-system-security
@@ -33,6 +34,8 @@ done
 adb shell wm size 1080x2400
 adb shell wm density 480
 capture vouchers vouchers-1080
+capture login login-1080
+capture about about-1080
 adb logcat -d -s AndroidRuntime:E > ui-proof/android-runtime.log
 if rg -q 'FATAL EXCEPTION' ui-proof/android-runtime.log; then
   cat ui-proof/android-runtime.log

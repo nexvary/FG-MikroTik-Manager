@@ -24,7 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Info
@@ -38,6 +38,8 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -153,6 +155,14 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
 
 @Composable
 fun RouterDemoApp(screen: String) {
+    if (screen == "login") {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            FgMikroTikTheme {
+                ConnectionScreen(false, false, listOf(DiscoveredRouter("MikroTik", "192.168.1.104")), null, true, {}, {}, {}, {}, {})
+            }
+        }
+        return
+    }
     if (screen in setOf("active-vouchers", "portal-login", "portal-status")) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             FgMikroTikTheme { HotspotToolsScreen(true, null, emptyList(), if(screen == "active-vouchers") "active" else screen, {}, demo = true) }
@@ -305,28 +315,24 @@ private fun ConnectionScreen(
                 .padding(padding)
                 .background(FgBlack),
             contentPadding = PaddingValues(14.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                Text(
-                    if (arabic) "اتصال بالراوتر" else "Connect to router",
-                    color = FgMint,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black
-                )
                 Text(
                     if (arabic) {
                         "اختر الراوتر الموجود على الشبكة ثم اكتب كلمة المرور."
                     } else {
                         "Select a discovered router, then enter its password."
                     },
-                    color = FgSilver
+                    color = FgSilver,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
 
             item {
                 Button(
                     onClick = onDiscover,
+                    colors = ButtonDefaults.buttonColors(containerColor = FgRoyalBlue, contentColor = FgWhite),
                     enabled = !discovering && !connecting,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -404,6 +410,8 @@ private fun ConnectionScreen(
 
             item {
                 OutlinedTextField(
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = FgMetalSilver, unfocusedBorderColor = FgMetalSilver, focusedLabelColor = FgSilver, cursorColor = FgBlue),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
                     value = host,
                     onValueChange = { host = it; onClearError() },
                     modifier = Modifier.fillMaxWidth(),
@@ -415,6 +423,8 @@ private fun ConnectionScreen(
 
             item {
                 OutlinedTextField(
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = FgMetalSilver, unfocusedBorderColor = FgMetalSilver, focusedLabelColor = FgSilver, cursorColor = FgBlue),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
                     value = username,
                     onValueChange = { username = it; onClearError() },
                     modifier = Modifier.fillMaxWidth(),
@@ -425,6 +435,7 @@ private fun ConnectionScreen(
 
             item {
                 OutlinedTextField(
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = FgMetalSilver, unfocusedBorderColor = FgMetalSilver, focusedLabelColor = FgSilver, cursorColor = FgBlue),
                     value = password,
                     onValueChange = { password = it; onClearError() },
                     modifier = Modifier.fillMaxWidth(),
@@ -457,6 +468,7 @@ private fun ConnectionScreen(
                             )
                         )
                     },
+                    colors = ButtonDefaults.buttonColors(containerColor = FgRoyalBlue, contentColor = FgWhite),
                     enabled = !connecting && host.isNotBlank() && username.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -474,7 +486,7 @@ private fun ConnectionScreen(
                     modifier = Modifier.fillMaxWidth(),
                     border = BorderStroke(1.2.dp, FgPurple)
                 ) {
-                    Icon(Icons.Outlined.CreditCard, contentDescription = null, tint = FgPurple)
+                    Icon(Icons.Outlined.ConfirmationNumber, contentDescription = null, tint = FgPurple)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         if (arabic) "إنشاء كروت بدون راوتر" else "Create vouchers offline",
@@ -806,7 +818,7 @@ private fun MainMenuScreen(
             AppSection.VOUCHERS,
             if (arabic) "إنشاء الكروت" else "Voucher Studio",
             if (arabic) "كروت احترافية مع المدة والسعر والانتهاء والتفعيل المباشر" else "Professional vouchers with duration, price, expiry and direct activation",
-            Icons.Outlined.CreditCard,
+            Icons.Outlined.ConfirmationNumber,
             FgPurple
         ),
         MenuEntry(
@@ -1099,7 +1111,7 @@ private fun CompactAppHeader(
             .fillMaxWidth()
             .background(FgDeepNavy)
             .statusBarsPadding()
-            .height(56.dp)
+            .height(48.dp)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1187,7 +1199,7 @@ private fun sectionIcon(section: AppSection): ImageVector =
         AppSection.ADVANCED -> Icons.Outlined.Tune
         AppSection.NETWORK -> Icons.Outlined.Wifi
         AppSection.SYSTEM -> Icons.Outlined.Security
-        AppSection.VOUCHERS -> Icons.Outlined.CreditCard
+        AppSection.VOUCHERS -> Icons.Outlined.ConfirmationNumber
         AppSection.ABOUT -> Icons.Outlined.Info
     }
 

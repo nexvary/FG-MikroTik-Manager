@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 // FG Link 2.1.2 visual identity
-val FgBlack = Color(0xFF02080E)
+val FgBlack = Color(0xFF030405)
 val FgDeepNavy = Color(0xFF04131F)
 val FgNavy = Color(0xFF071C2B)
 val FgPanel = Color(0xFF0A1F30)
@@ -17,6 +17,9 @@ val FgPanelRaised = Color(0xFF0E2A3D)
 val FgSilver = Color(0xFFC8D5DF)
 val FgSilverMuted = Color(0xFF8FA5B5)
 val FgWhite = Color(0xFFF4F7FA)
+
+val FgRoyalBlue = Color(0xFF173F70)
+val FgMetalSilver = Color(0xFFBCC4CE)
 
 val FgBlue = Color(0xFF159DFF)
 val FgCyan = Color(0xFF16D4E8)
