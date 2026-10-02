@@ -73,5 +73,5 @@ fun CommandLibraryDialog(arabic: Boolean, onSelect: (String) -> Unit, onDismiss:
                 TextButton(enabled = command != null, onClick = { command?.let(onSelect) }) { Text(label("إضافة للمعاينة", "Add to preview")) }
             }
         },
-        dismissButton = { TextButton(onClick = { if(selected != null) selected = null else onDismiss() }) { Text(label("رجوع", "Back")) } )
+        dismissButton = { TextButton(onClick = { if(selected != null) selected = null else onDismiss() }) { Text(label("رجوع", "Back")) } })
 }
