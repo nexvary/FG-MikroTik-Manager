@@ -23,6 +23,7 @@ class ApiRouterOsTransport(
     private var input: BufferedInputStream? = null
     private var output: BufferedOutputStream? = null
     private var loggedIn = false
+    @Volatile private var disposed = false
 
     override suspend fun read(menu: String): List<Map<String, String>> =
         command("/" + clean(menu) + "/print")
@@ -76,6 +77,7 @@ class ApiRouterOsTransport(
         }
 
     private fun ensureConnected() {
+        if (disposed) throw RouterOsException("RouterOS API session was closed")
         if (socket?.isConnected == true && socket?.isClosed == false && loggedIn) {
             return
         }
@@ -83,6 +85,8 @@ class ApiRouterOsTransport(
         closeInternal()
         val newSocket = Socket()
         try {
+            socket = newSocket
+            if (disposed) throw RouterOsException("RouterOS API session was closed")
             newSocket.tcpNoDelay = true
             newSocket.keepAlive = true
             newSocket.soTimeout = 20_000
@@ -90,7 +94,7 @@ class ApiRouterOsTransport(
                 InetSocketAddress(settings.normalizedHost(), settings.port),
                 8_000
             )
-            socket = newSocket
+            if (disposed) throw RouterOsException("RouterOS API session was closed")
             input = BufferedInputStream(newSocket.getInputStream())
             output = BufferedOutputStream(newSocket.getOutputStream())
             login()
@@ -172,14 +176,16 @@ class ApiRouterOsTransport(
         }
 
     override fun close() {
+        disposed = true
         closeInternal()
     }
 
     private fun closeInternal() {
         loggedIn = false
+        // Closing the socket first interrupts a blocked buffered read immediately.
+        runCatching { socket?.close() }
         runCatching { input?.close() }
         runCatching { output?.close() }
-        runCatching { socket?.close() }
         input = null
         output = null
         socket = null

@@ -15,7 +15,10 @@ class AutoRouterOsTransport internal constructor(
         RestRouterOsTransport(settings.copy(port = 443, protocol = RouterProtocol.REST_HTTPS))
     ) })
 
-    private var delegate: RouterOsTransport? = null
+    @Volatile private var delegate: RouterOsTransport? = null
+    private val lifecycleLock = Any()
+    private var selecting: List<RouterOsTransport> = emptyList()
+    @Volatile private var disposed = false
     private val selectionMutex = Mutex()
 
     override suspend fun read(menu: String): List<Map<String, String>> =
@@ -38,15 +41,27 @@ class AutoRouterOsTransport internal constructor(
     ): T = operation(selectTransport())
 
     private suspend fun selectTransport(): RouterOsTransport = selectionMutex.withLock {
+        if (disposed) throw RouterOsException("RouterOS session was closed")
         delegate?.let { return@withLock it }
         val candidates = candidatesFactory()
+        synchronized(lifecycleLock) {
+            if (disposed) {
+                candidates.forEach { runCatching { it.close() } }
+                throw RouterOsException("RouterOS session was closed")
+            }
+            selecting = candidates
+        }
         var lastError: Throwable? = null
         for (candidate in candidates) {
             try {
                 // Negotiate with a read only. Never replay a possibly applied mutation
                 // over another protocol when its response is lost.
                 candidate.read("system/identity")
-                delegate = candidate
+                synchronized(lifecycleLock) {
+                    if (disposed) throw RouterOsException("RouterOS session was closed")
+                    delegate = candidate
+                    selecting = emptyList()
+                }
                 candidates.filter { it !== candidate }.forEach { runCatching { it.close() } }
                 return@withLock candidate
             } catch (cancelled: CancellationException) {
@@ -55,6 +70,7 @@ class AutoRouterOsTransport internal constructor(
             } catch (t: Exception) {
                 lastError = t
                 runCatching { candidate.close() }
+                if (disposed) throw RouterOsException("RouterOS session was closed", cause = t)
             }
         }
 
@@ -65,7 +81,13 @@ class AutoRouterOsTransport internal constructor(
     }
 
     override fun close() {
-        delegate?.close()
-        delegate = null
+        val transports = synchronized(lifecycleLock) {
+            disposed = true
+            val active = selecting + listOfNotNull(delegate)
+            selecting = emptyList()
+            delegate = null
+            active.distinct()
+        }
+        transports.forEach { runCatching { it.close() } }
     }
 }

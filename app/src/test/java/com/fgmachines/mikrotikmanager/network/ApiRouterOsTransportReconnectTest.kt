@@ -38,6 +38,9 @@ class ApiRouterOsTransportReconnectTest {
             }
             assertEquals("7.16.2", transport.read("system/resource").single()["version"])
             server.get(6, TimeUnit.SECONDS)
+            transport.close()
+            try { transport.read("system/resource"); fail("Closed session must not reopen") }
+            catch (expected: RouterOsException) { assertTrue(expected.message!!.contains("closed")) }
             Unit
         } finally {
             transport.close(); listener.close(); executor.shutdownNow()
