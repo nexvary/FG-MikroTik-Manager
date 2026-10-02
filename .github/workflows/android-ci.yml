@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ !contains(github.event.head_commit.message, '[ui-proof-only]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -102,61 +103,10 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: |
-            mkdir -p ui-proof
-            adb shell wm size 720x1600
-            adb shell wm density 320
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen menu
-            sleep 3
-            adb exec-out screencap -p > ui-proof/01-main-menu.png
-
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen network
-            sleep 3
-            adb exec-out screencap -p > ui-proof/02-network.png
-
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen system
-            sleep 3
-            adb exec-out screencap -p > ui-proof/03-system-security.png
-
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen admin-users
-            sleep 3
-            adb exec-out screencap -p > ui-proof/04-admin-users.png
-
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen vouchers
-            sleep 3
-            adb exec-out screencap -p > ui-proof/05-vouchers.png
-
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen about
-            sleep 3
-            adb exec-out screencap -p > ui-proof/06-about.png
-
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen commands
-            sleep 3
-            adb exec-out screencap -p > ui-proof/07-command-center.png
-
-            for screen in routes active-vouchers portal-login portal-status advanced readiness doctor wizard repair backup; do
-              adb shell am force-stop com.fgmachines.mikrotikmanager
-              adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen "$screen"
-              sleep 3
-              adb exec-out screencap -p > "ui-proof/$screen.png"
-            done
-            adb shell wm size 1080x2400
-            adb shell wm density 480
-            adb shell am force-stop com.fgmachines.mikrotikmanager
-            adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen vouchers
-            sleep 3
-            adb exec-out screencap -p > ui-proof/vouchers-1080.png
+          script: bash scripts/capture-ui-proof.sh
 
       - name: Upload UI proof
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: FG-MTM-0.8.0-ui-proof
