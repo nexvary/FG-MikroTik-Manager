@@ -128,7 +128,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: bash scripts/capture-ui-proof.sh && bash scripts/test-business-device.sh
+          script: bash scripts/run-ui-checks.sh
 
       - name: Upload UI proof
         if: always()

@@ -33,7 +33,14 @@ class NavigationBackTest {
         }
         compose.waitForIdle()
     }
+    private fun reveal(text: String) {
+        if (compose.onAllNodesWithText(text).fetchSemanticsNodes().isEmpty()) {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
+        }
+        runCatching { compose.onNodeWithText(text).performScrollTo() }
+    }
     private fun tap(text: String) {
+        reveal(text)
         val node = compose.onNodeWithText(text)
         runCatching { node.performScrollTo() }
         node.performClick()
@@ -65,6 +72,7 @@ class NavigationBackTest {
         phoneBack()
         compose.onNodeWithText("Open Network management").assertExists()
         compose.onNodeWithContentDescription("Back").performClick()
+        reveal("Technical settings")
         compose.onNodeWithText("Technical settings").assertExists()
     }
 }
