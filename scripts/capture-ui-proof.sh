@@ -14,6 +14,7 @@ capture() {
   adb shell am force-stop com.fgmachines.mikrotikmanager
   adb shell am start -n com.fgmachines.mikrotikmanager/.MainActivity --ez ui_demo true --es demo_screen "$screen"
   sleep 6
+  python3 scripts/ui-proof-device.py "ui-proof/$file.xml"
   test -n "$(adb shell pidof com.fgmachines.mikrotikmanager)"
   adb exec-out screencap -p > "ui-proof/$file.png"
   test -s "ui-proof/$file.png"
@@ -25,8 +26,7 @@ for language in login login-en; do
   capture "$language" "tls-$language-before"
   adb shell input swipe 360 1200 360 400 400
   sleep 1
-  adb shell uiautomator dump /sdcard/tls.xml
-  adb pull /sdcard/tls.xml ui-proof/tls.xml
+  python3 scripts/ui-proof-device.py ui-proof/tls.xml
   read -r tx ty < <(python3 - <<'PYTAP'
 import xml.etree.ElementTree as ET, re
 root=ET.parse('ui-proof/tls.xml').getroot()
@@ -39,8 +39,7 @@ PYTAP
   sleep 1
   adb shell input swipe 360 1250 360 350 400
   sleep 1
-  adb shell uiautomator dump /sdcard/tls.xml
-  adb pull /sdcard/tls.xml ui-proof/tls.xml
+  python3 scripts/ui-proof-device.py ui-proof/tls.xml
   read -r tx ty < <(python3 - <<'PYTLS'
 import xml.etree.ElementTree as ET, re
 root=ET.parse('ui-proof/tls.xml').getroot()
@@ -53,8 +52,7 @@ PYTLS
   sleep 1
   adb shell input swipe 360 1250 360 600 400
   sleep 1
-  adb shell uiautomator dump /sdcard/tls.xml
-  adb pull /sdcard/tls.xml "ui-proof/tls-$language.xml"
+  python3 scripts/ui-proof-device.py "ui-proof/tls-$language.xml"
   grep -q '8729' "ui-proof/tls-$language.xml"
   adb exec-out screencap -p > "ui-proof/tls-$language.png"
 done

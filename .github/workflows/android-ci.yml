@@ -1,6 +1,16 @@
 name: Android CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      tested_run:
+        description: Existing run whose APKs will be verified without rebuilding
+        required: true
+        default: "37153796474"
+      tested_commit:
+        description: Exact application source commit for those APKs
+        required: true
+        default: "8d0423358d403bcb21306d6a294e2af4d7043b60"
   push:
     branches:
       - main
@@ -15,7 +25,7 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ !contains(github.event.head_commit.message, '[ui-proof-only]') }}
+    if: ${{ github.event_name != 'workflow_dispatch' && !contains(github.event.head_commit.message, '[ui-proof-only]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -79,6 +89,7 @@ jobs:
 
 
   ui-proof:
+    if: ${{ always() && (needs.build.result == 'success' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ui-proof-only]')) }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -103,17 +114,33 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
+      - name: Validate reused application sources
+        if: needs.build.result == 'skipped'
+        env:
+          TESTED_COMMIT: ${{ inputs.tested_commit || '8d0423358d403bcb21306d6a294e2af4d7043b60' }}
+          TESTED_RUN: ${{ inputs.tested_run || '37153796474' }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          actual=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TESTED_RUN}" --jq .head_sha)
+          test "$actual" = "$TESTED_COMMIT"
+          git fetch --depth=1 origin "$TESTED_COMMIT"
+          git diff --exit-code "$TESTED_COMMIT" HEAD -- app/src app/build.gradle.kts build.gradle.kts settings.gradle.kts gradle.properties gradle
+
       - name: Download tested APK
         uses: actions/download-artifact@v4
         with:
           name: FG-MTM-0.12.0-debug
           path: app/build/outputs/apk/debug
+          run-id: ${{ inputs.tested_run || (needs.build.result == 'skipped' && '37153796474') || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Download instrumentation APK
         uses: actions/download-artifact@v4
         with:
           name: FG-MTM-0.12.0-android-tests
           path: app/build/outputs/apk/androidTest/debug
+          run-id: ${{ inputs.tested_run || (needs.build.result == 'skipped' && '37153796474') || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Enable KVM
         run: |
