@@ -129,7 +129,7 @@ class BusinessExpansionTest {
         legacy.version=1;legacy.close()
         helper=BusinessDatabase(context,name);store=BusinessStore(helper);ops=BusinessOperations(store);scope=store.defaultScope()
         assertEquals("legacy-org",scope.organizationId);assertEquals("legacy-sub",store.subscribers(scope).items.single().id)
-        assertEquals(700L,store.balance(scope,"legacy-sub"));assertEquals(4,helper.readableDatabase.version)
+        assertEquals(700L,store.balance(scope,"legacy-sub"));assertEquals(5,helper.readableDatabase.version)
         ops.addPlan(scope,"p","New","HOTSPOT","EGP",100,10);ops.renew(scope,"i","legacy-sub","p",0,20000)
         assertEquals(800L,store.balance(scope,"legacy-sub"));reject { helper.writableDatabase.execSQL("DELETE FROM ledger") }
     }

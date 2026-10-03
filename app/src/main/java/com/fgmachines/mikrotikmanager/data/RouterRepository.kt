@@ -525,14 +525,14 @@ class RouterRepository private constructor(
     override fun close() = transport.close()
 
     companion object {
-        fun create(settings: RouterConnectionSettings): RouterRepository {
+        fun create(settings: RouterConnectionSettings,decorate:(RouterOsTransport)->RouterOsTransport={it}): RouterRepository {
             val transport = when (settings.protocol) {
                 RouterProtocol.AUTO -> AutoRouterOsTransport(settings)
                 RouterProtocol.API, RouterProtocol.API_SSL -> ApiRouterOsTransport(settings)
                 RouterProtocol.REST_HTTP,
                 RouterProtocol.REST_HTTPS -> RestRouterOsTransport(settings)
             }
-            return RouterRepository(transport, settings.host + ":" + settings.username)
+            return RouterRepository(decorate(transport), settings.host + ":" + settings.username)
         }
 
         internal fun forTesting(transport: RouterOsTransport): RouterRepository =

@@ -46,6 +46,6 @@ class BusinessTeamTest {
         context.assets.open("business-v1.sql").bufferedReader().use{it.readText()}.split("\n-- statement\n").filter{it.isNotBlank()}.forEach{db.execSQL(it.trim())}
         BusinessSchemaV2.install(db);BusinessSchemaV3.install(db);db.version=3;db.close()
         store=BusinessStore(BusinessDatabase(context,name));s=store.defaultScope();team=BusinessTeam(store)
-        assertEquals(700L,store.balance(s,"legacy-sub"));member();assertEquals(1,team.members(s).size);assertEquals(4,store.helper.readableDatabase.version)
+        assertEquals(700L,store.balance(s,"legacy-sub"));member();assertEquals(1,team.members(s).size);assertEquals(5,store.helper.readableDatabase.version)
     }
 }

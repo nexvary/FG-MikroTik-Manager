@@ -32,6 +32,9 @@ import java.util.UUID
 @Composable
 fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit,onLanguageToggle: ()->Unit,model: BusinessToolsViewModel=viewModel(),router: BusinessRouter?=null) {
     val state by model.state.collectAsStateWithLifecycle()
+    val permissions=LocalBusinessPermissions.current
+    val manageAccess=LocalManageAccess.current
+    fun can(p:BusinessPermission)=p in permissions
     val context=androidx.compose.ui.platform.LocalContext.current
     SideEffect { model.router=router }
     LaunchedEffect(state.receipt) { state.receipt?.let { printBusinessReceipt(context,it);model.receiptConsumed() } }
@@ -59,6 +62,8 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
     BackHandler { back() }
     LaunchedEffect(state.saved) { if(handled!=state.saved) { editor=null;password="";confirmation="";backupUri=null;handled=state.saved;if(state.message=="BRANCH_CHANGED") onBack() } }
     val error=state.error?.let { code -> when(code) {
+        "ACCESS_DENIED","LOGIN_REQUIRED" -> tr("الدخول أو الصلاحيات لا تسمح بهذه العملية.","Current sign-in or permissions do not allow this operation.")
+        "RESTORE_BEFORE_IDENTITY" -> tr("استعد بيانات الأعمال قبل تفعيل حساب المالك على الجهاز الجديد.","Restore business data before enrolling the owner on a new device.")
         "REVERSE_COMMISSION_FIRST" -> tr("اعكس عمولة الموزع من محفظته قبل إلغاء البيع.","Reverse the reseller commission in their wallet before canceling this sale.")
         "NETWORK_INVOICE_LOCKED" -> tr("أوقف الخدمة من تطبيق على الراوتر قبل إلغاء الفاتورة.","Suspend service from Apply to router before canceling this invoice.")
         "NOT_BOUND" -> tr("استورد حساب الشبكة واربطه بهذا المشترك أولًا.","Import and bind the network account first.")
@@ -77,7 +82,11 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
     } }
     if(state.tab=="team") { TeamScreen(arabic,{model.tab("home")});return }
     if(state.tab=="archive") { VoucherArchiveScreen(arabic,{model.tab("home")});return }
-    val tabs=listOf("team" to tr("الموظفون والموزعون","Staff & resellers"),"archive" to tr("نقل أرشيف الكروت","Transfer voucher archive"),"network" to tr("استيراد من الراوتر","Router import"),"sales" to tr("المبيعات والإيصالات","Sales & receipts"),"plans" to tr("الباقات والتجديد","Plans & renewal"),"invoices" to tr("الفواتير","Invoices"),"expenses" to tr("المصروفات","Expenses"),"reports" to tr("التقارير والتصدير","Reports & export"),"branches" to tr("الفروع","Branches"),"import" to tr("استيراد المشتركين","Import subscribers"),"backup" to tr("نسخ واستعادة","Backup & restore"),"audit" to tr("سجل التدقيق","Audit trail"))
+    val tabs=(listOf("access" to tr("الدخول والصلاحيات","Sign in & permissions"))+listOf("team" to tr("الموظفون والموزعون","Staff & resellers"),"archive" to tr("نقل أرشيف الكروت","Transfer voucher archive"),"network" to tr("استيراد من الراوتر","Router import"),"sales" to tr("المبيعات والإيصالات","Sales & receipts"),"plans" to tr("الباقات والتجديد","Plans & renewal"),"invoices" to tr("الفواتير","Invoices"),"expenses" to tr("المصروفات","Expenses"),"reports" to tr("التقارير والتصدير","Reports & export"),"branches" to tr("الفروع","Branches"),"import" to tr("استيراد المشتركين","Import subscribers"),"backup" to tr("نسخ واستعادة","Backup & restore"),"audit" to tr("سجل التدقيق","Audit trail"))).filter { (id,_) -> can(when(id){
+        "access"->BusinessPermission.AUTH;"team"->BusinessPermission.TEAM;"archive"->BusinessPermission.VOUCHERS
+        "network"->BusinessPermission.ROUTER;"import"->BusinessPermission.IMPORT;"branches","backup"->BusinessPermission.BRANCHES
+        "expenses"->BusinessPermission.CONFIGURE;else->BusinessPermission.READ
+    }) }
     Scaffold(containerColor=FgBlack,topBar={ TopAppBar(title={Text(tabs.firstOrNull { it.first==state.tab }?.second ?: tr("إدارة الأعمال","Business tools"))},navigationIcon={IconButton(onClick={back()},enabled=!state.busy){Icon(Icons.AutoMirrored.Outlined.ArrowBack,tr("رجوع","Back"))}},actions={IconButton(onClick=onLanguageToggle){Icon(Icons.Outlined.Language,tr("اللغة","Language"))}},colors=TopAppBarDefaults.topAppBarColors(containerColor=FgPanel)) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),contentPadding=PaddingValues(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             item { Text(tr("الفرع الحالي: ","Current branch: ")+state.branch,color=FgMint) }
@@ -90,7 +99,7 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                     items(tabs.chunked(2)) { row ->
                         Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                             row.forEach { (id,label) ->
-                                OutlinedButton(onClick={model.tab(id)},enabled=!state.busy,
+                                OutlinedButton(onClick={if(id=="access")manageAccess() else model.tab(id)},enabled=!state.busy,
                                     modifier=Modifier.weight(1f).heightIn(min=68.dp)) { Text(label) }
                             }
                         }
@@ -113,25 +122,25 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                 }
                 "sales" -> {
                     item { Text(tr("مبيعات يدوية بدون إدارة مخزون أو ضرائب.","Manual sales without inventory or tax management."),color=FgSilver)
-                        if(subscriber!=null)Button(onClick={editor="sale"},enabled=!state.busy){Text(tr("بيع جديد","New sale"))}
+                        if(subscriber!=null && can(BusinessPermission.POST))Button(onClick={editor="sale"},enabled=!state.busy){Text(tr("بيع جديد","New sale"))}
                         else Text(tr("افتح حساب العميل ثم إدارة الأعمال لإضافة بيع.","Open a customer account, then Business tools to add a sale."),color=FgSilver)
                     }
                     items(state.sales,key={it.id}) { sale -> BusinessToolCard {
                         Text(sale.customer,color=FgMint);Text(BusinessMoney.format(sale.total,sale.currency),color=FgAmber)
                         TextButton(onClick={model.receipt(sale.id,true,arabic)},enabled=!state.busy){Text(tr("طباعة / حفظ PDF","Print / save PDF"))}
                         if(sale.voided)Text(tr("ملغاة","Canceled"),color=FgSilver)
-                        else TextButton(onClick={target=sale.id;editor="saleCancel"},enabled=!state.busy){Text(tr("إلغاء البيع","Cancel sale"))}
+                        else if(can(BusinessPermission.REVERSE))TextButton(onClick={target=sale.id;editor="saleCancel"},enabled=!state.busy){Text(tr("إلغاء البيع","Cancel sale"))}
                     } }
                 }
                 "plans" -> {
-                    item { Button(onClick={editor="plan"},enabled=!state.busy){Text(tr("باقة جديدة","Add plan"))} }
+                    item { if(can(BusinessPermission.CONFIGURE))Button(onClick={editor="plan"},enabled=!state.busy){Text(tr("باقة جديدة","Add plan"))} }
                     item { Text(subscriber?.let { tr("تجديد للمشترك: ","Renew for: ")+it.name } ?: tr("افتح حساب مشترك ثم إدارة الأعمال لتجديد اشتراكه.","Open a subscriber account, then Business tools to renew."),color=FgSilver) }
                     items(state.plans,key={it.id}) { p -> BusinessToolCard {
                         Text(p.name,color=FgMint,style=MaterialTheme.typography.titleMedium)
                         Text(tr("السعر: ","Price: ")+BusinessMoney.format(p.price,p.currency),color=FgWhite)
                         Text(tr("المدة: ","Duration: ")+p.days+tr(" يوم"," days"),color=FgSilver)
                         Text(p.service,color=FgSilver)
-                        if(subscriber!=null) OutlinedButton(onClick={target=p.id;planName=p.name;planPrice=p.price;planCurrency=p.currency;editor="renew"},enabled=!state.busy && subscriber.currency==p.currency && subscriber.service==p.service){Text(tr("تجديد وإصدار فاتورة","Renew & invoice"))}
+                        if(subscriber!=null && can(BusinessPermission.POST)) OutlinedButton(onClick={target=p.id;planName=p.name;planPrice=p.price;planCurrency=p.currency;editor="renew"},enabled=!state.busy && subscriber.currency==p.currency && subscriber.service==p.service){Text(tr("تجديد وإصدار فاتورة","Renew & invoice"))}
                     } }
                     if(state.plans.isEmpty() && !state.busy) item { Text(tr("لا توجد باقات في هذا الفرع.","No plans in this branch."),color=FgSilver) }
                 }
@@ -145,9 +154,9 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                         Text(tr("النهاية (غير شاملة): ","End (exclusive): ")+businessLtr(LocalDate.ofEpochDay(inv.end).toString()),color=FgSilver)
                         Text(tr("مرجع: ","Reference: ")+inv.id,color=FgSilver,style=MaterialTheme.typography.bodySmall)
                         TextButton(onClick={model.receipt(inv.id,false,arabic)},enabled=!state.busy){Text(tr("طباعة / حفظ PDF","Print / save PDF"))}
-                        if(!inv.voided) OutlinedButton(onClick={target=inv.id;editor="network"},enabled=!state.busy && router!=null){Text(tr("تطبيق على الراوتر","Apply to router"))}
+                        if(!inv.voided && can(BusinessPermission.ROUTER)) OutlinedButton(onClick={target=inv.id;editor="network"},enabled=!state.busy && router!=null){Text(tr("تطبيق على الراوتر","Apply to router"))}
                         if(inv.voided) Text(tr("ملغاة بقيد عكسي","Canceled with reversal"),color=FgAmber)
-                        else OutlinedButton(onClick={target=inv.id;editor="cancel"},enabled=!state.busy){Text(tr("إلغاء الفاتورة","Cancel invoice"))}
+                        else if(can(BusinessPermission.REVERSE))OutlinedButton(onClick={target=inv.id;editor="cancel"},enabled=!state.busy){Text(tr("إلغاء الفاتورة","Cancel invoice"))}
                     } }
                     if(state.invoices.isEmpty() && !state.busy) item { Text(tr("لا توجد فواتير. أصدر فاتورة من تجديد باقة لمشترك.","No invoices. Renew a subscriber plan to issue one."),color=FgSilver) }
                 }
@@ -156,7 +165,7 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                     items(state.expenses,key={it.id}) { e -> BusinessToolCard {
                         Text(e.category,color=FgMint);Text(BusinessMoney.format(e.amount,e.currency),color=FgAmber);Text(e.note,color=FgWhite)
                         if(e.reversed) Text(tr("تم عكس المصروف","Expense reversed"),color=FgSilver)
-                        else if(e.reversalOf==null) TextButton(onClick={target=e.id;editor="expenseReverse"},enabled=!state.busy){Text(tr("عكس المصروف","Reverse expense"))}
+                        else if(e.reversalOf==null && can(BusinessPermission.REVERSE)) TextButton(onClick={target=e.id;editor="expenseReverse"},enabled=!state.busy){Text(tr("عكس المصروف","Reverse expense"))}
                         else Text(tr("قيد عكسي","Reversal"),color=FgSilver)
                     } }
                     if(state.expenses.isEmpty() && !state.busy) item { Text(tr("لا توجد مصروفات مسجلة.","No recorded expenses."),color=FgSilver) }
@@ -172,10 +181,10 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                         Text(tr("المصروفات: ","Expenses: ")+BusinessMoney.format(t.expenses,t.currency),color=FgWhite)
                         Text(tr("الرصيد الكلي: ","All-time balance: ")+BusinessMoney.format(t.balance,t.currency),color=FgAmber)
                     } }
-                    item { OutlinedButton(onClick={csv.launch("FG-MTM-${state.from}-${state.to}.csv")},enabled=!state.busy && error==null){Text(tr("تصدير حركة الفترة CSV","Export period CSV"))};Text(tr("التصدير يحتوي بيانات العملاء والمبالغ بوحدات العملة الصغرى مثل القروش.","Export includes customer data and amounts in minor units such as cents."),color=FgSilver) }
+                    if(can(BusinessPermission.EXPORT))item { OutlinedButton(onClick={csv.launch("FG-MTM-${state.from}-${state.to}.csv")},enabled=!state.busy && error==null){Text(tr("تصدير حركة الفترة CSV","Export period CSV"))};Text(tr("التصدير يحتوي بيانات العملاء والمبالغ بوحدات العملة الصغرى مثل القروش.","Export includes customer data and amounts in minor units such as cents."),color=FgSilver) }
                 }
                 "branches" -> {
-                    item { Text(tr("فصل محلي للسجلات؛ لا توجد صلاحيات موظفين في هذه المرحلة.","Local record separation; employee authorization is not included yet."),color=FgSilver);Button(onClick={editor="branch"},enabled=!state.busy){Text(tr("فرع جديد","Add branch"))} }
+                    item { Text(tr("فصل محلي للسجلات؛ الموظف المسجل مقيد بفرعه.","Local branch separation. Enrolled staff are restricted to their assigned branch."),color=FgSilver);Button(onClick={editor="branch"},enabled=!state.busy){Text(tr("فرع جديد","Add branch"))} }
                     items(state.branches,key={it.id}) { b -> OutlinedButton(onClick={model.switchBranch(b.id)},enabled=!state.busy && b.id!=state.branchId,modifier=Modifier.fillMaxWidth()){Text(b.name+if(b.id==state.branchId) tr(" • الحالي"," • current") else "")} }
                 }
                 "import" -> {
@@ -190,16 +199,17 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                     }
                 }
                 "backup" -> {
-                    item { Text(tr("نسخة مشفّرة لكل فروع بيانات الأعمال، حتى 20 ميجابايت قبل التشفير. لا تشمل أرشيف الكروت القديم أو كلمات مرور الراوتر. احفظ كلمة المرور؛ لا يمكن استرجاعها.","Encrypted backup of business data across all branches, up to 20 MiB before encryption. Excludes legacy vouchers and router passwords. Keep the password; it cannot be recovered."),color=FgSilver) }
+                    item { Text(tr("نسخة مشفّرة لكل فروع بيانات الأعمال، حتى 20 ميجابايت قبل التشفير. لا تشمل أرشيف الكروت القديم أو كلمات مرور الراوتر أو بيانات دخول الموظفين. احفظ كلمة المرور؛ لا يمكن استرجاعها.","Encrypted backup of business data across all branches, up to 20 MiB before encryption. Excludes legacy vouchers, router passwords and employee credentials. Keep the password; it cannot be recovered."),color=FgSilver) }
                     item { Button(onClick={backupFile.launch("FG-MTM-business-${LocalDate.now()}.fgbackup")},enabled=!state.busy){Text(tr("إنشاء نسخة مشفّرة","Create encrypted backup"))} }
-                    item { Text(tr("الاستعادة مسموحة فقط في سجل أعمال لم يُستخدم، ولا تستبدل بيانات موجودة. لا تحذف تطبيقك الحالي أو بياناته بغرض الاستعادة.","Restore is allowed only into an unused business store and never overwrites existing data. Do not uninstall or clear your current app to restore."),color=FgAmber) }
+                    item { Text(tr("الاستعادة مسموحة فقط قبل تفعيل حساب المالك وفي سجل أعمال لم يُستخدم، ولا تستبدل بيانات موجودة. لا تحذف تطبيقك الحالي أو بياناته بغرض الاستعادة.","Restore is allowed only into an unused business store before owner enrollment and never overwrites existing data. Do not uninstall or clear your current app to restore."),color=FgAmber) }
                     item { OutlinedButton(onClick={restoreFile.launch(arrayOf("application/octet-stream","*/*"))},enabled=!state.busy){Text(tr("اختيار نسخة للاستعادة","Choose backup to restore"))} }
                 }
                 "audit" -> {
-                    item { Text(tr("سجل محلي آلي من إصدار 0.10.0. الفاعل: التطبيق المحلي؛ ليس نظام هوية موظفين أو سجلًا محصنًا ضد جهاز مخترق.","Automatic local trail from 0.10.0. Actor: local app; not employee identity or protection against a compromised device."),color=FgSilver) }
+                    item { Text(tr("يسجل السجل المحلي هوية الحساب بعد تفعيل الدخول. الأحداث القديمة تظل منسوبة للتطبيق المحلي. ليس سجلًا محصنًا ضد جهاز مخترق.","Local trail records account IDs after sign-in enrollment. Older events retain local-app attribution. Not tamper-proof on a compromised device."),color=FgSilver) }
                     items(state.audit,key={it.sequence}) { a -> BusinessToolCard {
                         Text("#${a.sequence} • ${a.entity} • ${a.action}",color=FgMint)
                         Text(a.id,color=FgSilver,style=MaterialTheme.typography.bodySmall)
+                        Text(tr("الفاعل: ","Actor: ")+a.actor,color=FgSilver,style=MaterialTheme.typography.bodySmall)
                         Text(DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(a.at)),color=FgWhite)
                     } }
                     if(state.audit.isEmpty() && !state.busy) item { Text(tr("لا توجد أحداث بعد.","No events yet."),color=FgSilver) }

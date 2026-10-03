@@ -70,13 +70,15 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     val advancedManager get() = repository?.advanced
     val hotspotManager get() = repository?.hotspot
     private val voucherHistory = VoucherHistoryStore(application)
+    private suspend fun archiveCount()=runCatching{voucherHistory.count()}.getOrDefault(0)
+    private suspend fun archiveRecent()=runCatching{voucherHistory.recent()}.getOrDefault(emptyList())
     private val mndpDiscovery = MndpDiscovery(application)
 
     init {
         viewModelScope.launch {
             _state.value = _state.value.copy(
-                voucherHistoryCount = voucherHistory.count(),
-                recentVoucherBatches = voucherHistory.recent()
+                voucherHistoryCount = archiveCount(),
+                recentVoucherBatches = archiveRecent()
             )
         }
     }
@@ -117,15 +119,15 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
             _state.value = _state.value.copy(connecting = true, error = null)
             try {
                 repository?.close()
-                val newRepository = RouterRepository.create(settings)
+                val newRepository = RouterRepository.create(settings) { com.fgmachines.mikrotikmanager.business.BusinessAuthorizedTransport(it,com.fgmachines.mikrotikmanager.business.BusinessStore(com.fgmachines.mikrotikmanager.business.BusinessDatabase(getApplication()))) }
                 repository = newRepository
                 val dashboard = newRepository.loadDashboard()
                 _state.value = RouterUiState(
                     connected = true,
                     dashboard = dashboard,
                     interfaces = dashboard.interfaces,
-                    voucherHistoryCount = voucherHistory.count(),
-                    recentVoucherBatches = voucherHistory.recent()
+                    voucherHistoryCount = archiveCount(),
+                    recentVoucherBatches = archiveRecent()
                 )
                 refreshVoucherProfiles(VoucherMode.HOTSPOT)
             } catch (t: Throwable) {
@@ -133,8 +135,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 repository = null
                 _state.value = RouterUiState(
                     error = t.message ?: "Connection failed",
-                    voucherHistoryCount = voucherHistory.count(),
-                    recentVoucherBatches = voucherHistory.recent()
+                    voucherHistoryCount = archiveCount(),
+                    recentVoucherBatches = archiveRecent()
                 )
             }
         }
@@ -452,8 +454,8 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val saved = runCatching { voucherHistory.save(batch) }
             _state.value = _state.value.copy(
-                voucherHistoryCount = voucherHistory.count(),
-                recentVoucherBatches = voucherHistory.recent(),
+                voucherHistoryCount = archiveCount(),
+                recentVoucherBatches = archiveRecent(),
                 error = saved.exceptionOrNull()?.let { "Could not save voucher archive: " + it.message } ?: _state.value.error
             )
         }
@@ -477,15 +479,15 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
                 _state.value = _state.value.copy(
                     voucherProvisioning = false,
                     voucherProvisionResult = summary,
-                    voucherHistoryCount = voucherHistory.count(),
-                    recentVoucherBatches = voucherHistory.recent()
+                    voucherHistoryCount = archiveCount(),
+                    recentVoucherBatches = archiveRecent()
                 )
             }.onFailure { throwable ->
                 _state.value = _state.value.copy(
                     voucherProvisioning = false,
                     error = throwable.message ?: "Voucher provisioning failed",
-                    voucherHistoryCount = voucherHistory.count(),
-                    recentVoucherBatches = voucherHistory.recent()
+                    voucherHistoryCount = archiveCount(),
+                    recentVoucherBatches = archiveRecent()
                 )
             }
         }
@@ -506,7 +508,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun refreshArchive() { viewModelScope.launch {
-        _state.value=_state.value.copy(voucherHistoryCount=voucherHistory.count(),recentVoucherBatches=voucherHistory.recent())
+        _state.value=_state.value.copy(voucherHistoryCount=archiveCount(),recentVoucherBatches=archiveRecent())
     } }
 
     fun clearError() {

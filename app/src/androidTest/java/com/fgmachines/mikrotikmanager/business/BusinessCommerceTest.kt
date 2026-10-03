@@ -59,7 +59,7 @@ class BusinessCommerceTest {
         val freshName="legacy-${UUID.randomUUID()}.db";val fresh=BusinessStore(BusinessDatabase(context,freshName))
         try{val clear=BusinessBackupCipher.decrypt(BusinessBackup(fresh).export(password),password);val root=org.json.JSONObject(String(clear));root.put("schema",2);(BusinessSchemaV3.tables+BusinessSchemaV4.tables).forEach{root.getJSONObject("tables").remove(it)}
             val v2=BusinessBackupCipher.encrypt(root.toString().toByteArray(),password);BusinessBackup(fresh).restore(v2,password)
-            assertEquals(4,fresh.helper.readableDatabase.version)
+            assertEquals(5,fresh.helper.readableDatabase.version)
         }finally{fresh.close();context.deleteDatabase(freshName);password.fill('\u0000')}
     }
     @Test fun versionTwoUpgradePreservesExistingFinancialHistory(){
@@ -67,7 +67,7 @@ class BusinessCommerceTest {
         val db=context.openOrCreateDatabase(name,0,null)
         context.assets.open("business-v1.sql").bufferedReader().use{it.readText()}.split("\n-- statement\n").filter{it.isNotBlank()}.forEach{db.execSQL(it.trim())}
         BusinessSchemaV2.install(db);db.version=2;db.close()
-        store=BusinessStore(BusinessDatabase(context,name));scope=store.defaultScope();assertEquals(700L,store.balance(scope,"legacy-sub"));assertEquals(4,store.helper.readableDatabase.version)
+        store=BusinessStore(BusinessDatabase(context,name));scope=store.defaultScope();assertEquals(700L,store.balance(scope,"legacy-sub"));assertEquals(5,store.helper.readableDatabase.version)
         store.post(scope,"legacy-sub","p",LedgerKind.PAYMENT,200,"Received",PaymentMethod.BANK,"R");assertEquals(500L,store.balance(scope,"legacy-sub"))
     }
 }

@@ -21,6 +21,12 @@ data class SavedVoucherBatch(
 )
 
 class VoucherHistoryStore(context: Context, prefsName: String = PREFS_NAME) {
+    private val appContext=context.applicationContext
+    private fun authorize() {
+        com.fgmachines.mikrotikmanager.business.BusinessStore(com.fgmachines.mikrotikmanager.business.BusinessDatabase(appContext)).use {
+            it.authorize(null,com.fgmachines.mikrotikmanager.business.BusinessPermission.VOUCHERS)
+        }
+    }
     private val prefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private val json = Json {
         ignoreUnknownKeys = true
@@ -28,6 +34,7 @@ class VoucherHistoryStore(context: Context, prefsName: String = PREFS_NAME) {
     }
 
     suspend fun save(batch: VoucherBatch): String = withContext(Dispatchers.IO) {
+        authorize()
         val timestamp = System.currentTimeMillis()
         val id = VoucherHistoryIndex.newId(timestamp)
         val plaintext = json.encodeToString(batch).toByteArray(Charsets.UTF_8)
@@ -45,6 +52,7 @@ class VoucherHistoryStore(context: Context, prefsName: String = PREFS_NAME) {
     }
 
     suspend fun count(): Int = withContext(Dispatchers.IO) {
+        authorize()
         prefs.getStringSet(KEY_INDEX, emptySet()).orEmpty().size
     }
 
@@ -53,6 +61,7 @@ class VoucherHistoryStore(context: Context, prefsName: String = PREFS_NAME) {
     /** Decrypt only this bounded page, never the entire archive. beforeId is the previous page cursor. */
     suspend fun page(limit: Int = 20, beforeId: String? = null): List<SavedVoucherBatch> =
         withContext(Dispatchers.IO) {
+        authorize()
             VoucherHistoryIndex.page(prefs.getStringSet(KEY_INDEX, emptySet()).orEmpty(), limit, beforeId)
                 .mapNotNull { id ->
                     val encoded = prefs.getString(KEY_PREFIX + id, null) ?: return@mapNotNull null
@@ -72,6 +81,7 @@ class VoucherHistoryStore(context: Context, prefsName: String = PREFS_NAME) {
 
     /** Fail closed if any legacy batch cannot be decrypted; never export a silently incomplete archive. */
     suspend fun exportPortable(password: CharArray): ByteArray = withContext(Dispatchers.IO) {
+        authorize()
         val clear=synchronized(WRITE_LOCK) {
             val rows=org.json.JSONArray();var size=0L
             val ids=prefs.getStringSet(KEY_INDEX,emptySet()).orEmpty().sorted()
@@ -92,6 +102,7 @@ class VoucherHistoryStore(context: Context, prefsName: String = PREFS_NAME) {
 
     /** Validate all rows before one atomic preference commit. Existing IDs must match exactly. */
     suspend fun importPortable(bytes: ByteArray,password: CharArray): Int = withContext(Dispatchers.IO) {
+        authorize()
         val clear=com.fgmachines.mikrotikmanager.business.BusinessBackupCipher.decrypt(bytes,password)
         val root=try { org.json.JSONObject(String(clear,Charsets.UTF_8)) } finally { clear.fill(0) }
         require(root.getString("format")=="FG-MTM-vouchers" && root.getInt("schema")==1) { "INVALID_BACKUP" }

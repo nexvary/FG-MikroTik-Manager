@@ -41,7 +41,7 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
             }
             catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { mutable.value=mutable.value.copy(error=when(e.message) {
-                "INVALID_AMOUNT", "INVALID_TEXT", "IDEMPOTENCY_CONFLICT", "ALREADY_REVERSED", "SUBSCRIBER_NOT_FOUND" -> e.message
+                "ACCESS_DENIED", "LOGIN_REQUIRED", "INVALID_AMOUNT", "INVALID_TEXT", "IDEMPOTENCY_CONFLICT", "ALREADY_REVERSED", "SUBSCRIBER_NOT_FOUND" -> e.message
                 else -> if(e.message.orEmpty().contains("CANCEL_INVOICE_FIRST") || e.message.orEmpty().contains("CANCEL_SALE_FIRST")) "CANCEL_INVOICE_FIRST" else "SAVE_OR_LOAD_FAILED"
             }) }
             finally { mutable.value=mutable.value.copy(busy=false) }

@@ -29,6 +29,8 @@ import java.util.UUID
 @Composable
 fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,model: BusinessViewModel = viewModel(),router: BusinessRouter?=null) {
     val state by model.state.collectAsStateWithLifecycle()
+    val permissions=LocalBusinessPermissions.current
+    fun can(p:BusinessPermission)=p in permissions
     var toolsOpen by rememberSaveable { mutableStateOf(false) }
     if(toolsOpen) {
         BusinessToolsScreen(arabic,state.selected,{ toolsOpen=false;model.resetBranch() },onLanguageToggle,router=router)
@@ -43,6 +45,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
     BackHandler { back() }
     LaunchedEffect(state.saved) { if(state.saved!=handledSave) { editor=null; reverseId=null; handledSave=state.saved } }
     val error=state.error?.let { code -> when(code) {
+        "ACCESS_DENIED","LOGIN_REQUIRED" -> tr("الدخول أو الصلاحيات لا تسمح بهذه العملية.","Current sign-in or permissions do not allow this operation.")
         "INVALID_AMOUNT" -> tr("اكتب مبلغًا صحيحًا أكبر من صفر، بحد أقصى منزلتين عشريتين.","Enter a positive amount with at most two decimal places.")
         "INVALID_TEXT" -> tr("راجع الحقول المطلوبة وطول النص.","Check required fields and text length.")
         "IDEMPOTENCY_CONFLICT" -> tr("رقم العملية مستخدم ببيانات مختلفة. راجع السجل قبل المحاولة من جديد.","This operation ID has different data. Review the ledger before retrying.")
@@ -68,7 +71,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
                 item { OutlinedTextField(value=search,onValueChange={ search=it.take(120) },label={ Text(tr("الاسم أو الهاتف أو حساب الشبكة","Name, phone or network account")) },modifier=Modifier.fillMaxWidth(),singleLine=true) }
                 item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick={ model.search(search) },enabled=!state.busy,modifier=Modifier.weight(1f)) { Text(tr("بحث","Search")) }
-                    Button(onClick={ editor="subscriber" },enabled=!state.busy,modifier=Modifier.weight(1f)) { Icon(Icons.Outlined.Add,null); Text(tr("مشترك جديد","Add subscriber")) }
+                    if(can(BusinessPermission.CUSTOMER))Button(onClick={ editor="subscriber" },enabled=!state.busy,modifier=Modifier.weight(1f)) { Icon(Icons.Outlined.Add,null); Text(tr("مشترك جديد","Add subscriber")) }
                 } }
                 if(state.subscribers.isEmpty() && !state.busy && state.error==null) item { Text(tr("لا يوجد مشتركون هنا. أضف مشتركًا أو غيّر البحث.","No subscribers here. Add one or change your search."),color=FgSilver) }
                 items(state.subscribers,key={it.id}) { record ->
@@ -91,7 +94,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
                         Text(tr("الموجب: مطلوب من المشترك. السالب: رصيد لصالحه.","Positive: subscriber owes. Negative: subscriber credit."),color=FgSilver,style=MaterialTheme.typography.bodySmall)
                     }
                 } }
-                item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                if(can(BusinessPermission.POST))item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     Button(onClick={ editor="payment" },enabled=!state.busy,modifier=Modifier.weight(1f)) { Text(tr("تسجيل دفعة","Record payment")) }
                     OutlinedButton(onClick={ editor="charge" },enabled=!state.busy,modifier=Modifier.weight(1f)) { Text(tr("إضافة مستحق","Add charge")) }
                 } }
@@ -104,7 +107,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
                             Text(DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(entry.createdAt)),color=FgSilver)
                             Text(tr("مرجع: ","Reference: ")+entry.id.take(8),color=FgSilver,style=MaterialTheme.typography.bodySmall)
                             if(entry.reversed) Text(tr("تم عكس العملية","Entry reversed"),color=FgAmber)
-                            else if(entry.kind!=LedgerKind.REVERSAL) TextButton(onClick={ reverseId=entry.id; editor="reverse" },enabled=!state.busy) { Text(tr("تصحيح بقيد عكسي","Correct with reversal")) }
+                            else if(entry.kind!=LedgerKind.REVERSAL && can(BusinessPermission.REVERSE)) TextButton(onClick={ reverseId=entry.id; editor="reverse" },enabled=!state.busy) { Text(tr("تصحيح بقيد عكسي","Correct with reversal")) }
                         }
                     }
                 }

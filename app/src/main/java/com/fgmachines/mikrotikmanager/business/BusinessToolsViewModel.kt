@@ -43,7 +43,7 @@ class BusinessToolsViewModel(app: Application,private val savedState: SavedState
             } catch(c: CancellationException) { throw c }
             catch(e: Exception) {
                 val code=e.message.orEmpty()
-                val known=listOf("REVERSE_COMMISSION_FIRST","ROUTER_REQUIRED","WRONG_ROUTER","NOT_BOUND","BINDING_CONFLICT","NETWORK_INVOICE_LOCKED","LATEST_INVOICE_REQUIRED","ROUTER_CLOCK_MISMATCH","MODERN_CLOCK_REQUIRED","PROFILE_NOT_FOUND","ACCOUNT_CHANGED","INVALID_AMOUNT","INVALID_TEXT","IDEMPOTENCY_CONFLICT","PLAN_MISMATCH","CANCEL_LATEST_FIRST","ALREADY_REVERSED","CSV_HEADER","INVALID_CSV","IMPORT_LIMIT","IMPORT_CONFLICT","EMPTY_IMPORT","FILE_TOO_LARGE","RESTORE_NEEDS_EMPTY_STORE","PASSWORD_SHORT","INVALID_DATE","DUPLICATE_BRANCH")
+                val known=listOf("ACCESS_DENIED","LOGIN_REQUIRED","RESTORE_BEFORE_IDENTITY","REVERSE_COMMISSION_FIRST","ROUTER_REQUIRED","WRONG_ROUTER","NOT_BOUND","BINDING_CONFLICT","NETWORK_INVOICE_LOCKED","LATEST_INVOICE_REQUIRED","ROUTER_CLOCK_MISMATCH","MODERN_CLOCK_REQUIRED","PROFILE_NOT_FOUND","ACCOUNT_CHANGED","INVALID_AMOUNT","INVALID_TEXT","IDEMPOTENCY_CONFLICT","PLAN_MISMATCH","CANCEL_LATEST_FIRST","ALREADY_REVERSED","CSV_HEADER","INVALID_CSV","IMPORT_LIMIT","IMPORT_CONFLICT","EMPTY_IMPORT","FILE_TOO_LARGE","RESTORE_NEEDS_EMPTY_STORE","PASSWORD_SHORT","INVALID_DATE","DUPLICATE_BRANCH")
                 mutable.value=mutable.value.copy(error=known.firstOrNull { code==it } ?: "OPERATION_FAILED")
             } finally { mutable.value=mutable.value.copy(busy=false) }
         }
@@ -103,7 +103,7 @@ class BusinessToolsViewModel(app: Application,private val savedState: SavedState
         importText=null;mutable.value=mutable.value.copy(importPreview=null);saved("IMPORTED")
     }
     fun exportCsv(uri: Uri,template: Boolean=false)=run {
-        val s=scope!!;val range=dates(mutable.value.from,mutable.value.to)
+        val s=scope!!;withContext(Dispatchers.IO){store.authorize(s,if(template)BusinessPermission.IMPORT else BusinessPermission.EXPORT)};val range=dates(mutable.value.from,mutable.value.to)
         withContext(Dispatchers.IO) { getApplication<Application>().contentResolver.openOutputStream(uri,"wt")!!.bufferedWriter(Charsets.UTF_8).use { if(template) it.write(BusinessTransfer.TEMPLATE) else transfer.export(s,range.first,range.second,it) } };saved("EXPORTED")
     }
     fun backup(uri: Uri,password: CharArray,restore: Boolean) {
@@ -125,12 +125,14 @@ class BusinessToolsViewModel(app: Application,private val savedState: SavedState
         }
     }
     fun scanRouter()=run {
+        withContext(Dispatchers.IO){store.authorize(scope!!,BusinessPermission.ROUTER)}
         mutable.value=mutable.value.copy(catalog=null)
         val r=router ?: error("ROUTER_REQUIRED")
         val catalog=withContext(Dispatchers.IO) { r.catalog() }
         mutable.value=mutable.value.copy(catalog=catalog)
     }
     fun importRouter(selected: Set<String>,currency: String)=run {
+        withContext(Dispatchers.IO){store.authorize(scope!!,BusinessPermission.ROUTER)}
         val c=mutable.value.catalog ?: error("ROUTER_REQUIRED");val r=router ?: error("ROUTER_REQUIRED")
         withContext(Dispatchers.IO) {
             require(r.identity().first==c.fingerprint) { "WRONG_ROUTER" }
@@ -138,6 +140,7 @@ class BusinessToolsViewModel(app: Application,private val savedState: SavedState
         };saved("IMPORTED")
     }
     fun prepareNetwork(invoice: String,profile: String,megabytes: Long)=run {
+        withContext(Dispatchers.IO){store.authorize(scope!!,BusinessPermission.ROUTER)}
         val r=router ?: error("ROUTER_REQUIRED")
         val job=withContext(Dispatchers.IO) {
             network.validateLatest(scope!!,invoice)
@@ -149,6 +152,7 @@ class BusinessToolsViewModel(app: Application,private val savedState: SavedState
         };mutable.value=mutable.value.copy(networkJob=job)
     }
     fun applyNetwork(suspendAccount: Boolean)=run {
+        withContext(Dispatchers.IO){store.authorize(scope!!,BusinessPermission.ROUTER)}
         val r=router ?: error("ROUTER_REQUIRED");val job=mutable.value.networkJob ?: error("JOB_NOT_FOUND")
         withContext(Dispatchers.IO) {
             network.validateLatest(scope!!,job.invoice)

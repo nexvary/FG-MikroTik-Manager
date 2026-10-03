@@ -11,7 +11,7 @@ data class BusinessPlan(val id: String,val name: String,val service: String,val 
 data class BusinessInvoice(val sequence: Long,val id: String,val subscriberId: String,val customer: String,val plan: String,val amount: Long,val currency: String,val paid: Long,val start: Long,val end: Long,val voided: Boolean)
 data class BusinessExpense(val sequence: Long,val id: String,val category: String,val amount: Long,val currency: String,val note: String,val reversed: Boolean,val reversalOf: String?)
 data class BusinessBranch(val id: String,val name: String)
-data class BusinessAudit(val sequence: Long,val entity: String,val id: String,val action: String,val at: Long)
+data class BusinessAudit(val sequence: Long,val entity: String,val id: String,val action: String,val at: Long,val actor:String="local-app")
 data class BusinessTotals(val currency: String,val charges: Long,val receipts: Long,val expenses: Long,val balance: Long)
 
 class BusinessOperations(private val store: BusinessStore) {
@@ -21,8 +21,14 @@ class BusinessOperations(private val store: BusinessStore) {
         require(id.isNotBlank() && id.length<=80) { "INVALID_ID" }
         put("id",id);put("organization_id",s.organizationId);put("branch_id",s.branchId);put("created_at",System.currentTimeMillis())
     }
-    fun branches(s: BusinessScope): List<BusinessBranch> = db.rawQuery("SELECT id,name FROM branches WHERE organization_id=? ORDER BY name,id",arrayOf(s.organizationId)).use { c -> buildList { while(c.moveToNext()) add(BusinessBranch(c.getString(0),c.getString(1))) } }
+    fun branches(s:BusinessScope):List<BusinessBranch> = store.guarded(s,BusinessPermission.READ) {
+        db.rawQuery("SELECT id,name FROM branches WHERE organization_id=? ORDER BY name,id",arrayOf(s.organizationId)).use { c->
+            buildList { while(c.moveToNext())add(BusinessBranch(c.getString(0),c.getString(1))) }
+        }.filter { store.allowed(BusinessPermission.BRANCHES) || it.id==s.branchId }
+    }
     fun addBranch(s: BusinessScope,id: String,name: String) = store.transaction { d ->
+        store.authorize(s,BusinessPermission.BRANCHES)
+
         val clean=businessText(name,120,true)
         require(id.isNotBlank() && id.length<=80)
         d.rawQuery("SELECT name FROM branches WHERE organization_id=? AND id=?",arrayOf(s.organizationId,id)).use { c ->
@@ -30,13 +36,18 @@ class BusinessOperations(private val store: BusinessStore) {
         }
         require(branches(s).none { it.name.equals(clean,true) }) { "DUPLICATE_BRANCH" }
         d.execSQL("INSERT INTO branches(id,organization_id,name) VALUES(?,?,?)",arrayOf(id,s.organizationId,clean))
-        d.execSQL("INSERT INTO audit(organization_id,branch_id,entity,entity_id,action,created_at) VALUES(?,?,'branches',?,'CREATE',?)",arrayOf(s.organizationId,id,id,System.currentTimeMillis()))
+        d.execSQL("INSERT INTO audit(organization_id,branch_id,entity,entity_id,action,actor,created_at) VALUES(?,?,'branches',?,'CREATE',(SELECT actor FROM audit_context WHERE id=1),?)",arrayOf(s.organizationId,id,id,System.currentTimeMillis()))
     }
     fun selectBranch(s: BusinessScope,id: String) = store.transaction { d ->
+        store.authorize(s,BusinessPermission.READ)
+        store.authorize(BusinessScope(s.organizationId,id),BusinessPermission.READ)
+
         require(branches(s).any { it.id==id }) { "SCOPE_MISMATCH" }
         d.execSQL("UPDATE settings SET branch_id=? WHERE id=1 AND organization_id=?",arrayOf(id,s.organizationId))
     }
     fun addPlan(s: BusinessScope,id: String,name: String,service: String,currency: String,price: Long,days: Int): BusinessPlan = store.transaction { d ->
+        store.authorize(s,BusinessPermission.CONFIGURE)
+
         require(price in 1..BusinessMoney.MAX_MINOR && days in 1..3660) { "INVALID_AMOUNT" }
         require(service in listOf("HOTSPOT","PPPOE","OTHER") && currency in BusinessMoney.currencies)
         val p=BusinessPlan(id,businessText(name,120,true),service,currency,price,days)
@@ -46,12 +57,16 @@ class BusinessOperations(private val store: BusinessStore) {
     private fun Cursor.plan()=BusinessPlan(getString(0),getString(1),getString(2),getString(3),getLong(4),getInt(5))
     private fun planOrNull(s: BusinessScope,id: String)=db.rawQuery("SELECT id,name,service,currency,price_minor,days FROM plans WHERE organization_id=? AND branch_id=? AND id=?",args(s)+id).use { if(it.moveToFirst()) it.plan() else null }
     fun plans(s: BusinessScope,offset: Int=0): BusinessPage<BusinessPlan> {
+        store.authorize(s,BusinessPermission.READ)
+
         require(offset>=0)
         val rows=db.rawQuery("SELECT id,name,service,currency,price_minor,days FROM plans WHERE organization_id=? AND branch_id=? ORDER BY name,id LIMIT 31 OFFSET ?",args(s)+offset.toString()).use { c -> buildList { while(c.moveToNext()) add(c.plan()) } }
         return BusinessPage(rows.take(30),rows.size>30)
     }
     /** One atomic local renewal: invoice + receivable + optional cash receipt. Replay never extends twice. */
     fun renew(s: BusinessScope,id: String,subscriberId: String,planId: String,paid: Long,today: Long=LocalDate.now().toEpochDay(),method: PaymentMethod=PaymentMethod.CASH,reference: String=""): BusinessInvoice = store.transaction { d ->
+        store.authorize(s,BusinessPermission.POST)
+
         require(id.length<=64 && id.isNotBlank())
         val sub=store.subscriber(s,subscriberId); val plan=planOrNull(s,planId) ?: error("PLAN_NOT_FOUND")
         require(sub.currency==plan.currency && sub.service==plan.service) { "PLAN_MISMATCH" }
@@ -71,15 +86,19 @@ class BusinessOperations(private val store: BusinessStore) {
             put("paid_minor",paid);put("charge_id","$id:c");if(paid>0) put("payment_id","$id:p") else putNull("payment_id")
         }); invoice(s,id)!!
     }
-    fun subscriptionEnd(s: BusinessScope,sub: String): Long? = db.rawQuery("""SELECT MAX(ends_day) FROM invoices i WHERE organization_id=? AND branch_id=? AND subscriber_id=?
-        AND NOT EXISTS(SELECT 1 FROM invoice_voids v WHERE v.invoice_id=i.id)""",args(s)+sub).use { it.moveToFirst();if(it.isNull(0)) null else it.getLong(0) }
+    fun subscriptionEnd(s: BusinessScope,sub: String): Long? =store.guarded(s,BusinessPermission.READ) {  db.rawQuery("""SELECT MAX(ends_day) FROM invoices i WHERE organization_id=? AND branch_id=? AND subscriber_id=?
+        AND NOT EXISTS(SELECT 1 FROM invoice_voids v WHERE v.invoice_id=i.id)""",args(s)+sub).use { it.moveToFirst();if(it.isNull(0)) null else it.getLong(0) } }
     private val invoiceColumns="i.sequence,i.id,i.subscriber_id,i.customer_name,i.plan_name,i.amount_minor,i.currency,i.paid_minor,i.starts_day,i.ends_day,EXISTS(SELECT 1 FROM invoice_voids v WHERE v.invoice_id=i.id)"
     private fun Cursor.invoice()=BusinessInvoice(getLong(0),getString(1),getString(2),getString(3),getString(4),getLong(5),getString(6),getLong(7),getLong(8),getLong(9),getInt(10)!=0)
-    fun invoice(s: BusinessScope,id: String): BusinessInvoice?=db.rawQuery("SELECT $invoiceColumns FROM invoices i WHERE organization_id=? AND branch_id=? AND id=?",args(s)+id).use { if(it.moveToFirst()) it.invoice() else null }
+    fun invoice(s: BusinessScope,id: String): BusinessInvoice?=store.guarded(s,BusinessPermission.READ) { db.rawQuery("SELECT $invoiceColumns FROM invoices i WHERE organization_id=? AND branch_id=? AND id=?",args(s)+id).use { if(it.moveToFirst()) it.invoice() else null } }
     fun invoices(s: BusinessScope,before: Long=Long.MAX_VALUE): BusinessPage<BusinessInvoice> {
+        store.authorize(s,BusinessPermission.READ)
+
         val rows=db.rawQuery("SELECT $invoiceColumns FROM invoices i WHERE organization_id=? AND branch_id=? AND sequence<? ORDER BY sequence DESC LIMIT 31",args(s)+before.toString()).use { c -> buildList { while(c.moveToNext()) add(c.invoice()) } };return BusinessPage(rows.take(30),rows.size>30)
     }
     fun cancelInvoice(s: BusinessScope,invoiceId: String,id: String,reason: String) = store.transaction { d ->
+        store.authorize(s,BusinessPermission.REVERSE)
+
         val clean=businessText(reason,500,true); require(id.length<=64 && id.isNotBlank())
         val inv=invoice(s,invoiceId) ?: error("INVOICE_NOT_FOUND")
         d.rawQuery("SELECT invoice_id,reason FROM invoice_voids WHERE organization_id=? AND branch_id=? AND id=?",args(s)+id).use { c ->
@@ -95,6 +114,8 @@ class BusinessOperations(private val store: BusinessStore) {
         if(inv.paid>0) store.reverse(s,inv.subscriberId,"$invoiceId:p","$id:p",clean)
     }
     fun expense(s: BusinessScope,id: String,category: String,amount: Long,currency: String,note: String) = store.transaction { d ->
+        store.authorize(s,BusinessPermission.CONFIGURE)
+
         require(amount in 1..BusinessMoney.MAX_MINOR && currency in BusinessMoney.currencies) { "INVALID_AMOUNT" }
         insertExpense(d,s,id,businessText(category,80,true),amount,currency,businessText(note,500,true),null)
     }
@@ -106,14 +127,20 @@ class BusinessOperations(private val store: BusinessStore) {
     private fun Cursor.expense()=BusinessExpense(getLong(0),getString(1),getString(2),getLong(3),getString(4),getString(5),getInt(6)!=0,if(isNull(7)) null else getString(7))
     private fun expenseById(s: BusinessScope,id: String)=db.rawQuery("SELECT $expenseColumns FROM expenses e WHERE organization_id=? AND branch_id=? AND id=?",args(s)+id).use { if(it.moveToFirst()) it.expense() else null }
     fun reverseExpense(s: BusinessScope,entry: String,id: String,reason: String)=store.transaction { d ->
+        store.authorize(s,BusinessPermission.REVERSE)
+
         val old=expenseById(s,entry) ?: error("ENTRY_NOT_FOUND");require(old.reversalOf==null) { "INVALID_REVERSAL" }
         insertExpense(d,s,id,old.category,-old.amount,old.currency,businessText(reason,500,true),old.id)
     }
     fun expenses(s: BusinessScope,before: Long=Long.MAX_VALUE): BusinessPage<BusinessExpense> {
+        store.authorize(s,BusinessPermission.READ)
+
         val rows=db.rawQuery("SELECT $expenseColumns FROM expenses e WHERE organization_id=? AND branch_id=? AND sequence<? ORDER BY sequence DESC LIMIT 31",args(s)+before.toString()).use { c -> buildList { while(c.moveToNext()) add(c.expense()) } };return BusinessPage(rows.take(30),rows.size>30)
     }
     /** Period movements; balance is all-time and labeled separately. Reversals count on their posting date. */
     fun totals(s: BusinessScope,from: Long,until: Long): List<BusinessTotals> = store.transaction { d ->
+        store.authorize(s,BusinessPermission.READ)
+
         require(from<until) { "INVALID_DATE" }
         BusinessMoney.currencies.map { currency ->
             var charges=0L;var receipts=0L
@@ -126,6 +153,8 @@ class BusinessOperations(private val store: BusinessStore) {
         }
     }
     fun audit(s: BusinessScope,before: Long=Long.MAX_VALUE): BusinessPage<BusinessAudit> {
-        val rows=db.rawQuery("SELECT sequence,entity,entity_id,action,created_at FROM audit WHERE organization_id=? AND branch_id=? AND sequence<? ORDER BY sequence DESC LIMIT 31",args(s)+before.toString()).use { c -> buildList { while(c.moveToNext()) add(BusinessAudit(c.getLong(0),c.getString(1),c.getString(2),c.getString(3),c.getLong(4))) } };return BusinessPage(rows.take(30),rows.size>30)
+        store.authorize(s,BusinessPermission.READ)
+
+        val rows=db.rawQuery("SELECT sequence,entity,entity_id,action,created_at,actor FROM audit WHERE organization_id=? AND branch_id=? AND sequence<? ORDER BY sequence DESC LIMIT 31",args(s)+before.toString()).use { c -> buildList { while(c.moveToNext()) add(BusinessAudit(c.getLong(0),c.getString(1),c.getString(2),c.getString(3),c.getLong(4),c.getString(5))) } };return BusinessPage(rows.take(30),rows.size>30)
     }
 }

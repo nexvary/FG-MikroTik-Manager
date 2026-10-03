@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.fgmachines.mikrotikmanager.business.BusinessBackupCipher
+import com.fgmachines.mikrotikmanager.business.*
 import com.fgmachines.mikrotikmanager.voucher.VoucherHistoryStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -33,6 +33,7 @@ class VoucherArchiveModel(app:Application):AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 val added=withContext(Dispatchers.IO) {
+                    BusinessStore(BusinessDatabase(getApplication())).use{it.authorize(null,BusinessPermission.VOUCHERS)}
                     val resolver=getApplication<Application>().contentResolver
                     if(restore){val bytes=resolver.openInputStream(uri)!!.use { BusinessBackupCipher.readBounded(it) };archive.importPortable(bytes,password)}
                     else { val bytes=archive.exportPortable(password);resolver.openOutputStream(uri,"wt")!!.use{it.write(bytes)};0 }

@@ -38,7 +38,9 @@ object BusinessBackupCipher {
 }
 class BusinessBackup(private val store: BusinessStore) {
     fun export(password: CharArray): ByteArray {
+        store.authorize(null,BusinessPermission.BRANCHES)
         val clear=store.transaction { db ->
+            store.authorize(null,BusinessPermission.BRANCHES)
             val root=JSONObject().put("format","FG-MTM-business").put("schema",4);val tables=JSONObject();var budget=0L
             for(table in BusinessSchemaV2.tables+BusinessSchemaV3.tables+BusinessSchemaV4.tables) {
                 val rows=JSONArray()
@@ -53,6 +55,7 @@ class BusinessBackup(private val store: BusinessStore) {
     }
     /** Restore is allowed only into an unused business store. Existing data is never overwritten. */
     fun restore(bytes: ByteArray,password: CharArray) {
+        require(!store.identity.enabled()){ "RESTORE_BEFORE_IDENTITY" }
         val clear=BusinessBackupCipher.decrypt(bytes,password)
         val root=try { JSONObject(String(clear,Charsets.UTF_8)) } finally { clear.fill(0) }
         require(root.getString("format")=="FG-MTM-business" && root.getInt("schema") in 2..4) { "INVALID_BACKUP" }
@@ -60,6 +63,7 @@ class BusinessBackup(private val store: BusinessStore) {
         val restoreTables=BusinessSchemaV2.tables+(if(root.getInt("schema")>=3) BusinessSchemaV3.tables else emptyList())+(if(root.getInt("schema")>=4) BusinessSchemaV4.tables else emptyList())
         require(tables.keys().asSequence().toSet()==restoreTables.toSet()) { "INVALID_BACKUP" }
         store.transaction { db ->
+            require(!store.identity.enabled()){ "RESTORE_BEFORE_IDENTITY" }
             for(t in listOf("subscribers","ledger","plans","invoices","expenses","audit","import_batches","team_members","reseller_entries")) db.rawQuery("SELECT COUNT(*) FROM $t",null).use { it.moveToFirst();require(it.getLong(0)==0L) { "RESTORE_NEEDS_EMPTY_STORE" } }
             require(db.rawQuery("SELECT COUNT(*) FROM branches",null).use { it.moveToFirst();it.getInt(0) }==1) { "RESTORE_NEEDS_EMPTY_STORE" }
             // All DDL and data writes are in this transaction. Rollback restores triggers and initial settings on any error.
@@ -107,10 +111,11 @@ class BusinessBackup(private val store: BusinessStore) {
             BusinessSchemaV4.createAudit(db)
             BusinessSchemaV2.createAuditTriggers(db)
             BusinessSchemaV3.createAudit(db)
+            BusinessSchemaV5.rebuildAudit(db)
             // Imported network confirmations are historical; require explicit reconciliation on this installation.
             db.execSQL("INSERT INTO network_results(job_id,state,created_at) SELECT id,'REVIEW',"+System.currentTimeMillis()+" FROM network_jobs")
             val s=store.defaultScope()
-            db.execSQL("INSERT INTO audit(organization_id,branch_id,entity,entity_id,action,created_at) VALUES(?,?,'backup','portable','RESTORE',?)",arrayOf(s.organizationId,s.branchId,System.currentTimeMillis()))
+            db.execSQL("INSERT INTO audit(organization_id,branch_id,entity,entity_id,action,actor,created_at) VALUES(?,?,'backup','portable','RESTORE',(SELECT actor FROM audit_context WHERE id=1),?)",arrayOf(s.organizationId,s.branchId,System.currentTimeMillis()))
         }
     }
 }

@@ -36,14 +36,14 @@ class TeamModel(app:Application):AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 val result=withContext(Dispatchers.IO) {
-                    val s=store.defaultScope();work(s);val ms=team.members(s);val chosen=selected?.id?.let { id->ms.firstOrNull { it.id==id } }
+                    val s=store.defaultScope();work(s);val ms=team.members(s);val chosen=selected?.id?.let { id->ms.firstOrNull { it.id==id } } ?: if(store.identity.principal()?.role=="RESELLER")ms.singleOrNull() else null
                     Triple(ms,chosen,if(chosen==null) emptyList() else team.entries(s,chosen.id)) to
-                        ((if(chosen==null) 0L else team.balance(s,chosen.id)) to BusinessSales(store).page(s).items)
+                        ((if(chosen==null) 0L else team.balance(s,chosen.id)) to if(store.allowed(BusinessPermission.READ))BusinessSales(store).page(s).items else emptyList())
                 }
                 members=result.first.first;selected=result.first.second;entries=result.first.third
                 balance=result.second.first;sales=result.second.second
                 if(write)revision++
-            } catch(e:Exception) { error=e.message?.takeIf { it in listOf("INSUFFICIENT_WALLET","INVALID_COMMISSION","INVALID_AMOUNT","IDEMPOTENCY_CONFLICT","INACTIVE_RESELLER","TEAM_LIMIT") } ?: "OPERATION_FAILED" }
+            } catch(e:Exception) { error=e.message?.takeIf { it in listOf("ACCESS_DENIED","LOGIN_REQUIRED","INSUFFICIENT_WALLET","INVALID_COMMISSION","INVALID_AMOUNT","IDEMPOTENCY_CONFLICT","INACTIVE_RESELLER","TEAM_LIMIT") } ?: "OPERATION_FAILED" }
             finally { busy=false }
         }
     }
@@ -61,12 +61,14 @@ class TeamModel(app:Application):AndroidViewModel(app) {
 @Composable
 fun TeamScreen(arabic:Boolean,onBack:()->Unit,model:TeamModel=viewModel()) {
     fun tr(a:String,e:String)=if(arabic)a else e
+    val permissions=LocalBusinessPermissions.current
+    fun can(p:BusinessPermission)=p in permissions
     var editor by rememberSaveable { mutableStateOf<String?>(null) }
     var reference by rememberSaveable { mutableStateOf("") }
     var handled by rememberSaveable { mutableIntStateOf(model.revision) }
     LaunchedEffect(Unit){model.refresh()}
     LaunchedEffect(model.revision){if(handled!=model.revision){handled=model.revision;editor=null}}
-    fun back(){if(!model.busy){if(model.selected!=null)model.select(null) else onBack()}}
+    fun back(){if(!model.busy){if(model.selected!=null && can(BusinessPermission.TEAM))model.select(null) else onBack()}}
     BackHandler { if(editor==null)back() }
     Surface(color=FgBlack,contentColor=FgWhite,modifier=Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -74,23 +76,23 @@ fun TeamScreen(arabic:Boolean,onBack:()->Unit,model:TeamModel=viewModel()) {
         if(model.busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         model.error?.let { Text(tr("لم تُحفظ العملية: ","Operation not saved: ")+it,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(12.dp)) }
         LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            item { Text(tr("سجل محلي للفرع الحالي. مسميات الأدوار للتنظيم وليست صلاحيات دخول. المحفظة سجل مستقل عن حسابات العملاء.","Local directory for the current branch. Roles describe duties, not login permissions. Wallets are separate from customer accounts."),color=FgSilver) }
+            item { Text(tr("عند تفعيل دخول الموظفين تُفرض صلاحيات الأدوار والفرع. المحفظة سجل مستقل عن حسابات العملاء.","When staff sign-in is enabled, role and branch permissions are enforced. Wallets remain separate from customer accounts."),color=FgSilver) }
             val selected=model.selected
             if(selected==null) {
-                item { Button(onClick={editor="member"},enabled=!model.busy){Text(tr("إضافة موظف أو موزع","Add staff or reseller"))} }
+                if(can(BusinessPermission.TEAM))item { Button(onClick={editor="member"},enabled=!model.busy){Text(tr("إضافة موظف أو موزع","Add staff or reseller"))} }
                 items(model.members,key={it.id}) { m->Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
                     Text(m.name+" • "+teamRole(m.role,arabic));Text(m.phone)
                     Text(if(m.active)tr("نشط","Active") else tr("موقوف","Disabled"))
                     Row { if(m.role=="RESELLER")TextButton(onClick={model.select(m)},enabled=!model.busy){Text(tr("المحفظة والعمولات","Wallet & commissions"))}
-                        TextButton(onClick={reference=m.id;editor="active"},enabled=!model.busy){Text(if(m.active)tr("إيقاف","Disable") else tr("تفعيل","Enable"))} }
+                        if(can(BusinessPermission.TEAM))TextButton(onClick={reference=m.id;editor="active"},enabled=!model.busy){Text(if(m.active)tr("إيقاف","Disable") else tr("تفعيل","Enable"))} }
                 } } }
             } else {
                 item { Text(selected.name,color=FgMint);Text(tr("الرصيد: ","Balance: ")+BusinessMoney.format(model.balance,selected.currency));Text(tr("نسبة العمولة: ","Commission: ")+"${selected.commissionBps/100.0}%")
-                    Row { listOf("DEPOSIT","WITHDRAWAL","COMMISSION").forEach { k->TextButton(onClick={editor=k},enabled=!model.busy && selected.active){Text(teamKind(k,arabic))} } }
+                    if(can(BusinessPermission.WALLET))Row { listOf("DEPOSIT","WITHDRAWAL","COMMISSION").forEach { k->TextButton(onClick={editor=k},enabled=!model.busy && selected.active){Text(teamKind(k,arabic))} } }
                 }
                 item { Text(tr("آخر 100 حركة. العمولة تُحسب على المحصل وقت البيع، وتُسجل مرة واحدة لكل بيع.","Latest 100 entries. Commission uses the amount collected at sale creation, once per sale."),color=FgSilver) }
                 items(model.entries,key={it.id}) { e->Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(teamKind(e.kind,arabic)+" • "+BusinessMoney.format(e.amount,selected.currency));Text(e.note)
-                    if(e.reversed)Text(tr("معكوسة","Reversed")) else if(e.kind!="REVERSAL")TextButton(onClick={reference=e.id;editor="REVERSAL"},enabled=!model.busy){Text(tr("عكس الحركة","Reverse entry"))}
+                    if(e.reversed)Text(tr("معكوسة","Reversed")) else if(e.kind!="REVERSAL" && can(BusinessPermission.WALLET))TextButton(onClick={reference=e.id;editor="REVERSAL"},enabled=!model.busy){Text(tr("عكس الحركة","Reverse entry"))}
                 } } }
             }
         }

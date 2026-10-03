@@ -315,6 +315,7 @@ private fun ConnectionScreen(
     onClearError: () -> Unit,
     onBusiness: () -> Unit = {}
 ) {
+    val canArchive=com.fgmachines.mikrotikmanager.business.BusinessPermission.VOUCHERS in LocalBusinessPermissions.current
     var host by rememberSaveable { mutableStateOf("") }
     var username by rememberSaveable { mutableStateOf("admin") }
     var password by androidx.compose.runtime.remember { mutableStateOf("") }
@@ -579,7 +580,7 @@ private fun ConnectionScreen(
                 }
             }
 
-            item {
+            if (canArchive) item {
                 OutlinedButton(
                     onClick = onOfflineStudio,
                     modifier = Modifier.fillMaxWidth(),
@@ -958,7 +959,7 @@ private fun MainMenuScreen(
             Icons.Outlined.Info,
             FgCyan
         )
-    )
+    ).filter { it.section != AppSection.VOUCHERS || com.fgmachines.mikrotikmanager.business.BusinessPermission.VOUCHERS in LocalBusinessPermissions.current }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -1086,7 +1087,7 @@ private fun PersistentMainMenu(
             AppSection.VOUCHERS,
             AppSection.BUSINESS,
             AppSection.ABOUT
-        ).forEach { section ->
+        ).filter { it != AppSection.VOUCHERS || com.fgmachines.mikrotikmanager.business.BusinessPermission.VOUCHERS in LocalBusinessPermissions.current }.forEach { section ->
             val selected = state.section == section
             val accent = sectionAccent(section)
             Card(

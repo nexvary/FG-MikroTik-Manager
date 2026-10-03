@@ -6,17 +6,25 @@ import android.database.sqlite.SQLiteDatabase
 
 /** Blocking IO API: callers must use Dispatchers.IO. Every write has a caller-stable idempotency ID. */
 class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
-    fun defaultScope(): BusinessScope = helper.readableDatabase.rawQuery(
+    internal val identity get()=BusinessIdentity(this)
+    fun authorize(scope:BusinessScope?,permission:BusinessPermission) { identity.require(scope,permission) }
+    internal fun <T> guarded(scope:BusinessScope?,permission:BusinessPermission,work:()->T):T { authorize(scope,permission);return work() }
+    fun allowed(permission:BusinessPermission):Boolean=runCatching { authorize(null,permission);true }.getOrDefault(false)
+    fun defaultScope(): BusinessScope { if(identity.enabled())check(identity.principal()!=null){"LOGIN_REQUIRED"}
+        return helper.readableDatabase.rawQuery(
         "SELECT organization_id,branch_id FROM settings WHERE id=1", null
     ).use { check(it.moveToFirst()); BusinessScope(it.getString(0),it.getString(1)) }
+    }
 
     fun addSubscriber(scope: BusinessScope, id: String, name: String, phone: String, service: String,
         account: String, currency: String): Subscriber {
+        authorize(scope,BusinessPermission.CUSTOMER)
         require(id.isNotBlank() && id.length <= 80) { "INVALID_ID" }
         require(service in listOf("HOTSPOT","PPPOE","OTHER")) { "INVALID_SERVICE" }
         require(currency in BusinessMoney.currencies) { "INVALID_CURRENCY" }
         val record = Subscriber(id,businessText(name,120,true),businessText(phone,40),service,businessText(account,120),currency)
         return transaction { db ->
+            authorize(scope,BusinessPermission.CUSTOMER)
             subscriberOrNull(db,scope,id)?.let { require(it == record) { "IDEMPOTENCY_CONFLICT" }; return@transaction it }
             db.insertOrThrow("subscribers",null,ContentValues().apply {
                 put("id",id); put("organization_id",scope.organizationId); put("branch_id",scope.branchId)
@@ -26,14 +34,16 @@ class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
             record
         }
     }
-    fun subscriber(scope: BusinessScope, id: String): Subscriber = subscriberOrNull(helper.readableDatabase,scope,id)
+    fun subscriber(scope: BusinessScope, id: String): Subscriber { authorize(scope,BusinessPermission.READ);return subscriberOrNull(helper.readableDatabase,scope,id)
         ?: throw IllegalArgumentException("SUBSCRIBER_NOT_FOUND")
+    }
     private fun subscriberOrNull(db: SQLiteDatabase, scope: BusinessScope, id: String): Subscriber? = db.rawQuery(
         "SELECT id,name,phone,service,account,currency FROM subscribers WHERE organization_id=? AND branch_id=? AND id=?",
         arrayOf(scope.organizationId,scope.branchId,id)
     ).use { if(it.moveToFirst()) it.subscriber() else null }
 
     fun subscribers(scope: BusinessScope, search: String = "", afterName: String? = null, afterId: String? = null, limit: Int = 30): BusinessPage<Subscriber> {
+        authorize(scope,BusinessPermission.READ)
         require(limit in 1..100)
         val args = mutableListOf(scope.organizationId,scope.branchId)
         val query = StringBuilder("SELECT id,name,phone,service,account,currency FROM subscribers WHERE organization_id=? AND branch_id=?")
@@ -53,9 +63,11 @@ class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
     }
 
     fun post(scope: BusinessScope, subscriberId: String, id: String, kind: LedgerKind, amountMinor: Long, note: String, method: PaymentMethod = PaymentMethod.CASH, reference: String = ""): LedgerEntry {
+        authorize(scope,BusinessPermission.POST)
         require(kind != LedgerKind.REVERSAL) { "INVALID_KIND" }
         require(amountMinor in 1..BusinessMoney.MAX_MINOR) { "INVALID_AMOUNT" }
         return transaction { db ->
+            authorize(scope,BusinessPermission.POST)
             val sub = subscriberOrNull(db,scope,subscriberId) ?: throw IllegalArgumentException("SUBSCRIBER_NOT_FOUND")
             val entry=insert(db,scope,sub,id,kind,if(kind==LedgerKind.PAYMENT) -amountMinor else amountMinor,note,null)
             if(kind==LedgerKind.PAYMENT) PaymentDetails.requireMatch(db,id,method,reference)
@@ -63,6 +75,7 @@ class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
         }
     }
     fun reverse(scope: BusinessScope, subscriberId: String, entryId: String, id: String, reason: String): LedgerEntry = transaction { db ->
+        authorize(scope,BusinessPermission.REVERSE)
         val original = entry(db,scope,subscriberId,entryId) ?: throw IllegalArgumentException("ENTRY_NOT_FOUND")
         require(original.kind != LedgerKind.REVERSAL) { "INVALID_REVERSAL" }
         val sub = subscriberOrNull(db,scope,subscriberId) ?: throw IllegalArgumentException("SUBSCRIBER_NOT_FOUND")
@@ -90,6 +103,7 @@ class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
         arrayOf(scope.organizationId,scope.branchId,sub,id)
     ).use { if(it.moveToFirst()) it.entry() else null }
     fun ledger(scope: BusinessScope, sub: String, beforeSequence: Long? = null, limit: Int = 30): BusinessPage<LedgerEntry> {
+        authorize(scope,BusinessPermission.READ)
         require(limit in 1..100)
         val args = mutableListOf(scope.organizationId,scope.branchId,sub)
         var query="SELECT $entryColumns FROM ledger l WHERE l.organization_id=? AND l.branch_id=? AND l.subscriber_id=?"
@@ -99,13 +113,16 @@ class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
         return BusinessPage(rows.take(limit),rows.size>limit)
     }
     /** Positive means owed by subscriber, negative means credit. Never mix currencies across subscribers. */
-    fun balance(scope: BusinessScope, sub: String): Long = helper.readableDatabase.rawQuery(
+    fun balance(scope: BusinessScope, sub: String): Long { authorize(scope,BusinessPermission.READ);return helper.readableDatabase.rawQuery(
         "SELECT COALESCE(SUM(amount_minor),0) FROM ledger WHERE organization_id=? AND branch_id=? AND subscriber_id=?",
         arrayOf(scope.organizationId,scope.branchId,sub)
     ).use { it.moveToFirst(); it.getLong(0) }
+    }
     internal fun <T> transaction(block: (SQLiteDatabase)->T): T {
         val db=helper.writableDatabase; db.beginTransaction()
-        try { val result=block(db); db.setTransactionSuccessful(); return result } finally { db.endTransaction() }
+        try { val user=identity.principal();if(identity.enabled())check(user!=null){"LOGIN_REQUIRED"}
+            db.execSQL("UPDATE audit_context SET actor=? WHERE id=1",arrayOf(user?.id ?: "local-app"))
+            val result=block(db); db.setTransactionSuccessful(); return result } finally { db.endTransaction() }
     }
     private fun Cursor.subscriber() = Subscriber(getString(0),getString(1),getString(2),getString(3),getString(4),getString(5))
     private fun Cursor.entry() = LedgerEntry(getLong(0),getString(1),getString(2),LedgerKind.valueOf(getString(3)),getLong(4),getString(5),getString(6),getLong(7),if(isNull(8)) null else getString(8),getInt(9)!=0)

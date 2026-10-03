@@ -9,6 +9,8 @@ data class SubscriberImportRow(val name: String,val phone: String,val service: S
 data class SubscriberImportPreview(val digest: String,val rows: List<SubscriberImportRow>,val errors: List<String>)
 class BusinessTransfer(private val store: BusinessStore) {
     fun preview(scope: BusinessScope,text: String): SubscriberImportPreview {
+        store.authorize(scope,BusinessPermission.IMPORT)
+
         val digest=MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
         val parsed=BusinessCsv.parse(text)
         require(parsed.firstOrNull()==listOf("name","phone","service","account","currency")) { "CSV_HEADER" }
@@ -30,6 +32,8 @@ class BusinessTransfer(private val store: BusinessStore) {
         return SubscriberImportPreview(digest,rows,errors)
     }
     fun import(scope: BusinessScope,text: String): Int=store.transaction { db ->
+        store.authorize(scope,BusinessPermission.IMPORT)
+
         val digest=MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
         val batch=UUID.nameUUIDFromBytes((scope.organizationId+scope.branchId+digest).toByteArray()).toString()
         db.rawQuery("SELECT row_count FROM import_batches WHERE id=? AND organization_id=? AND branch_id=?",arrayOf(batch,scope.organizationId,scope.branchId)).use { if(it.moveToFirst()) return@transaction it.getInt(0) }
@@ -40,6 +44,8 @@ class BusinessTransfer(private val store: BusinessStore) {
     }
     /** Stream from one SQLite snapshot; no full history materialization or mixed-currency sums. */
     fun export(scope: BusinessScope,from: Long,until: Long,writer: Writer) = store.transaction { db ->
+        store.authorize(scope,BusinessPermission.EXPORT)
+
         require(from<until) { "INVALID_DATE" }
         writer.write("\uFEFF")
         writer.write(BusinessCsv.line(listOf("type","id","subscriber_or_category","kind","amount_minor","currency","description","created_at_ms","reversal_of","payment_method","payment_reference")))

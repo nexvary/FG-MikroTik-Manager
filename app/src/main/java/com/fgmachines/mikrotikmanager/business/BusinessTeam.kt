@@ -42,20 +42,35 @@ internal object BusinessSchemaV4 {
     }
 }
 class BusinessTeam(private val store:BusinessStore) {
-    fun members(s:BusinessScope):List<TeamMember> = store.helper.readableDatabase.rawQuery("SELECT id,name,phone,role,currency,commission_bps,active FROM team_members WHERE organization_id=? AND branch_id=? ORDER BY name COLLATE NOCASE,id LIMIT 1000",arrayOf(s.organizationId,s.branchId)).use { c->buildList { while(c.moveToNext()) add(TeamMember(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getInt(5),c.getInt(6)==1)) } }
+    private fun <T> walletRead(s:BusinessScope,member:String,work:()->T):T {
+        if(!store.identity.ownWallet(s,member))store.authorize(s,BusinessPermission.TEAM)
+        return work()
+    }
+    fun members(s:BusinessScope):List<TeamMember> {
+        val principal=store.identity.principal()
+        if(principal?.role!="RESELLER")store.authorize(s,BusinessPermission.TEAM)
+        else require(principal.scope==s){"ACCESS_DENIED"}
+        return store.helper.readableDatabase.rawQuery("SELECT id,name,phone,role,currency,commission_bps,active FROM team_members WHERE organization_id=? AND branch_id=? ORDER BY name COLLATE NOCASE,id LIMIT 1000",arrayOf(s.organizationId,s.branchId)).use { c->buildList { while(c.moveToNext()) add(TeamMember(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getInt(5),c.getInt(6)==1)) } }.filter{principal?.role!="RESELLER" || it.id==principal.member}
+    }
     fun add(s:BusinessScope,id:String,name:String,phone:String,role:String,currency:String,bps:Int) = store.transaction { db->
+        store.authorize(s,BusinessPermission.TEAM)
+
         val n=businessText(name,120,true);val p=businessText(phone,40);require(bps in 0..10000);require(id.isNotBlank() && id.length<=80)
         val old=members(s).firstOrNull { it.id==id }
         if(old!=null) { require(old.name==n && old.phone==p && old.role==role && old.currency==currency && old.commissionBps==bps){"IDEMPOTENCY_CONFLICT"} }
         else { require(members(s).size<1000){"TEAM_LIMIT"};db.execSQL("INSERT INTO team_members VALUES(?,?,?,?,?,?,?,?,1,?)",arrayOf(id,s.organizationId,s.branchId,n,p,role,currency,bps,System.currentTimeMillis())) }
     }
     fun activate(s:BusinessScope,id:String,active:Boolean) = store.transaction { db->
+        store.authorize(s,BusinessPermission.TEAM)
+
         require(members(s).any { it.id==id }){"MEMBER_NOT_FOUND"}
         db.execSQL("UPDATE team_members SET active=? WHERE organization_id=? AND branch_id=? AND id=?",arrayOf(if(active)1 else 0,s.organizationId,s.branchId,id))
     }
-    fun balance(s:BusinessScope,member:String):Long = store.helper.readableDatabase.rawQuery("SELECT COALESCE(SUM(amount_minor),0) FROM reseller_entries WHERE organization_id=? AND branch_id=? AND member_id=?",arrayOf(s.organizationId,s.branchId,member)).use { it.moveToFirst();it.getLong(0) }
-    fun entries(s:BusinessScope,member:String):List<ResellerEntry> = store.helper.readableDatabase.rawQuery("SELECT e.id,e.amount_minor,e.note,e.kind,e.sale_id,EXISTS(SELECT 1 FROM reseller_entries r WHERE r.reversal_of=e.id) FROM reseller_entries e WHERE e.organization_id=? AND e.branch_id=? AND e.member_id=? ORDER BY sequence DESC LIMIT 100",arrayOf(s.organizationId,s.branchId,member)).use { c->buildList { while(c.moveToNext())add(ResellerEntry(c.getString(0),c.getLong(1),c.getString(2),c.getString(3),if(c.isNull(4))null else c.getString(4),c.getInt(5)==1)) } }
+    fun balance(s:BusinessScope,member:String):Long =walletRead(s,member) {  store.helper.readableDatabase.rawQuery("SELECT COALESCE(SUM(amount_minor),0) FROM reseller_entries WHERE organization_id=? AND branch_id=? AND member_id=?",arrayOf(s.organizationId,s.branchId,member)).use { it.moveToFirst();it.getLong(0) } }
+    fun entries(s:BusinessScope,member:String):List<ResellerEntry> =walletRead(s,member) {  store.helper.readableDatabase.rawQuery("SELECT e.id,e.amount_minor,e.note,e.kind,e.sale_id,EXISTS(SELECT 1 FROM reseller_entries r WHERE r.reversal_of=e.id) FROM reseller_entries e WHERE e.organization_id=? AND e.branch_id=? AND e.member_id=? ORDER BY sequence DESC LIMIT 100",arrayOf(s.organizationId,s.branchId,member)).use { c->buildList { while(c.moveToNext())add(ResellerEntry(c.getString(0),c.getLong(1),c.getString(2),c.getString(3),if(c.isNull(4))null else c.getString(4),c.getInt(5)==1)) } } }
     fun post(s:BusinessScope,member:String,id:String,kind:String,amount:Long,note:String,sale:String?=null,reversal:String?=null) = store.transaction { db->
+        store.authorize(s,BusinessPermission.WALLET)
+
         require(id.isNotBlank() && id.length<=80);val n=businessText(note,500,true)
         val m=members(s).firstOrNull { it.id==member } ?: error("MEMBER_NOT_FOUND")
         val value=when(kind) {
