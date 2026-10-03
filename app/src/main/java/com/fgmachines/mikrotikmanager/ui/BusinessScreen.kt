@@ -29,6 +29,11 @@ import java.util.UUID
 @Composable
 fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,model: BusinessViewModel = viewModel()) {
     val state by model.state.collectAsStateWithLifecycle()
+    var toolsOpen by rememberSaveable { mutableStateOf(false) }
+    if(toolsOpen) {
+        BusinessToolsScreen(arabic,state.selected,{ toolsOpen=false;model.resetBranch() },onLanguageToggle)
+        return
+    }
     var editor by rememberSaveable { mutableStateOf<String?>(null) }
     var reverseId by rememberSaveable { mutableStateOf<String?>(null) }
     var search by rememberSaveable { mutableStateOf("") }
@@ -41,6 +46,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
         "INVALID_AMOUNT" -> tr("اكتب مبلغًا صحيحًا أكبر من صفر، بحد أقصى منزلتين عشريتين.","Enter a positive amount with at most two decimal places.")
         "INVALID_TEXT" -> tr("راجع الحقول المطلوبة وطول النص.","Check required fields and text length.")
         "IDEMPOTENCY_CONFLICT" -> tr("رقم العملية مستخدم ببيانات مختلفة. راجع السجل قبل المحاولة من جديد.","This operation ID has different data. Review the ledger before retrying.")
+        "CANCEL_INVOICE_FIRST" -> tr("هذه العملية مرتبطة بفاتورة. استخدم إلغاء الفاتورة من إدارة الأعمال.","This entry belongs to an invoice. Cancel it from Business tools.")
         "ALREADY_REVERSED" -> tr("العملية اتعكست قبل كده. ارجع للسجل وراجعه.","This entry has already been reversed. Review the ledger.")
         else -> tr("تعذر حفظ أو تحميل البيانات. راجع السجل ثم أعد المحاولة؛ لا تحذف بيانات التطبيق.","Could not save or load data. Review the ledger, then retry; do not clear app data.")
     } }
@@ -53,6 +59,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),
             contentPadding=PaddingValues(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             item { Text(tr("سجل أعمال محلي • لا يفعّل أو يوقف الإنترنت تلقائيًا.","Local business ledger • does not activate or suspend Internet automatically."),color=FgSilver,style=MaterialTheme.typography.bodySmall) }
+            item { OutlinedButton(onClick={toolsOpen=true},enabled=!state.busy,modifier=Modifier.fillMaxWidth()) { Text(tr("إدارة الأعمال والباقات","Business tools & plans")) } }
             if(state.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if(error!=null) item { Text(error,color=MaterialTheme.colorScheme.error); TextButton(onClick=model::refresh,enabled=!state.busy) { Text(tr("إعادة التحميل","Reload")) } }
             val sub=state.selected
@@ -76,6 +83,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
             } else {
                 item { Card(colors=CardDefaults.cardColors(containerColor=FgPanel),modifier=Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        state.subscriptionEnd?.let { end -> Text(tr("نهاية الاشتراك المحلي (غير شاملة): ","Local subscription end (exclusive): ")+java.time.LocalDate.ofEpochDay(end),color=FgMint) }
                         Text(sub.name,color=FgMint,style=MaterialTheme.typography.titleLarge)
                         Text(listOf(sub.phone,sub.account,sub.service).filter { it.isNotBlank() }.joinToString(" • "),color=FgSilver)
                         Text(tr("الرصيد المستحق: ","Balance due: ")+(state.balance?.let { BusinessMoney.format(it,sub.currency) } ?: tr("غير متاح الآن","Unavailable")),color=FgWhite,style=MaterialTheme.typography.titleLarge)

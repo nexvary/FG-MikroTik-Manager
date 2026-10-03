@@ -5,7 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 
 /** Blocking IO API: callers must use Dispatchers.IO. Every write has a caller-stable idempotency ID. */
-class BusinessStore(private val helper: BusinessDatabase) : AutoCloseable {
+class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
     fun defaultScope(): BusinessScope = helper.readableDatabase.rawQuery(
         "SELECT organization_id,branch_id FROM settings WHERE id=1", null
     ).use { check(it.moveToFirst()); BusinessScope(it.getString(0),it.getString(1)) }
@@ -101,7 +101,7 @@ class BusinessStore(private val helper: BusinessDatabase) : AutoCloseable {
         "SELECT COALESCE(SUM(amount_minor),0) FROM ledger WHERE organization_id=? AND branch_id=? AND subscriber_id=?",
         arrayOf(scope.organizationId,scope.branchId,sub)
     ).use { it.moveToFirst(); it.getLong(0) }
-    private fun <T> transaction(block: (SQLiteDatabase)->T): T {
+    internal fun <T> transaction(block: (SQLiteDatabase)->T): T {
         val db=helper.writableDatabase; db.beginTransaction()
         try { val result=block(db); db.setTransactionSuccessful(); return result } finally { db.endTransaction() }
     }

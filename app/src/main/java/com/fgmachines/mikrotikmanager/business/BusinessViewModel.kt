@@ -15,7 +15,7 @@ data class BusinessState(
     val busy: Boolean = false, val error: String? = null, val query: String = "",
     val subscribers: List<Subscriber> = emptyList(), val moreSubscribers: Boolean = false, val subscriberPage: Int = 1,
     val selected: Subscriber? = null, val entries: List<LedgerEntry> = emptyList(),
-    val moreEntries: Boolean = false, val ledgerPage: Int = 1, val balance: Long? = null, val saved: Int = 0
+    val moreEntries: Boolean = false, val ledgerPage: Int = 1, val balance: Long? = null, val saved: Int = 0, val subscriptionEnd: Long? = null
 )
 class BusinessViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
     private val store=BusinessStore(BusinessDatabase(application))
@@ -36,7 +36,7 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
             catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { mutable.value=mutable.value.copy(error=when(e.message) {
                 "INVALID_AMOUNT", "INVALID_TEXT", "IDEMPOTENCY_CONFLICT", "ALREADY_REVERSED", "SUBSCRIBER_NOT_FOUND" -> e.message
-                else -> "SAVE_OR_LOAD_FAILED"
+                else -> if(e.message.orEmpty().contains("CANCEL_INVOICE_FIRST")) "CANCEL_INVOICE_FIRST" else "SAVE_OR_LOAD_FAILED"
             }) }
             finally { mutable.value=mutable.value.copy(busy=false) }
         }
@@ -63,7 +63,7 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
         savedState["subscriber"]=sub.id
         ledgerCursors.clear(); ledgerCursors.add(null)
         // Clear the previous subscriber's financial state before loading the new one.
-        mutable.value=mutable.value.copy(selected=sub,entries=emptyList(),balance=null,moreEntries=false,ledgerPage=1)
+        mutable.value=mutable.value.copy(selected=sub,entries=emptyList(),balance=null,subscriptionEnd=null,moreEntries=false,ledgerPage=1)
         loadLedger()
     }
     fun back() = run { savedState.remove<String>("subscriber"); mutable.value=mutable.value.copy(selected=null); loadSubscribers() }
@@ -71,8 +71,10 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
         val id=mutable.value.selected!!.id
         mutable.value=mutable.value.copy(balance=null)
         val result=withContext(Dispatchers.IO) { store.ledger(scope!!,id,ledgerCursors.last()) to store.balance(scope!!,id) }
-        mutable.value=mutable.value.copy(entries=result.first.items,moreEntries=result.first.hasMore,balance=result.second,ledgerPage=ledgerCursors.size)
+        val end=withContext(Dispatchers.IO) { BusinessOperations(store).subscriptionEnd(scope!!,id) }
+        mutable.value=mutable.value.copy(subscriptionEnd=end,entries=result.first.items,moreEntries=result.first.hasMore,balance=result.second,ledgerPage=ledgerCursors.size)
     }
+    fun resetBranch() { scope=null; search("") }
     fun refresh() = run { if(mutable.value.selected==null) loadSubscribers() else loadLedger() }
     fun ledgerPage(next: Boolean) = run {
         if(next) { if(!mutable.value.moreEntries) return@run; mutable.value.entries.lastOrNull()?.let { ledgerCursors.add(it.sequence) } }
