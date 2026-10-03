@@ -51,6 +51,7 @@ fun VoucherArchiveScreen(arabic:Boolean,onBack:()->Unit,model:VoucherArchiveMode
     val import=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { if(it!=null){uri=it;restore=true;password="";confirmation=""} }
     LaunchedEffect(Unit){model.refresh()}
     BackHandler { if(!model.busy){if(uri!=null){uri=null;password="";confirmation=""}else onBack()} }
+    Surface(color=FgBlack,contentColor=FgWhite,modifier=Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         TextButton(onClick=onBack,enabled=!model.busy){Text(tr("رجوع","Back"))}
         Text(tr("حماية ونقل أرشيف الكروت","Protect & transfer voucher archive"),style=MaterialTheme.typography.titleLarge)
@@ -61,6 +62,7 @@ fun VoucherArchiveScreen(arabic:Boolean,onBack:()->Unit,model:VoucherArchiveMode
         Button(onClick={export.launch("FG-MTM-voucher-archive.fgv")},enabled=!model.busy){Text(tr("تصدير مشفر","Encrypted export"))}
         OutlinedButton(onClick={import.launch(arrayOf("*/*"))},enabled=!model.busy){Text(tr("استيراد أرشيف مشفر","Import encrypted archive"))}
         model.message?.let { Text(when { it=="EXPORTED"->tr("تم حفظ الأرشيف المشفر.","Encrypted archive saved.");it.startsWith("IMPORTED:")->tr("تم الاستيراد. الدفعات الجديدة: ","Imported. New batches: ")+it.substringAfter(':');else->tr("تعذرت العملية. راجع كلمة المرور والملف ومفتاح الجهاز القديم. لم يُؤكد نجاح العملية. احذف ملف التصدير غير المكتمل إن وُجد.","Operation failed. Check the password, file and original device key. Success is not confirmed; remove any incomplete export file.") },color=if(it=="FAILED")FgAmber else FgMint) }
+    }
     }
     if(uri!=null)AlertDialog(onDismissRequest={uri=null;password="";confirmation=""},title={Text(tr("كلمة مرور الأرشيف","Archive password"))},text={Column {
         Text(tr("12 حرفًا على الأقل. احتفظ بها؛ لا يمكن استعادتها من التطبيق.","At least 12 characters. Keep it safe; the app cannot recover it."))

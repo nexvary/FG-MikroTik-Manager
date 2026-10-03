@@ -68,6 +68,7 @@ fun TeamScreen(arabic:Boolean,onBack:()->Unit,model:TeamModel=viewModel()) {
     LaunchedEffect(model.revision){if(handled!=model.revision){handled=model.revision;editor=null}}
     fun back(){if(!model.busy){if(model.selected!=null)model.select(null) else onBack()}}
     BackHandler { if(editor==null)back() }
+    Surface(color=FgBlack,contentColor=FgWhite,modifier=Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(8.dp)) { TextButton(onClick={back()},enabled=!model.busy){Text(tr("رجوع","Back"))};Text(tr("الموظفون والموزعون","Staff & resellers"),Modifier.padding(12.dp)) }
         if(model.busy)LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -93,6 +94,7 @@ fun TeamScreen(arabic:Boolean,onBack:()->Unit,model:TeamModel=viewModel()) {
                 } } }
             }
         }
+    }
     }
     if(editor=="active") AlertDialog(onDismissRequest={if(!model.busy)editor=null},title={Text(tr("تغيير حالة العضو؟","Change member status?"))},text={Text(tr("السجلات والأرصدة ستظل محفوظة.","History and balances are retained."))},confirmButton={TextButton(onClick={model.members.firstOrNull{it.id==reference}?.let(model::active)},enabled=!model.busy){Text(tr("تأكيد","Confirm"))}},dismissButton={TextButton(onClick={editor=null},enabled=!model.busy){Text(tr("إلغاء","Cancel"))}})
     else editor?.let { kind->key(kind,reference) {
