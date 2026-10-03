@@ -39,8 +39,8 @@ object BusinessBackupCipher {
 class BusinessBackup(private val store: BusinessStore) {
     fun export(password: CharArray): ByteArray {
         val clear=store.transaction { db ->
-            val root=JSONObject().put("format","FG-MTM-business").put("schema",2);val tables=JSONObject();var budget=0L
-            for(table in BusinessSchemaV2.tables) {
+            val root=JSONObject().put("format","FG-MTM-business").put("schema",3);val tables=JSONObject();var budget=0L
+            for(table in BusinessSchemaV2.tables+BusinessSchemaV3.tables) {
                 val rows=JSONArray()
                 db.rawQuery("SELECT * FROM $table ORDER BY rowid",null).use { c -> while(c.moveToNext()) {
                     val row=JSONObject()
@@ -55,16 +55,17 @@ class BusinessBackup(private val store: BusinessStore) {
     fun restore(bytes: ByteArray,password: CharArray) {
         val clear=BusinessBackupCipher.decrypt(bytes,password)
         val root=try { JSONObject(String(clear,Charsets.UTF_8)) } finally { clear.fill(0) }
-        require(root.getString("format")=="FG-MTM-business" && root.getInt("schema")==2) { "INVALID_BACKUP" }
+        require(root.getString("format")=="FG-MTM-business" && root.getInt("schema") in 2..3) { "INVALID_BACKUP" }
         val tables=root.getJSONObject("tables")
-        require(tables.keys().asSequence().toSet()==BusinessSchemaV2.tables.toSet()) { "INVALID_BACKUP" }
+        val restoreTables=BusinessSchemaV2.tables+if(root.getInt("schema")==3) BusinessSchemaV3.tables else emptyList()
+        require(tables.keys().asSequence().toSet()==restoreTables.toSet()) { "INVALID_BACKUP" }
         store.transaction { db ->
             for(t in listOf("subscribers","ledger","plans","invoices","expenses","audit","import_batches")) db.rawQuery("SELECT COUNT(*) FROM $t",null).use { it.moveToFirst();require(it.getLong(0)==0L) { "RESTORE_NEEDS_EMPTY_STORE" } }
             require(db.rawQuery("SELECT COUNT(*) FROM branches",null).use { it.moveToFirst();it.getInt(0) }==1) { "RESTORE_NEEDS_EMPTY_STORE" }
             // All DDL and data writes are in this transaction. Rollback restores triggers and initial settings on any error.
-            for(t in BusinessSchemaV2.auditedTables) db.execSQL("DROP TRIGGER audit_$t")
+            for(t in BusinessSchemaV2.auditedTables+BusinessSchemaV3.audited) db.execSQL("DROP TRIGGER audit_$t")
             db.execSQL("DELETE FROM settings");db.execSQL("DELETE FROM branches");db.execSQL("DELETE FROM organizations")
-            for(t in BusinessSchemaV2.tables) {
+            for(t in restoreTables) {
                 val columns=db.rawQuery("SELECT * FROM $t LIMIT 0",null).use { it.columnNames.toSet() }
                 val rows=tables.getJSONArray(t)
                 for(i in 0 until rows.length()) {
@@ -84,7 +85,19 @@ class BusinessBackup(private val store: BusinessStore) {
                 OR (i.payment_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM ledger r WHERE r.reversal_of=i.payment_id)) LIMIT 1""",null).use { require(!it.moveToFirst()) { "INVALID_BACKUP" } }
             db.rawQuery("""SELECT 1 FROM invoices i WHERE NOT EXISTS(SELECT 1 FROM invoice_voids v WHERE v.invoice_id=i.id)
                 AND EXISTS(SELECT 1 FROM ledger r WHERE r.reversal_of=i.charge_id OR r.reversal_of=i.payment_id) LIMIT 1""",null).use { require(!it.moveToFirst()) { "INVALID_BACKUP" } }
+            db.rawQuery("SELECT items_json,amount_minor FROM sales",null).use { c -> while(c.moveToNext()) {
+                val lines=BusinessSales.decode(c.getString(0));require(lines.size in 1..30) { "INVALID_BACKUP" }
+                val total=lines.fold(0L) { sum,l->businessText(l.name,120,true);require(l.quantity in 1..10000 && l.unitMinor in 1..BusinessMoney.MAX_MINOR) { "INVALID_BACKUP" };Math.addExact(sum,Math.multiplyExact(l.unitMinor,l.quantity.toLong())) }
+                require(total==c.getLong(1)) { "INVALID_BACKUP" }
+            } }
+            db.rawQuery("""SELECT 1 FROM sales s WHERE
+                (EXISTS(SELECT 1 FROM sale_voids v WHERE v.sale_id=s.id) AND
+                 (NOT EXISTS(SELECT 1 FROM ledger r WHERE r.reversal_of=s.charge_id) OR (s.payment_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM ledger r WHERE r.reversal_of=s.payment_id))))
+                OR (NOT EXISTS(SELECT 1 FROM sale_voids v WHERE v.sale_id=s.id) AND EXISTS(SELECT 1 FROM ledger r WHERE r.reversal_of=s.charge_id OR r.reversal_of=s.payment_id)) LIMIT 1""",null).use { require(!it.moveToFirst()) { "INVALID_BACKUP" } }
             BusinessSchemaV2.createAuditTriggers(db)
+            BusinessSchemaV3.createAudit(db)
+            // Imported network confirmations are historical; require explicit reconciliation on this installation.
+            db.execSQL("INSERT INTO network_results(job_id,state,created_at) SELECT id,'REVIEW',"+System.currentTimeMillis()+" FROM network_jobs")
             val s=store.defaultScope()
             db.execSQL("INSERT INTO audit(organization_id,branch_id,entity,entity_id,action,created_at) VALUES(?,?,'backup','portable','RESTORE',?)",arrayOf(s.organizationId,s.branchId,System.currentTimeMillis()))
         }

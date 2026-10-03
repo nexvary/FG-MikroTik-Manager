@@ -51,20 +51,20 @@ class BusinessOperations(private val store: BusinessStore) {
         return BusinessPage(rows.take(30),rows.size>30)
     }
     /** One atomic local renewal: invoice + receivable + optional cash receipt. Replay never extends twice. */
-    fun renew(s: BusinessScope,id: String,subscriberId: String,planId: String,paid: Long,today: Long=LocalDate.now().toEpochDay()): BusinessInvoice = store.transaction { d ->
+    fun renew(s: BusinessScope,id: String,subscriberId: String,planId: String,paid: Long,today: Long=LocalDate.now().toEpochDay(),method: PaymentMethod=PaymentMethod.CASH,reference: String=""): BusinessInvoice = store.transaction { d ->
         require(id.length<=64 && id.isNotBlank())
         val sub=store.subscriber(s,subscriberId); val plan=planOrNull(s,planId) ?: error("PLAN_NOT_FOUND")
         require(sub.currency==plan.currency && sub.service==plan.service) { "PLAN_MISMATCH" }
         require(paid in 0..plan.price) { "INVALID_AMOUNT" }
         invoice(s,id)?.let { old ->
             val matches=d.rawQuery("SELECT plan_id FROM invoices WHERE id=?",arrayOf(id)).use { it.moveToFirst();it.getString(0)==planId }
-            require(old.subscriberId==subscriberId && old.paid==paid && matches) { "IDEMPOTENCY_CONFLICT" }; return@transaction old
+            require(old.subscriberId==subscriberId && old.paid==paid && matches) { "IDEMPOTENCY_CONFLICT" }; if(paid>0) PaymentDetails.requireMatch(d,"$id:p",method,reference); return@transaction old
         }
         require(today in 0..365241780000L) { "INVALID_DATE" }
         val start=maxOf(today,subscriptionEnd(s,subscriberId) ?: today)
         val end=Math.addExact(start,plan.days.toLong()); LocalDate.ofEpochDay(end)
         store.post(s,sub.id,"$id:c",LedgerKind.CHARGE,plan.price,"Subscription / اشتراك: ${plan.name}")
-        if(paid>0) store.post(s,sub.id,"$id:p",LedgerKind.PAYMENT,paid,"Invoice receipt / تحصيل فاتورة: $id")
+        if(paid>0) store.post(s,sub.id,"$id:p",LedgerKind.PAYMENT,paid,"Invoice receipt / تحصيل فاتورة: $id",method,reference)
         d.insertOrThrow("invoices",null,values(s,id).apply {
             put("subscriber_id",sub.id);put("plan_id",plan.id);put("customer_name",sub.name);put("plan_name",plan.name)
             put("amount_minor",plan.price);put("currency",plan.currency);put("days",plan.days);put("starts_day",start);put("ends_day",end)
@@ -86,6 +86,8 @@ class BusinessOperations(private val store: BusinessStore) {
             if(c.moveToFirst()) { require(c.getString(0)==invoiceId && c.getString(1)==clean) { "IDEMPOTENCY_CONFLICT" };return@transaction }
         }
         require(!inv.voided) { "ALREADY_REVERSED" }
+        val network=BusinessNetworkStore(store).job(s,invoiceId)
+        require(network==null || network.state=="SUSPENDED") { "NETWORK_INVOICE_LOCKED" }
         // Only cancel the latest active period; preserve an unambiguous subscription timeline.
         require(subscriptionEnd(s,inv.subscriberId)==inv.end) { "CANCEL_LATEST_FIRST" }
         d.insertOrThrow("invoice_voids",null,values(s,id).apply { put("invoice_id",invoiceId);put("reason",clean) })

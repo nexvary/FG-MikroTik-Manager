@@ -52,12 +52,14 @@ class BusinessStore(internal val helper: BusinessDatabase) : AutoCloseable {
         return BusinessPage(rows.take(limit),rows.size>limit)
     }
 
-    fun post(scope: BusinessScope, subscriberId: String, id: String, kind: LedgerKind, amountMinor: Long, note: String): LedgerEntry {
+    fun post(scope: BusinessScope, subscriberId: String, id: String, kind: LedgerKind, amountMinor: Long, note: String, method: PaymentMethod = PaymentMethod.CASH, reference: String = ""): LedgerEntry {
         require(kind != LedgerKind.REVERSAL) { "INVALID_KIND" }
         require(amountMinor in 1..BusinessMoney.MAX_MINOR) { "INVALID_AMOUNT" }
         return transaction { db ->
             val sub = subscriberOrNull(db,scope,subscriberId) ?: throw IllegalArgumentException("SUBSCRIBER_NOT_FOUND")
-            insert(db,scope,sub,id,kind,if(kind==LedgerKind.PAYMENT) -amountMinor else amountMinor,note,null)
+            val entry=insert(db,scope,sub,id,kind,if(kind==LedgerKind.PAYMENT) -amountMinor else amountMinor,note,null)
+            if(kind==LedgerKind.PAYMENT) PaymentDetails.requireMatch(db,id,method,reference)
+            entry
         }
     }
     fun reverse(scope: BusinessScope, subscriberId: String, entryId: String, id: String, reason: String): LedgerEntry = transaction { db ->

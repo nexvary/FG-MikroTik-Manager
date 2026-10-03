@@ -110,7 +110,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     ) {
         FgMikroTikTheme {
             when {
-                businessOpen -> BusinessScreen(arabic, { businessOpen=false }, { arabic=!arabic })
+                businessOpen -> BusinessScreen(arabic, { businessOpen=false }, { arabic=!arabic },router=viewModel.businessRouter)
                 offlineStudio -> OfflineVoucherShell(
                     arabic = arabic,
                     historyCount = state.voucherHistoryCount,

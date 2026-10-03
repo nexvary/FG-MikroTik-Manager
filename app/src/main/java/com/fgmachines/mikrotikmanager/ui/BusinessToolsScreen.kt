@@ -30,8 +30,15 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit,onLanguageToggle: ()->Unit,model: BusinessToolsViewModel=viewModel()) {
+fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit,onLanguageToggle: ()->Unit,model: BusinessToolsViewModel=viewModel(),router: BusinessRouter?=null) {
     val state by model.state.collectAsStateWithLifecycle()
+    val context=androidx.compose.ui.platform.LocalContext.current
+    SideEffect { model.router=router }
+    LaunchedEffect(state.receipt) { state.receipt?.let { printBusinessReceipt(context,it);model.receiptConsumed() } }
+    var networkSelection by remember { mutableStateOf(setOf<String>()) }
+    var networkCurrency by rememberSaveable { mutableStateOf("EGP") }
+    var networkSearch by rememberSaveable { mutableStateOf("") }
+    var networkPage by rememberSaveable { mutableIntStateOf(0) }
     fun tr(ar: String,en: String)=if(arabic) ar else en
     var editor by rememberSaveable { mutableStateOf<String?>(null) }
     var target by rememberSaveable { mutableStateOf("") }
@@ -52,6 +59,9 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
     BackHandler { back() }
     LaunchedEffect(state.saved) { if(handled!=state.saved) { editor=null;password="";confirmation="";backupUri=null;handled=state.saved;if(state.message=="BRANCH_CHANGED") onBack() } }
     val error=state.error?.let { code -> when(code) {
+        "NETWORK_INVOICE_LOCKED" -> tr("أوقف الخدمة من تطبيق على الراوتر قبل إلغاء الفاتورة.","Suspend service from Apply to router before canceling this invoice.")
+        "NOT_BOUND" -> tr("استورد حساب الشبكة واربطه بهذا المشترك أولًا.","Import and bind the network account first.")
+        "WRONG_ROUTER","BINDING_CONFLICT","ACCOUNT_CHANGED" -> tr("الراوتر أو الحساب لا يطابق الربط المحفوظ. لم يتم تأكيد التطبيق.","Router or account does not match the saved binding. Application is not confirmed.")
         "PLAN_MISMATCH" -> tr("نوع الخدمة أو عملة الباقة لا يطابق المشترك.","Plan service or currency does not match the subscriber.")
         "CANCEL_LATEST_FIRST" -> tr("ألغِ آخر تجديد أولًا للحفاظ على ترتيب فترات الاشتراك.","Cancel the latest renewal first to preserve the subscription timeline.")
         "RESTORE_NEEDS_EMPTY_STORE" -> tr("الاستعادة متاحة في سجل أعمال فارغ فقط؛ لن تُستبدل بياناتك الحالية.","Restore requires an unused business store; existing data will not be replaced.")
@@ -64,7 +74,7 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
         "IDEMPOTENCY_CONFLICT" -> tr("معرف العملية مسجل ببيانات مختلفة. راجع السجل قبل التكرار.","Operation ID already has different data. Review records before retrying.")
         else -> tr("تعذرت العملية. لم يتم تأكيد نجاحها. في الاستعادة راجع كلمة المرور وصحة الملف؛ وفي التصدير احذف الملف غير المكتمل وأعد المحاولة.","Operation was not confirmed. For restore, check password and file; for export, delete any incomplete file and retry.")
     } }
-    val tabs=listOf("plans" to tr("الباقات والتجديد","Plans & renewal"),"invoices" to tr("الفواتير","Invoices"),"expenses" to tr("المصروفات","Expenses"),"reports" to tr("التقارير والتصدير","Reports & export"),"branches" to tr("الفروع","Branches"),"import" to tr("استيراد المشتركين","Import subscribers"),"backup" to tr("نسخ واستعادة","Backup & restore"),"audit" to tr("سجل التدقيق","Audit trail"))
+    val tabs=listOf("network" to tr("استيراد من الراوتر","Router import"),"sales" to tr("المبيعات والإيصالات","Sales & receipts"),"plans" to tr("الباقات والتجديد","Plans & renewal"),"invoices" to tr("الفواتير","Invoices"),"expenses" to tr("المصروفات","Expenses"),"reports" to tr("التقارير والتصدير","Reports & export"),"branches" to tr("الفروع","Branches"),"import" to tr("استيراد المشتركين","Import subscribers"),"backup" to tr("نسخ واستعادة","Backup & restore"),"audit" to tr("سجل التدقيق","Audit trail"))
     Scaffold(containerColor=FgBlack,topBar={ TopAppBar(title={Text(tabs.firstOrNull { it.first==state.tab }?.second ?: tr("إدارة الأعمال","Business tools"))},navigationIcon={IconButton(onClick={back()},enabled=!state.busy){Icon(Icons.AutoMirrored.Outlined.ArrowBack,tr("رجوع","Back"))}},actions={IconButton(onClick=onLanguageToggle){Icon(Icons.Outlined.Language,tr("اللغة","Language"))}},colors=TopAppBarDefaults.topAppBarColors(containerColor=FgPanel)) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),contentPadding=PaddingValues(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             item { Text(tr("الفرع الحالي: ","Current branch: ")+state.branch,color=FgMint) }
@@ -82,6 +92,33 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                             }
                         }
                     }
+                }
+                "network" -> {
+                    item { Text(tr("اقرأ الحسابات، اختر المطلوب، ثم أكّد الربط. الحساب المطابق في الفرع يُربط بدل إنشاء نسخة مكررة. لا تُقرأ كلمات المرور.","Read accounts, select rows, then confirm binding. Matching branch accounts are linked without duplicates. Passwords are not requested."),color=FgSilver)
+                        if(router==null) Text(tr("ارجع واتصل بالراوتر أولًا.","Go back and connect to the router first."),color=FgAmber)
+                        Button(onClick={networkSelection=emptySet();networkPage=0;model.scanRouter()},enabled=!state.busy && router!=null){Text(tr("قراءة الحسابات","Read accounts"))}
+                        OutlinedTextField(networkSearch,{networkSearch=it.take(120);networkPage=0},label={Text(tr("بحث الحسابات","Search accounts"))},modifier=Modifier.fillMaxWidth())
+                        BusinessMoney.currencies.chunked(3).forEach { row->Row { row.forEach { c->FilterChip(networkCurrency==c,{networkCurrency=c},label={Text(c)}) } } }
+                    }
+                    val accounts=state.catalog?.accounts?.filter { it.name.contains(networkSearch,true) }.orEmpty()
+                    items(accounts.drop(networkPage*50).take(50),key={it.service+it.id}) { a ->
+                        val key=a.service+":"+a.id
+                        FilterChip(selected=key in networkSelection,onClick={networkSelection=if(key in networkSelection) networkSelection-key else networkSelection+key},enabled=!state.busy,label={Text(a.name+" • "+a.service+" • "+a.profile)})
+                    }
+                    item { Row { TextButton(onClick={networkPage--},enabled=networkPage>0 && !state.busy){Text(tr("السابق","Previous"))};TextButton(onClick={networkPage++},enabled=(networkPage+1)*50<accounts.size && !state.busy){Text(tr("التالي","Next"))} }
+                        Button(onClick={model.importRouter(networkSelection,networkCurrency)},enabled=!state.busy && networkSelection.size in 1..1000){Text(tr("تأكيد ربط المحدد: ","Confirm selected bindings: ")+networkSelection.size)} }
+                }
+                "sales" -> {
+                    item { Text(tr("مبيعات يدوية بدون إدارة مخزون أو ضرائب.","Manual sales without inventory or tax management."),color=FgSilver)
+                        if(subscriber!=null)Button(onClick={editor="sale"},enabled=!state.busy){Text(tr("بيع جديد","New sale"))}
+                        else Text(tr("افتح حساب العميل ثم إدارة الأعمال لإضافة بيع.","Open a customer account, then Business tools to add a sale."),color=FgSilver)
+                    }
+                    items(state.sales,key={it.id}) { sale -> BusinessToolCard {
+                        Text(sale.customer,color=FgMint);Text(BusinessMoney.format(sale.total,sale.currency),color=FgAmber)
+                        TextButton(onClick={model.receipt(sale.id,true,arabic)},enabled=!state.busy){Text(tr("طباعة / حفظ PDF","Print / save PDF"))}
+                        if(sale.voided)Text(tr("ملغاة","Canceled"),color=FgSilver)
+                        else TextButton(onClick={target=sale.id;editor="saleCancel"},enabled=!state.busy){Text(tr("إلغاء البيع","Cancel sale"))}
+                    } }
                 }
                 "plans" -> {
                     item { Button(onClick={editor="plan"},enabled=!state.busy){Text(tr("باقة جديدة","Add plan"))} }
@@ -104,6 +141,8 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                         Text(tr("البداية: ","Starts: ")+businessLtr(LocalDate.ofEpochDay(inv.start).toString()),color=FgSilver)
                         Text(tr("النهاية (غير شاملة): ","End (exclusive): ")+businessLtr(LocalDate.ofEpochDay(inv.end).toString()),color=FgSilver)
                         Text(tr("مرجع: ","Reference: ")+inv.id,color=FgSilver,style=MaterialTheme.typography.bodySmall)
+                        TextButton(onClick={model.receipt(inv.id,false,arabic)},enabled=!state.busy){Text(tr("طباعة / حفظ PDF","Print / save PDF"))}
+                        if(!inv.voided) OutlinedButton(onClick={target=inv.id;editor="network"},enabled=!state.busy && router!=null){Text(tr("تطبيق على الراوتر","Apply to router"))}
                         if(inv.voided) Text(tr("ملغاة بقيد عكسي","Canceled with reversal"),color=FgAmber)
                         else OutlinedButton(onClick={target=inv.id;editor="cancel"},enabled=!state.busy){Text(tr("إلغاء الفاتورة","Cancel invoice"))}
                     } }
@@ -163,28 +202,31 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                     if(state.audit.isEmpty() && !state.busy) item { Text(tr("لا توجد أحداث بعد.","No events yet."),color=FgSilver) }
                 }
             }
-            if(state.tab in listOf("plans","invoices","expenses","audit")) item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+            if(state.tab in listOf("plans","invoices","expenses","audit","sales")) item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                 TextButton(onClick={model.page(false)},enabled=!state.busy && state.page>1){Text(tr("السابق","Previous"))};Text(state.page.toString(),color=FgSilver,modifier=Modifier.padding(12.dp));TextButton(onClick={model.page(true)},enabled=!state.busy && state.more){Text(tr("التالي","Next"))}
             } }
         }
     }
-    if(editor=="password") AlertDialog(onDismissRequest={if(!state.busy){editor=null;password="";confirmation="";backupUri=null}},title={Text(if(restoring) tr("تأكيد الاستعادة","Confirm restore") else tr("حماية النسخة","Protect backup"))},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
+    if(editor=="network") NetworkInvoiceDialog(arabic,target,state,model){if(!state.busy)editor=null}
+    else if(editor=="sale" && subscriber!=null) SaleEditor(arabic,subscriber.currency,state.busy,error,{if(!state.busy)editor=null}){id,lines,paid,method,reference->model.sell(id,subscriber.id,lines,paid,method,reference)}
+    else if(editor=="password") AlertDialog(onDismissRequest={if(!state.busy){editor=null;password="";confirmation="";backupUri=null}},title={Text(if(restoring) tr("تأكيد الاستعادة","Confirm restore") else tr("حماية النسخة","Protect backup"))},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Text(if(restoring) tr("سيتم التحقق من الملف واستعادته فقط إذا كان سجل الأعمال فارغًا.","The file will be validated and restored only if the business store is unused.") else tr("كلمة مرور 12 حرفًا على الأقل. ستحتاجها عند الاستعادة.","At least 12 characters. You will need it to restore."))
         OutlinedTextField(password,{password=it.take(200)},label={Text(tr("كلمة مرور النسخة","Backup password"))},visualTransformation=PasswordVisualTransformation(),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Password),singleLine=true,enabled=!state.busy)
         if(!restoring) OutlinedTextField(confirmation,{confirmation=it.take(200)},label={Text(tr("تأكيد كلمة المرور","Confirm password"))},visualTransformation=PasswordVisualTransformation(),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Password),singleLine=true,enabled=!state.busy)
         if(error!=null) Text(error,color=MaterialTheme.colorScheme.error)
         if(backupUri==null) Text(tr("أعد اختيار الملف؛ لم نحتفظ بكلمة المرور بعد إعادة فتح الشاشة.","Select the file again; passwords are not retained after the screen is recreated."))
     }},confirmButton={TextButton(onClick={backupUri?.let { model.backup(it,password.toCharArray(),restoring) }},enabled=!state.busy && backupUri!=null && password.length>=12 && (restoring || password==confirmation)){Text(tr("تنفيذ","Proceed"))}},dismissButton={TextButton(onClick={editor=null;password="";confirmation="";backupUri=null},enabled=!state.busy){Text(tr("إلغاء","Cancel"))}})
-    else editor?.let { mode -> key(mode,target) { BusinessToolEditor(mode,arabic,state.busy,error,planName,planCurrency,planPrice,onDismiss={if(!state.busy) editor=null},onSave={id,name,service,currency,amount,days,note ->
-        when(mode) { "plan"->model.addPlan(id,name,service,currency,amount,days);"renew"->subscriber?.let { model.renew(id,it.id,target,amount) };"expense"->model.expense(id,name,amount,currency,note);"branch"->model.addBranch(id,name);"cancel"->model.cancelInvoice(target,id,note);"expenseReverse"->model.reverseExpense(target,id,note) }
+    else editor?.let { mode -> key(mode,target) { BusinessToolEditor(mode,arabic,state.busy,error,planName,planCurrency,planPrice,onDismiss={if(!state.busy) editor=null},onSave={id,name,service,currency,amount,days,note,method,reference ->
+        when(mode) { "plan"->model.addPlan(id,name,service,currency,amount,days);"renew"->subscriber?.let { model.renew(id,it.id,target,amount,method,reference) };"expense"->model.expense(id,name,amount,currency,note);"branch"->model.addBranch(id,name);"cancel"->model.cancelInvoice(target,id,note);"expenseReverse"->model.reverseExpense(target,id,note);"saleCancel"->model.cancelSale(target,id,note) }
     }) } }
 }
 
 @Composable private fun BusinessToolCard(content: @Composable ColumnScope.()->Unit) { Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=FgPanel)) { Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(7.dp),content=content) } }
 
-@Composable private fun BusinessToolEditor(mode: String,arabic: Boolean,busy: Boolean,error: String?,plan: String,planCurrency: String,price: Long,onDismiss: ()->Unit,onSave:(String,String,String,String,Long,Int,String)->Unit) {
+@Composable private fun BusinessToolEditor(mode: String,arabic: Boolean,busy: Boolean,error: String?,plan: String,planCurrency: String,price: Long,onDismiss: ()->Unit,onSave:(String,String,String,String,Long,Int,String,PaymentMethod,String)->Unit) {
     fun tr(ar: String,en: String)=if(arabic) ar else en
     val id=rememberSaveable { UUID.randomUUID().toString() }
+    var method by rememberSaveable { mutableStateOf(PaymentMethod.CASH) };var reference by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") };var service by rememberSaveable { mutableStateOf("HOTSPOT") };var currency by rememberSaveable { mutableStateOf(if(mode=="renew") planCurrency else "EGP") }
     var amount by rememberSaveable { mutableStateOf("") };var days by rememberSaveable { mutableStateOf("30") };var note by rememberSaveable { mutableStateOf("") }
     val minor=if(mode=="renew" && amount.isBlank()) 0L else runCatching { BusinessMoney.parse(amount) }.getOrNull()
@@ -199,9 +241,10 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
         if(mode=="renew") { Text(plan+" • "+BusinessMoney.format(price,planCurrency));Text(tr("يبدأ من اليوم أو نهاية آخر اشتراك، أيهما أحدث. اترك التحصيل فارغًا إذا لم تستلم مبلغًا. التجديد محلي ولا يغير الإنترنت.","Starts today or after the latest period, whichever is later. Leave receipt blank if nothing was collected. Local renewal does not change Internet service.")) }
         if(mode in listOf("plan","expense","renew")) OutlinedTextField(amount,{amount=it.take(20)},label={Text((if(mode=="renew")tr("تحصيل الآن (اختياري) ","Collect now (optional) ") else tr("المبلغ ","Amount "))+currency)},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),enabled=!busy,singleLine=true,isError=amount.isNotBlank() && minor==null)
         if(mode in listOf("plan","expense")) BusinessMoney.currencies.chunked(3).forEach { row->Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){row.forEach { v->FilterChip(selected=currency==v,onClick={currency=v},enabled=!busy,label={Text(v)}) }} }
-        if(mode in listOf("cancel","expenseReverse","expense")) { if(mode=="cancel") Text(tr("سيُعكس المستحق والتحصيل المسجل عند إصدار الفاتورة. الإلغاء المحاسبي لا يعيد نقودًا للعميل فعليًا.","Reverses the charge and receipt recorded at invoice issue. Accounting cancellation does not physically refund cash."));OutlinedTextField(note,{note=it.take(500)},label={Text(tr("البيان / السبب","Description / reason"))},enabled=!busy,minLines=2,maxLines=4) }
+        if(mode in listOf("cancel","expenseReverse","expense","saleCancel")) { if(mode=="cancel") Text(tr("سيُعكس المستحق والتحصيل المسجل عند إصدار الفاتورة. الإلغاء المحاسبي لا يعيد نقودًا للعميل فعليًا.","Reverses the charge and receipt recorded at invoice issue. Accounting cancellation does not physically refund cash."));OutlinedTextField(note,{note=it.take(500)},label={Text(tr("البيان / السبب","Description / reason"))},enabled=!busy,minLines=2,maxLines=4) }
+        if(mode=="renew") { PaymentMethodPicker(arabic,method,{method=it},!busy);OutlinedTextField(reference,{reference=it.take(120)},label={Text(tr("مرجع الدفع (اختياري)","Payment reference (optional)"))},enabled=!busy) }
         if(error!=null) Text(error,color=MaterialTheme.colorScheme.error)
-    }},confirmButton={TextButton(onClick={onSave(id,name,service,currency,minor ?: 0,days.toIntOrNull() ?: 0,note)},enabled=valid && !busy){Text(if(busy)tr("جاري الحفظ…","Saving…") else tr("حفظ","Save"))}},dismissButton={TextButton(onClick=onDismiss,enabled=!busy){Text(tr("إلغاء","Cancel"))}})
+    }},confirmButton={TextButton(onClick={onSave(id,name,service,currency,minor ?: 0,days.toIntOrNull() ?: 0,note,method,reference)},enabled=valid && !busy){Text(if(busy)tr("جاري الحفظ…","Saving…") else tr("حفظ","Save"))}},dismissButton={TextButton(onClick=onDismiss,enabled=!busy){Text(tr("إلغاء","Cancel"))}})
 }
 
 // Isolate ISO dates from surrounding RTL labels; keep chronological meaning unambiguous.

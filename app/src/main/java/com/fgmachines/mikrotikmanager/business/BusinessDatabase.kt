@@ -7,7 +7,7 @@ import java.util.UUID
 
 /** One versioned business database. Legacy encrypted voucher storage is deliberately preserved. */
 class BusinessDatabase(context: Context, name: String = "fg_business.db") :
-    SQLiteOpenHelper(context.applicationContext, name, null, 2) {
+    SQLiteOpenHelper(context.applicationContext, name, null, 3) {
     init { setWriteAheadLoggingEnabled(true) }
     override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true) }
     override fun onCreate(db: SQLiteDatabase) {
@@ -48,13 +48,15 @@ class BusinessDatabase(context: Context, name: String = "fg_business.db") :
         db.execSQL("CREATE TRIGGER ledger_no_update BEFORE UPDATE ON ledger BEGIN SELECT RAISE(ABORT,'IMMUTABLE_LEDGER'); END")
         db.execSQL("CREATE TRIGGER ledger_no_delete BEFORE DELETE ON ledger BEGIN SELECT RAISE(ABORT,'IMMUTABLE_LEDGER'); END")
         BusinessSchemaV2.install(db)
+        BusinessSchemaV3.install(db)
         val org = UUID.randomUUID().toString(); val branch = UUID.randomUUID().toString()
         db.execSQL("INSERT INTO organizations VALUES (?,?)", arrayOf(org,"Local business"))
         db.execSQL("INSERT INTO branches VALUES (?,?,?)", arrayOf(branch,org,"Main branch"))
         db.execSQL("INSERT INTO settings VALUES (1,?,?)", arrayOf(org,branch))
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        require(oldVersion == 1 && newVersion == 2) { "Unsupported database migration" }
-        BusinessSchemaV2.install(db)
+        require(oldVersion in 1..2 && newVersion==3) { "Unsupported database migration" }
+        if(oldVersion==1) BusinessSchemaV2.install(db)
+        BusinessSchemaV3.install(db)
     }
 }

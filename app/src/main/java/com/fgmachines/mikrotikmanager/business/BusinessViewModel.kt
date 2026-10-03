@@ -42,7 +42,7 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
             catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { mutable.value=mutable.value.copy(error=when(e.message) {
                 "INVALID_AMOUNT", "INVALID_TEXT", "IDEMPOTENCY_CONFLICT", "ALREADY_REVERSED", "SUBSCRIBER_NOT_FOUND" -> e.message
-                else -> if(e.message.orEmpty().contains("CANCEL_INVOICE_FIRST")) "CANCEL_INVOICE_FIRST" else "SAVE_OR_LOAD_FAILED"
+                else -> if(e.message.orEmpty().contains("CANCEL_INVOICE_FIRST") || e.message.orEmpty().contains("CANCEL_SALE_FIRST")) "CANCEL_INVOICE_FIRST" else "SAVE_OR_LOAD_FAILED"
             }) }
             finally { mutable.value=mutable.value.copy(busy=false) }
         }
@@ -94,9 +94,9 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
         ledgerCursors.clear(); ledgerCursors.add(null); loadLedger()
         markSaved()
     }
-    fun post(id: String,kind: LedgerKind,amount: Long,note: String) = run {
+    fun post(id: String,kind: LedgerKind,amount: Long,note: String,method: PaymentMethod=PaymentMethod.CASH,reference: String="") = run {
         val sub=mutable.value.selected!!.id
-        withContext(Dispatchers.IO) { store.post(scope!!,sub,id,kind,amount,note) }
+        withContext(Dispatchers.IO) { store.post(scope!!,sub,id,kind,amount,note,method,reference) }
         ledgerCursors.clear(); ledgerCursors.add(null); loadLedger()
         markSaved()
     }

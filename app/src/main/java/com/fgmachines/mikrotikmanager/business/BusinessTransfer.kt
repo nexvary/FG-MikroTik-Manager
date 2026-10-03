@@ -42,10 +42,10 @@ class BusinessTransfer(private val store: BusinessStore) {
     fun export(scope: BusinessScope,from: Long,until: Long,writer: Writer) = store.transaction { db ->
         require(from<until) { "INVALID_DATE" }
         writer.write("\uFEFF")
-        writer.write(BusinessCsv.line(listOf("type","id","subscriber_or_category","kind","amount_minor","currency","description","created_at_ms","reversal_of")))
-        val sql="""SELECT 'ledger',l.id,s.name,l.kind,l.amount_minor,l.currency,l.note,l.created_at,l.reversal_of FROM ledger l JOIN subscribers s ON s.id=l.subscriber_id
+        writer.write(BusinessCsv.line(listOf("type","id","subscriber_or_category","kind","amount_minor","currency","description","created_at_ms","reversal_of","payment_method","payment_reference")))
+        val sql="""SELECT 'ledger',l.id,s.name,l.kind,l.amount_minor,l.currency,l.note,l.created_at,l.reversal_of,p.method,p.reference FROM ledger l LEFT JOIN payment_details p ON p.ledger_id=COALESCE(l.reversal_of,l.id) JOIN subscribers s ON s.id=l.subscriber_id
             WHERE l.organization_id=? AND l.branch_id=? AND l.created_at>=? AND l.created_at<?
-            UNION ALL SELECT 'expense',id,category,CASE WHEN reversal_of IS NULL THEN 'EXPENSE' ELSE 'REVERSAL' END,amount_minor,currency,note,created_at,reversal_of
+            UNION ALL SELECT 'expense',id,category,CASE WHEN reversal_of IS NULL THEN 'EXPENSE' ELSE 'REVERSAL' END,amount_minor,currency,note,created_at,reversal_of,NULL,NULL
             FROM expenses WHERE organization_id=? AND branch_id=? AND created_at>=? AND created_at<? ORDER BY 8,2"""
         val a=arrayOf(scope.organizationId,scope.branchId,from.toString(),until.toString())
         db.rawQuery(sql,a+a).use { c -> while(c.moveToNext()) writer.write(BusinessCsv.line((0 until c.columnCount).map { if(c.isNull(it)) "" else c.getString(it) },setOf(4,7))) }

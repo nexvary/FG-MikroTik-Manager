@@ -27,11 +27,11 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,model: BusinessViewModel = viewModel()) {
+fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,model: BusinessViewModel = viewModel(),router: BusinessRouter?=null) {
     val state by model.state.collectAsStateWithLifecycle()
     var toolsOpen by rememberSaveable { mutableStateOf(false) }
     if(toolsOpen) {
-        BusinessToolsScreen(arabic,state.selected,{ toolsOpen=false;model.resetBranch() },onLanguageToggle)
+        BusinessToolsScreen(arabic,state.selected,{ toolsOpen=false;model.resetBranch() },onLanguageToggle,router=router)
         return
     }
     var editor by rememberSaveable { mutableStateOf<String?>(null) }
@@ -113,11 +113,11 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
         }
     }
     editor?.let { mode -> key(mode,reverseId) {
-        BusinessEditor(mode,arabic,state.busy,error,state.selected?.currency ?: "EGP",onDismiss={ if(!state.busy) editor=null },onSave={ id,name,phone,service,account,currency,amount,note ->
+        BusinessEditor(mode,arabic,state.busy,error,state.selected?.currency ?: "EGP",onDismiss={ if(!state.busy) editor=null },onSave={ id,name,phone,service,account,currency,amount,note,method,reference ->
             when(mode) {
                 "subscriber" -> model.addSubscriber(id,name,phone,service,account,currency)
                 "reverse" -> model.reverse(reverseId!!,id,note)
-                else -> model.post(id,if(mode=="payment") LedgerKind.PAYMENT else LedgerKind.CHARGE,amount,note)
+                else -> model.post(id,if(mode=="payment") LedgerKind.PAYMENT else LedgerKind.CHARGE,amount,note,method,reference)
             }
         })
     } }
@@ -134,13 +134,14 @@ private fun BusinessPager(page: Int,more: Boolean,busy: Boolean,arabic: Boolean,
 
 @Composable
 private fun BusinessEditor(mode: String,arabic: Boolean,busy: Boolean,error: String?,initialCurrency: String,onDismiss: ()->Unit,
-    onSave: (String,String,String,String,String,String,Long,String)->Unit) {
+    onSave: (String,String,String,String,String,String,Long,String,PaymentMethod,String)->Unit) {
     fun tr(ar: String,en: String)=if(arabic) ar else en
     val operationId=rememberSaveable { UUID.randomUUID().toString() }
     var name by rememberSaveable { mutableStateOf("") }; var phone by rememberSaveable { mutableStateOf("") }
     var account by rememberSaveable { mutableStateOf("") }; var service by rememberSaveable { mutableStateOf("HOTSPOT") }
     var currency by rememberSaveable { mutableStateOf(initialCurrency) }; var amount by rememberSaveable { mutableStateOf("") }
     var note by rememberSaveable { mutableStateOf("") }
+    var method by rememberSaveable { mutableStateOf(PaymentMethod.CASH) };var reference by rememberSaveable { mutableStateOf("") }
     val minor=runCatching { BusinessMoney.parse(amount) }.getOrNull()
     val valid=if(mode=="subscriber") name.isNotBlank() else note.isNotBlank() && (mode=="reverse" || minor!=null)
     AlertDialog(onDismissRequest=onDismiss,title={ Text(when(mode) { "subscriber"->tr("مشترك جديد","New subscriber"); "payment"->tr("تسجيل دفعة","Record payment"); "charge"->tr("إضافة مستحق","Add charge"); else->tr("تأكيد القيد العكسي","Confirm reversal") }) },
@@ -161,7 +162,8 @@ private fun BusinessEditor(mode: String,arabic: Boolean,busy: Boolean,error: Str
                 }
                 OutlinedTextField(note,{note=it.take(500)},label={Text(tr("البيان / السبب","Description / reason"))},enabled=!busy,minLines=2,maxLines=4)
             }
+            if(mode=="payment") { PaymentMethodPicker(arabic,method,{method=it},!busy);OutlinedTextField(reference,{reference=it.take(120)},label={Text(tr("مرجع الدفع (اختياري)","Payment reference (optional)"))},enabled=!busy) }
             if(error!=null) Text(error,color=MaterialTheme.colorScheme.error)
-        } },confirmButton={ TextButton(onClick={ onSave(operationId,name,phone,service,account,currency,minor ?: 0L,note) },enabled=valid && !busy) { Text(if(busy) tr("جاري الحفظ…","Saving…") else tr("حفظ","Save")) } },
+        } },confirmButton={ TextButton(onClick={ onSave(operationId,name,phone,service,account,currency,minor ?: 0L,note,method,reference) },enabled=valid && !busy) { Text(if(busy) tr("جاري الحفظ…","Saving…") else tr("حفظ","Save")) } },
         dismissButton={ TextButton(onClick=onDismiss,enabled=!busy) { Text(tr("إلغاء","Cancel")) } })
 }

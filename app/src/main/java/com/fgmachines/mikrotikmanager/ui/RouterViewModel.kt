@@ -66,6 +66,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     val state: StateFlow<RouterUiState> = _state.asStateFlow()
 
     private var repository: RouterRepository? = null
+    val businessRouter get() = repository?.business
     val advancedManager get() = repository?.advanced
     val hotspotManager get() = repository?.hotspot
     private val voucherHistory = VoucherHistoryStore(application)
