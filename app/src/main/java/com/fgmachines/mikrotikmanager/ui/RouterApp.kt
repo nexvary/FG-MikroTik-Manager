@@ -101,9 +101,12 @@ import java.util.Locale
 @Composable
 fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var arabic by rememberSaveable {
+    val accessLanguage=LocalAccessLanguage.current
+    var fallbackArabic by rememberSaveable {
         mutableStateOf(Locale.getDefault().language.equals("ar", ignoreCase = true))
     }
+    val arabic=accessLanguage?.first ?: fallbackArabic
+    fun toggleLanguage(){val next=!arabic;if(accessLanguage==null)fallbackArabic=next else accessLanguage.second(next)}
     var offlineStudio by rememberSaveable { mutableStateOf(false) }
     var businessOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(businessOpen) { if(!businessOpen) viewModel.refreshArchive() }
@@ -113,12 +116,12 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     ) {
         FgMikroTikTheme {
             when {
-                businessOpen -> BusinessScreen(arabic, { businessOpen=false }, { arabic=!arabic },router=viewModel.businessRouter)
+                businessOpen -> BusinessScreen(arabic, { businessOpen=false }, { toggleLanguage() },router=viewModel.businessRouter)
                 offlineStudio -> OfflineVoucherShell(
                     arabic = arabic,
                     historyCount = state.voucherHistoryCount,
                     recentBatches = state.recentVoucherBatches,
-                    onLanguageToggle = { arabic = !arabic },
+                    onLanguageToggle = { toggleLanguage() },
                     onBatchGenerated = viewModel::saveGeneratedBatch,
                     onBack = { offlineStudio = false }
                 )
@@ -128,7 +131,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     hotspotManager = viewModel.hotspotManager,
                     advancedManager = viewModel.advancedManager,
                     arabic = arabic,
-                    onLanguageToggle = { arabic = !arabic },
+                    onLanguageToggle = { toggleLanguage() },
                     onRefresh = viewModel::refresh,
                     onDisconnect = viewModel::disconnect,
                     onSection = { if(it==AppSection.BUSINESS) businessOpen=true else viewModel.selectSection(it) },
@@ -155,7 +158,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                     discoveredRouters = state.discoveredRouters,
                     error = state.error,
                     arabic = arabic,
-                    onLanguageToggle = { arabic = !arabic },
+                    onLanguageToggle = { toggleLanguage() },
                     onDiscover = viewModel::discoverRouters,
                     onOfflineStudio = { offlineStudio = true },
                     onConnect = viewModel::connect,

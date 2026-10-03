@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+val LocalAccessLanguage=staticCompositionLocalOf<Pair<Boolean,(Boolean)->Unit>?> { null }
 val LocalManageAccess=staticCompositionLocalOf<()->Unit> { {} }
 val LocalBusinessPermissions=staticCompositionLocalOf<Set<BusinessPermission>> { BusinessPermission.entries.toSet() }
 
@@ -100,7 +101,7 @@ fun BusinessAccessRoot(model:BusinessAccessModel=viewModel(),content:@Composable
     if(!model.ready){FgMikroTikTheme{Surface(Modifier.fillMaxSize(),color=FgBlack){Column(Modifier.safeDrawingPadding().padding(20.dp)){Text(tr("جارٍ التحقق من الدخول…","Checking access…"));model.error?.let{Text(it)};TextButton(onClick={model.refresh()}){Text(tr("إعادة المحاولة","Retry"))}}}};return}
     val user=model.principal
     val permissions=if(!model.enabled)BusinessPermission.entries.toSet() else user?.let{BusinessAccess.permissions(it.role)} ?: emptySet()
-    androidx.compose.runtime.CompositionLocalProvider(LocalManageAccess provides {if(BusinessPermission.AUTH in permissions){manage=true;model.loadAccounts()}},LocalBusinessPermissions provides permissions,
+    androidx.compose.runtime.CompositionLocalProvider(LocalAccessLanguage provides (arabic to { next:Boolean -> arabic=next }),LocalManageAccess provides {if(BusinessPermission.AUTH in permissions){manage=true;model.loadAccounts()}},LocalBusinessPermissions provides permissions,
         androidx.compose.ui.platform.LocalLayoutDirection provides if(arabic)androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr) {
         FgMikroTikTheme {
             when {
