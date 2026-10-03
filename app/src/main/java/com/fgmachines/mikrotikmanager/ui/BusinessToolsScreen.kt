@@ -88,7 +88,9 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                     item { Text(subscriber?.let { tr("تجديد للمشترك: ","Renew for: ")+it.name } ?: tr("افتح حساب مشترك ثم إدارة الأعمال لتجديد اشتراكه.","Open a subscriber account, then Business tools to renew."),color=FgSilver) }
                     items(state.plans,key={it.id}) { p -> BusinessToolCard {
                         Text(p.name,color=FgMint,style=MaterialTheme.typography.titleMedium)
-                        Text(BusinessMoney.format(p.price,p.currency)+" • "+p.days+tr(" يوم"," days"),color=FgWhite);Text(p.service,color=FgSilver)
+                        Text(tr("السعر: ","Price: ")+BusinessMoney.format(p.price,p.currency),color=FgWhite)
+                        Text(tr("المدة: ","Duration: ")+p.days+tr(" يوم"," days"),color=FgSilver)
+                        Text(p.service,color=FgSilver)
                         if(subscriber!=null) OutlinedButton(onClick={target=p.id;planName=p.name;planPrice=p.price;planCurrency=p.currency;editor="renew"},enabled=!state.busy && subscriber.currency==p.currency && subscriber.service==p.service){Text(tr("تجديد وإصدار فاتورة","Renew & invoice"))}
                     } }
                     if(state.plans.isEmpty() && !state.busy) item { Text(tr("لا توجد باقات في هذا الفرع.","No plans in this branch."),color=FgSilver) }
@@ -99,7 +101,8 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                         Text("#${inv.sequence} • ${inv.customer}",color=FgMint,style=MaterialTheme.typography.titleMedium)
                         Text(inv.plan,color=FgWhite);Text(BusinessMoney.format(inv.amount,inv.currency),color=FgAmber)
                         Text(tr("المحصّل عند الإصدار: ","Collected at issue: ")+BusinessMoney.format(inv.paid,inv.currency),color=FgSilver)
-                        Text("${LocalDate.ofEpochDay(inv.start)} → ${LocalDate.ofEpochDay(inv.end)}",color=FgSilver)
+                        Text(tr("البداية: ","Starts: ")+businessLtr(LocalDate.ofEpochDay(inv.start).toString()),color=FgSilver)
+                        Text(tr("النهاية (غير شاملة): ","End (exclusive): ")+businessLtr(LocalDate.ofEpochDay(inv.end).toString()),color=FgSilver)
                         Text(tr("مرجع: ","Reference: ")+inv.id,color=FgSilver,style=MaterialTheme.typography.bodySmall)
                         if(inv.voided) Text(tr("ملغاة بقيد عكسي","Canceled with reversal"),color=FgAmber)
                         else OutlinedButton(onClick={target=inv.id;editor="cancel"},enabled=!state.busy){Text(tr("إلغاء الفاتورة","Cancel invoice"))}
@@ -118,7 +121,7 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                 }
                 "reports" -> {
                     item { OutlinedTextField(from,{from=it.take(10)},label={Text(tr("من YYYY-MM-DD","From YYYY-MM-DD"))},singleLine=true,modifier=Modifier.fillMaxWidth());OutlinedTextField(to,{to=it.take(10)},label={Text(tr("إلى YYYY-MM-DD","To YYYY-MM-DD"))},singleLine=true,modifier=Modifier.fillMaxWidth()) }
-                    item { Button(onClick={model.report(from,to)},enabled=!state.busy){Text(tr("عرض الفترة","Apply period"))};Text(tr("الفترة المعروضة: ","Displayed period: ")+state.from+" — "+state.to,color=FgSilver) }
+                    item { Button(onClick={model.report(from,to)},enabled=!state.busy){Text(tr("عرض الفترة","Apply period"))};Text(tr("الفترة المعروضة: ","Displayed period: ")+businessLtr(state.from)+tr(" إلى "," to ")+businessLtr(state.to),color=FgSilver) }
                     item { Text(tr("الحركة حسب تاريخ التسجيل وتشمل القيود العكسية. الرصيد إجمالي كل الفترات. التحصيل ناقص المصروفات ليس صافي ربح.","Movements use posting dates and include reversals. Balance covers all dates. Receipts minus expenses is not net profit."),color=FgSilver) }
                     items(state.totals) { t -> BusinessToolCard {
                         Text(t.currency,color=FgMint,style=MaterialTheme.typography.titleMedium)
@@ -200,3 +203,6 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
         if(error!=null) Text(error,color=MaterialTheme.colorScheme.error)
     }},confirmButton={TextButton(onClick={onSave(id,name,service,currency,minor ?: 0,days.toIntOrNull() ?: 0,note)},enabled=valid && !busy){Text(if(busy)tr("جاري الحفظ…","Saving…") else tr("حفظ","Save"))}},dismissButton={TextButton(onClick=onDismiss,enabled=!busy){Text(tr("إلغاء","Cancel"))}})
 }
+
+// Isolate ISO dates from surrounding RTL labels; keep chronological meaning unambiguous.
+private fun businessLtr(value: String)="\u2066$value\u2069"
