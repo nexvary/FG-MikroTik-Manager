@@ -13,7 +13,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class OperationsUiTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
-    private fun tap(text:String){val n=compose.onNodeWithText(text);runCatching{n.performScrollTo()};n.performClick();compose.waitForIdle()}
+    private fun tap(text:String){compose.waitUntil(15000){runCatching{compose.onNodeWithText(text).assertIsEnabled();true}.getOrDefault(false)};val n=compose.onNodeWithText(text);runCatching{n.performScrollTo()};n.performClick();compose.waitForIdle()}
     private fun waitText(text:String){compose.waitUntil(10000){compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()}}
     private fun capture(name:String){val i=InstrumentationRegistry.getInstrumentation();val b=i.uiAutomation.takeScreenshot();i.targetContext.openFileOutput(name,0).use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
     @Test fun routerProfilesTeamWalletAndArchiveScreens(){
