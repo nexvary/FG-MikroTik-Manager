@@ -26,8 +26,9 @@ object BusinessCsv {
         if(cell.isNotEmpty() || row.isNotEmpty() || closed) record()
         return rows
     }
-    fun line(cells: List<String>): String=cells.joinToString(",") { raw ->
-        val safe=if(raw.trimStart().firstOrNull() in listOf('=','+','-','@','\t','\r')) "'"+raw else raw
+    fun line(cells: List<String>,numericColumns: Set<Int> = emptySet()): String=cells.mapIndexed { index,raw ->
+        val numeric=index in numericColumns && Regex("-?[0-9]+").matches(raw)
+        val safe=if(!numeric && raw.trimStart().firstOrNull() in listOf('=','+','-','@','\t','\r')) "'"+raw else raw
         "\""+safe.replace("\"","\"\"")+"\""
-    }+"\r\n"
+    }.joinToString(",")+"\r\n"
 }

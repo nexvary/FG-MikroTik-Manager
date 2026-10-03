@@ -48,7 +48,7 @@ class BusinessTransfer(private val store: BusinessStore) {
             UNION ALL SELECT 'expense',id,category,CASE WHEN reversal_of IS NULL THEN 'EXPENSE' ELSE 'REVERSAL' END,amount_minor,currency,note,created_at,reversal_of
             FROM expenses WHERE organization_id=? AND branch_id=? AND created_at>=? AND created_at<? ORDER BY 8,2"""
         val a=arrayOf(scope.organizationId,scope.branchId,from.toString(),until.toString())
-        db.rawQuery(sql,a+a).use { c -> while(c.moveToNext()) writer.write(BusinessCsv.line((0 until c.columnCount).map { if(c.isNull(it)) "" else c.getString(it) })) }
+        db.rawQuery(sql,a+a).use { c -> while(c.moveToNext()) writer.write(BusinessCsv.line((0 until c.columnCount).map { if(c.isNull(it)) "" else c.getString(it) },setOf(4,7))) }
         writer.flush()
     }
     companion object { const val TEMPLATE="name,phone,service,account,currency\r\nExample subscriber,,HOTSPOT,example-account,EGP\r\n" }

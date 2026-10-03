@@ -15,7 +15,8 @@ import java.io.File
 class BusinessToolsUiTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
     private fun waitText(text: String) { compose.waitUntil(15000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() } }
-    private fun tap(text: String) { val n=compose.onNodeWithText(text);runCatching { n.performScrollTo() };n.performClick() }
+    private fun ready(text: String) { compose.waitUntil(15000) { runCatching { compose.onNodeWithText(text).assertIsEnabled();true }.getOrDefault(false) } }
+    private fun tap(text: String) { ready(text);val n=compose.onNodeWithText(text);runCatching { n.performScrollTo() };n.performClick() }
     private fun capture(name: String) { compose.waitForIdle();val i=InstrumentationRegistry.getInstrumentation();val b=i.uiAutomation.takeScreenshot();File(i.targetContext.filesDir,name).outputStream().use { b.compress(Bitmap.CompressFormat.PNG,100,it) };b.recycle() }
     @Test fun plansRenewalInvoiceExpenseReportsAndBranchFlow() {
         waitText("Subscribers & accounts");tap("Subscribers & accounts");waitText("Add subscriber");tap("Add subscriber")
@@ -32,7 +33,7 @@ class BusinessToolsUiTest {
         compose.onNodeWithContentDescription("رجوع").performClick();tap("المصروفات");waitText("مصروف جديد");tap("مصروف جديد")
         compose.onNodeWithText("فئة المصروف").performTextInput("Demo office");compose.onNodeWithText("المبلغ EGP").performTextInput("25.00")
         compose.onNodeWithText("البيان / السبب").performTextInput("Demo paper");tap("حفظ");waitText("Demo office")
-        compose.onNodeWithContentDescription("رجوع").performClick();tap("التقارير والتصدير");waitText("عرض الفترة")
+        compose.onNodeWithContentDescription("رجوع").performClick();tap("التقارير والتصدير");ready("عرض الفترة")
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("التحصيل: 100.00 EGP"));waitText("التحصيل: 100.00 EGP")
         compose.onNodeWithText("المصروفات: 25.00 EGP").assertExists();capture("business-reports-ar.png")
         compose.onNodeWithContentDescription("رجوع").performClick();tap("الفواتير");waitText("إلغاء الفاتورة");tap("إلغاء الفاتورة")

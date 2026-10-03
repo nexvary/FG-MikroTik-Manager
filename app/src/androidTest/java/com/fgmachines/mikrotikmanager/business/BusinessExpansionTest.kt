@@ -34,7 +34,7 @@ class BusinessExpansionTest {
     @Test fun mismatchedPlansAndPartialInvoiceFailureRollback() {
         seed();ops.addPlan(scope,"usd","USD","HOTSPOT","USD",100,30)
         reject { ops.renew(scope,"bad","s","usd",0,20000) };assertEquals(0L,store.balance(scope,"s"))
-        store.post(scope,"collision:p".let { "s" },"collision:p",LedgerKind.PAYMENT,1,"existing")
+        store.post(scope,"s","collision:p",LedgerKind.PAYMENT,1,"existing")
         reject { ops.renew(scope,"collision","s","plan",4000,20000) }
         assertNull(ops.invoice(scope,"collision"));assertEquals(-1L,store.balance(scope,"s"));assertEquals(1,store.ledger(scope,"s").items.size)
     }
@@ -78,9 +78,10 @@ class BusinessExpansionTest {
     }
     @Test fun exportIsScopedEscapedAndReconciles() {
         seed();store.post(scope,"s","c",LedgerKind.CHARGE,123,"=HYPERLINK(\"bad\")")
+        store.post(scope,"s","payment",LedgerKind.PAYMENT,23,"Cash")
         ops.expense(scope,"e","Office",23,"EGP","Paper, pens")
         val writer=StringWriter();BusinessTransfer(store).export(scope,0,Long.MAX_VALUE,writer)
-        val rows=BusinessCsv.parse(writer.toString());assertEquals(3,rows.size);assertTrue(rows.any { it[6].startsWith("'=HYPERLINK") });assertTrue(rows.any { it[6]=="Paper, pens" })
+        val rows=BusinessCsv.parse(writer.toString());assertEquals(4,rows.size);assertTrue(rows.any { it[4]=="-23" });assertTrue(rows.any { it[6].startsWith("'=HYPERLINK") });assertTrue(rows.any { it[6]=="Paper, pens" })
     }
     @Test fun encryptedBackupRoundTripWrongPasswordTamperAndNoOverwrite() {
         seed();ops.renew(scope,"i","s","plan",4000,20000);ops.cancelInvoice(scope,"i","v","Correction");ops.expense(scope,"e","Rent",100,"EGP","Office")
@@ -94,6 +95,23 @@ class BusinessExpansionTest {
             BusinessBackup(other).restore(bytes,password);assertEquals(scope,other.defaultScope());assertEquals("Customer",other.subscriber(scope,"s").name)
             assertTrue(BusinessOperations(other).invoice(scope,"i")!!.voided);assertEquals(4,other.ledger(scope,"s").items.size);assertEquals(100L,BusinessOperations(other).expenses(scope).items.single().amount)
             assertTrue(BusinessOperations(other).audit(scope).items.any { it.action=="RESTORE" })
+        } finally { other.close();context.deleteDatabase(otherName);password.fill('\u0000') }
+    }
+    @Test fun invalidAuthenticatedSnapshotRollsBackDataAndAuditTriggers() {
+        seed();ops.renew(scope,"invoice","s","plan",100,20000)
+        val password="Backup rollback password!".toCharArray()
+        val bytes=BusinessBackup(store).export(password)
+        val root=org.json.JSONObject(String(BusinessBackupCipher.decrypt(bytes,password),Charsets.UTF_8))
+        root.getJSONObject("tables").put("subscribers",org.json.JSONArray())
+        val broken=BusinessBackupCipher.encrypt(root.toString().toByteArray(Charsets.UTF_8),password)
+        val otherName="rollback-${UUID.randomUUID()}.db";val other=BusinessStore(BusinessDatabase(context,otherName))
+        try {
+            val initial=other.defaultScope()
+            reject { BusinessBackup(other).restore(broken,password) }
+            assertEquals(initial,other.defaultScope())
+            assertTrue(other.subscribers(initial).items.isEmpty())
+            other.addSubscriber(initial,"new","New","","OTHER","","EGP")
+            assertEquals(1,BusinessOperations(other).audit(initial).items.size)
         } finally { other.close();context.deleteDatabase(otherName);password.fill('\u0000') }
     }
     @Test fun auditImmutableAndCursorsDoNotDuplicate() {

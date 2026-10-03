@@ -17,5 +17,8 @@ class BusinessCsvTest {
             try { BusinessCsv.parse(text);fail("Expected invalid input") } catch(_: IllegalArgumentException) {}
         }
     }
+    @Test fun trustedNumericColumnsRemainNumericButNeverAcceptExpressions() {
+        assertEquals(listOf("-23","'=1+1"),BusinessCsv.parse(BusinessCsv.line(listOf("-23","=1+1"),setOf(0,1))).single())
+    }
     @Test fun handlesCrLfEmptyFieldsAndFinalRecord() { assertEquals(listOf(listOf("a","","c"),listOf("","","")),BusinessCsv.parse("a,,c\r\n,,")) }
 }

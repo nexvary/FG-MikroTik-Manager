@@ -6,6 +6,8 @@ import android.database.sqlite.SQLiteDatabase
 internal object BusinessSchemaV2 {
     val tables = listOf("organizations", "branches", "settings", "subscribers", "ledger", "plans", "invoices", "invoice_voids", "expenses", "import_batches", "audit")
     fun install(db: SQLiteDatabase) {
+        db.execSQL("CREATE INDEX ledger_scope_date ON ledger(organization_id,branch_id,created_at,currency)")
+        db.execSQL("CREATE INDEX subscriber_scope_account ON subscribers(organization_id,branch_id,service,account)")
         db.execSQL("""CREATE TABLE plans(id TEXT PRIMARY KEY NOT NULL, organization_id TEXT NOT NULL, branch_id TEXT NOT NULL,
             name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 120), service TEXT NOT NULL CHECK(service IN ('HOTSPOT','PPPOE','OTHER')),
             currency TEXT NOT NULL CHECK(currency IN ('EGP','USD','EUR','SAR','AED','TRY')),
@@ -52,6 +54,7 @@ internal object BusinessSchemaV2 {
             CHECK((reversal_of IS NULL AND amount_minor>0) OR (reversal_of IS NOT NULL AND amount_minor<0)),
             FOREIGN KEY(organization_id,branch_id) REFERENCES branches(organization_id,id))""")
         db.execSQL("CREATE INDEX expenses_scope ON expenses(organization_id,branch_id,sequence DESC)")
+        db.execSQL("CREATE INDEX expenses_scope_date ON expenses(organization_id,branch_id,created_at,currency)")
         db.execSQL("""CREATE TRIGGER expense_reversal BEFORE INSERT ON expenses WHEN NEW.reversal_of IS NOT NULL AND NOT EXISTS(
             SELECT 1 FROM expenses WHERE id=NEW.reversal_of AND reversal_of IS NULL AND organization_id=NEW.organization_id
             AND branch_id=NEW.branch_id AND currency=NEW.currency AND amount_minor=-NEW.amount_minor AND category=NEW.category)
