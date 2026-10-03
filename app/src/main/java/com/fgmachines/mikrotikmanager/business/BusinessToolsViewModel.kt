@@ -153,6 +153,9 @@ class BusinessToolsViewModel(app: Application,private val savedState: SavedState
         withContext(Dispatchers.IO) {
             network.validateLatest(scope!!,job.invoice)
             network.result(scope!!,job.invoice,"REVIEW")
+        }
+        mutable.value=mutable.value.copy(networkJob=job.copy(state="REVIEW"))
+        withContext(Dispatchers.IO) {
             if(suspendAccount) r.suspendAccount(job.target) else r.apply(job.target)
             network.result(scope!!,job.invoice,if(suspendAccount)"SUSPENDED" else "VERIFIED")
         }
