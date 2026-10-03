@@ -52,7 +52,7 @@ fun VoucherArchiveScreen(arabic:Boolean,onBack:()->Unit,model:VoucherArchiveMode
     LaunchedEffect(Unit){model.refresh()}
     BackHandler { if(!model.busy){if(uri!=null){uri=null;password="";confirmation=""}else onBack()} }
     Surface(color=FgBlack,contentColor=FgWhite,modifier=Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         TextButton(onClick=onBack,enabled=!model.busy){Text(tr("رجوع","Back"))}
         Text(tr("حماية ونقل أرشيف الكروت","Protect & transfer voucher archive"),style=MaterialTheme.typography.titleLarge)
         Text(tr("عدد الدفعات: ","Batch count: ")+model.count)

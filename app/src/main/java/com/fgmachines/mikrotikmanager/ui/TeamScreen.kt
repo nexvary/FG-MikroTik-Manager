@@ -69,7 +69,7 @@ fun TeamScreen(arabic:Boolean,onBack:()->Unit,model:TeamModel=viewModel()) {
     fun back(){if(!model.busy){if(model.selected!=null)model.select(null) else onBack()}}
     BackHandler { if(editor==null)back() }
     Surface(color=FgBlack,contentColor=FgWhite,modifier=Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp)) { TextButton(onClick={back()},enabled=!model.busy){Text(tr("رجوع","Back"))};Text(tr("الموظفون والموزعون","Staff & resellers"),Modifier.padding(12.dp)) }
         if(model.busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         model.error?.let { Text(tr("لم تُحفظ العملية: ","Operation not saved: ")+it,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(12.dp)) }
