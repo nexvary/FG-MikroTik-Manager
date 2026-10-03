@@ -31,6 +31,7 @@ class BusinessSales(private val store: BusinessStore) {
         val sale=sale(s,saleId) ?: error("SALE_NOT_FOUND");val clean=businessText(reason,500,true);require(id.length<=64 && id.isNotBlank())
         d.rawQuery("SELECT sale_id,reason FROM sale_voids WHERE id=?",arrayOf(id)).use { if(it.moveToFirst()){ require(it.getString(0)==saleId && it.getString(1)==clean) { "IDEMPOTENCY_CONFLICT" };return@transaction } }
         require(!sale.voided) { "ALREADY_REVERSED" }
+        d.rawQuery("SELECT 1 FROM reseller_entries e WHERE e.sale_id=? AND NOT EXISTS(SELECT 1 FROM reseller_entries r WHERE r.reversal_of=e.id) LIMIT 1",arrayOf(saleId)).use { require(!it.moveToFirst()) { "REVERSE_COMMISSION_FIRST" } }
         d.execSQL("INSERT INTO sale_voids VALUES(?,?,?,?,?,?)",arrayOf(id,saleId,s.organizationId,s.branchId,clean,System.currentTimeMillis()))
         store.reverse(s,sale.subscriber,"$saleId:c","$id:c",clean)
         if(sale.paid>0)store.reverse(s,sale.subscriber,"$saleId:p","$id:p",clean)

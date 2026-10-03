@@ -59,6 +59,7 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
     BackHandler { back() }
     LaunchedEffect(state.saved) { if(handled!=state.saved) { editor=null;password="";confirmation="";backupUri=null;handled=state.saved;if(state.message=="BRANCH_CHANGED") onBack() } }
     val error=state.error?.let { code -> when(code) {
+        "REVERSE_COMMISSION_FIRST" -> tr("اعكس عمولة الموزع من محفظته قبل إلغاء البيع.","Reverse the reseller commission in their wallet before canceling this sale.")
         "NETWORK_INVOICE_LOCKED" -> tr("أوقف الخدمة من تطبيق على الراوتر قبل إلغاء الفاتورة.","Suspend service from Apply to router before canceling this invoice.")
         "NOT_BOUND" -> tr("استورد حساب الشبكة واربطه بهذا المشترك أولًا.","Import and bind the network account first.")
         "WRONG_ROUTER","BINDING_CONFLICT","ACCOUNT_CHANGED" -> tr("الراوتر أو الحساب لا يطابق الربط المحفوظ. لم يتم تأكيد التطبيق.","Router or account does not match the saved binding. Application is not confirmed.")

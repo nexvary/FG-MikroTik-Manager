@@ -86,6 +86,7 @@ fun TeamScreen(arabic:Boolean,onBack:()->Unit,model:TeamModel=viewModel()) {
             } else {
                 item { Text(selected.name,color=FgMint);Text(tr("الرصيد: ","Balance: ")+BusinessMoney.format(model.balance,selected.currency));Text(tr("نسبة العمولة: ","Commission: ")+"${selected.commissionBps/100.0}%")
                     Row { listOf("DEPOSIT","WITHDRAWAL","COMMISSION").forEach { k->TextButton(onClick={editor=k},enabled=!model.busy && selected.active){Text(teamKind(k,arabic))} } }
+                }
                 item { Text(tr("آخر 100 حركة. العمولة تُحسب على المحصل وقت البيع، وتُسجل مرة واحدة لكل بيع.","Latest 100 entries. Commission uses the amount collected at sale creation, once per sale."),color=FgSilver) }
                 items(model.entries,key={it.id}) { e->Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(teamKind(e.kind,arabic)+" • "+BusinessMoney.format(e.amount,selected.currency));Text(e.note)
                     if(e.reversed)Text(tr("معكوسة","Reversed")) else if(e.kind!="REVERSAL")TextButton(onClick={reference=e.id;editor="REVERSAL"},enabled=!model.busy){Text(tr("عكس الحركة","Reverse entry"))}
