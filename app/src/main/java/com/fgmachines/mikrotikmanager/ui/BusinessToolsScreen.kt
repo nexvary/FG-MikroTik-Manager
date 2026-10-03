@@ -74,7 +74,14 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
             when(state.tab) {
                 "home" -> {
                     item { Text(tr("باقات وحسابات محلية. الربط الآلي بالراوتر يأتي في مرحلة لاحقة.","Local plans and accounts. Automatic router integration is a later phase."),color=FgSilver) }
-                    items(tabs.chunked(2)) { row -> Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) { row.forEach { (id,label)->OutlinedButton(onClick={model.tab(id)},enabled=!state.busy,modifier=Modifier.weight(1f).heightIn(min=68.dp)){Text(label)} } }
+                    items(tabs.chunked(2)) { row ->
+                        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            row.forEach { (id,label) ->
+                                OutlinedButton(onClick={model.tab(id)},enabled=!state.busy,
+                                    modifier=Modifier.weight(1f).heightIn(min=68.dp)) { Text(label) }
+                            }
+                        }
+                    }
                 }
                 "plans" -> {
                     item { Button(onClick={editor="plan"},enabled=!state.busy){Text(tr("باقة جديدة","Add plan"))} }

@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 data class BusinessState(
-    val busy: Boolean = false, val error: String? = null, val query: String = "",
+    val branchName: String = "", val busy: Boolean = false, val error: String? = null, val query: String = "",
     val subscribers: List<Subscriber> = emptyList(), val moreSubscribers: Boolean = false, val subscriberPage: Int = 1,
     val selected: Subscriber? = null, val entries: List<LedgerEntry> = emptyList(),
     val moreEntries: Boolean = false, val ledgerPage: Int = 1, val balance: Long? = null, val saved: Int = 0, val subscriptionEnd: Long? = null
@@ -32,7 +32,13 @@ class BusinessViewModel(application: Application, private val savedState: SavedS
         if(mutable.value.busy) return
         mutable.value=mutable.value.copy(busy=true,error=null)
         viewModelScope.launch {
-            try { if(scope==null) scope=withContext(Dispatchers.IO) { store.defaultScope() }; action() }
+            try {
+                if(scope==null) {
+                    val current=withContext(Dispatchers.IO) { val s=store.defaultScope();s to BusinessOperations(store).branches(s).first { it.id==s.branchId }.name }
+                    scope=current.first;mutable.value=mutable.value.copy(branchName=current.second)
+                }
+                action()
+            }
             catch(cancelled: CancellationException) { throw cancelled }
             catch(e: Exception) { mutable.value=mutable.value.copy(error=when(e.message) {
                 "INVALID_AMOUNT", "INVALID_TEXT", "IDEMPOTENCY_CONFLICT", "ALREADY_REVERSED", "SUBSCRIBER_NOT_FOUND" -> e.message

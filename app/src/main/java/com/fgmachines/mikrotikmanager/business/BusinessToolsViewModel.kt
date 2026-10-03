@@ -89,7 +89,7 @@ class BusinessToolsViewModel(app: Application,private val savedState: SavedState
     }
     fun readImport(uri: Uri)=run {
         val result=withContext(Dispatchers.IO) {
-            val text=getApplication<Application>().contentResolver.openInputStream(uri)!!.use { String(BusinessBackupCipher.readBounded(it,BusinessCsv.MAX_CHARS),Charsets.UTF_8) }
+            val text=getApplication<Application>().contentResolver.openInputStream(uri)!!.use { Charsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(BusinessBackupCipher.readBounded(it,BusinessCsv.MAX_CHARS))).toString() }
             text to transfer.preview(scope!!,text)
         };importText=result.first;mutable.value=mutable.value.copy(importPreview=result.second)
     }

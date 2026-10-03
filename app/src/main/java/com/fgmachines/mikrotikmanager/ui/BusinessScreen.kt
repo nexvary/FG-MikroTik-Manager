@@ -59,6 +59,7 @@ fun BusinessScreen(arabic: Boolean,onBack: ()->Unit,onLanguageToggle: ()->Unit,m
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding(),
             contentPadding=PaddingValues(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             item { Text(tr("سجل أعمال محلي • لا يفعّل أو يوقف الإنترنت تلقائيًا.","Local business ledger • does not activate or suspend Internet automatically."),color=FgSilver,style=MaterialTheme.typography.bodySmall) }
+            item { Text(tr("الفرع الحالي: ","Current branch: ")+state.branchName,color=FgMint) }
             item { OutlinedButton(onClick={toolsOpen=true},enabled=!state.busy,modifier=Modifier.fillMaxWidth()) { Text(tr("إدارة الأعمال والباقات","Business tools & plans")) } }
             if(state.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if(error!=null) item { Text(error,color=MaterialTheme.colorScheme.error); TextButton(onClick=model::refresh,enabled=!state.busy) { Text(tr("إعادة التحميل","Reload")) } }
