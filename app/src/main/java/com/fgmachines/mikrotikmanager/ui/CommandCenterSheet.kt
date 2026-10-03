@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -171,6 +172,11 @@ fun CommandCenterSheet(
                 }
             }
 
+            TextButton(onClick = onDismiss) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (arabic) "رجوع للصفحة السابقة" else "Back to previous page")
+            }
             Spacer(Modifier.height(10.dp))
 
             if (input.isBlank() && clipboardCandidate.isNotBlank()) {

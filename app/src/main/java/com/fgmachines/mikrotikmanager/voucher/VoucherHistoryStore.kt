@@ -20,8 +20,8 @@ data class SavedVoucherBatch(
     val batch: VoucherBatch
 )
 
-class VoucherHistoryStore(context: Context) {
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+class VoucherHistoryStore(context: Context, prefsName: String = PREFS_NAME) {
+    private val prefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -32,7 +32,7 @@ class VoucherHistoryStore(context: Context) {
         val id = VoucherHistoryIndex.newId(timestamp)
         val plaintext = json.encodeToString(batch).toByteArray(Charsets.UTF_8)
         synchronized(WRITE_LOCK) {
-            val encrypted = encrypt(plaintext)
+            val encrypted = try { encrypt(plaintext) } finally { plaintext.fill(0) }
             val index = prefs.getStringSet(KEY_INDEX, emptySet()).orEmpty().toMutableSet()
             index += id
             check(prefs.edit()
@@ -69,6 +69,61 @@ class VoucherHistoryStore(context: Context) {
                 }
 
         }
+
+    /** Fail closed if any legacy batch cannot be decrypted; never export a silently incomplete archive. */
+    suspend fun exportPortable(password: CharArray): ByteArray = withContext(Dispatchers.IO) {
+        val clear=synchronized(WRITE_LOCK) {
+            val rows=org.json.JSONArray();var size=0L
+            val ids=prefs.getStringSet(KEY_INDEX,emptySet()).orEmpty().sorted()
+            require(ids.size<=10000) { "ARCHIVE_LIMIT" }
+            for(id in ids) {
+                val encoded=prefs.getString(KEY_PREFIX+id,null) ?: error("ARCHIVE_UNREADABLE")
+                val bytes=decrypt(encoded)
+                val batch=try { json.decodeFromString<VoucherBatch>(String(bytes,Charsets.UTF_8)) } finally { bytes.fill(0) }
+                val row=org.json.JSONObject().put("id",id).put("batch",json.encodeToString(batch))
+                size+=row.toString().toByteArray(Charsets.UTF_8).size
+                require(size<com.fgmachines.mikrotikmanager.business.BusinessBackupCipher.MAX_BYTES-4096) { "FILE_TOO_LARGE" }
+                rows.put(row)
+            }
+            org.json.JSONObject().put("format","FG-MTM-vouchers").put("schema",1).put("batches",rows).toString().toByteArray(Charsets.UTF_8)
+        }
+        try { com.fgmachines.mikrotikmanager.business.BusinessBackupCipher.encrypt(clear,password) } finally { clear.fill(0) }
+    }
+
+    /** Validate all rows before one atomic preference commit. Existing IDs must match exactly. */
+    suspend fun importPortable(bytes: ByteArray,password: CharArray): Int = withContext(Dispatchers.IO) {
+        val clear=com.fgmachines.mikrotikmanager.business.BusinessBackupCipher.decrypt(bytes,password)
+        val root=try { org.json.JSONObject(String(clear,Charsets.UTF_8)) } finally { clear.fill(0) }
+        require(root.getString("format")=="FG-MTM-vouchers" && root.getInt("schema")==1) { "INVALID_BACKUP" }
+        val rows=root.getJSONArray("batches");require(rows.length()<=10000) { "ARCHIVE_LIMIT" }
+        val batches=linkedMapOf<String,VoucherBatch>()
+        for(i in 0 until rows.length()) {
+            val row=rows.getJSONObject(i);val id=row.getString("id")
+            require(id.matches(Regex("[0-9]{1,19}(-[a-fA-F0-9-]{36})?")) && VoucherHistoryIndex.timestamp(id)>0 && id !in batches) { "INVALID_BACKUP" }
+            val batch=json.decodeFromString<VoucherBatch>(row.getString("batch"))
+            require(batch.vouchers.size==batch.request.quantity && batch.vouchers.map { it.username }.toSet().size==batch.vouchers.size) { "INVALID_BACKUP" }
+            require(batch.vouchers.all { it.username.isNotBlank() && it.username.length<=128 && it.password.length<=256 }) { "INVALID_BACKUP" }
+            batches[id]=batch
+        }
+        synchronized(WRITE_LOCK) {
+            val ids=prefs.getStringSet(KEY_INDEX,emptySet()).orEmpty().toMutableSet()
+            require((ids+batches.keys).size<=10000) { "ARCHIVE_LIMIT" }
+            val editor=prefs.edit();var added=0
+            for((id,batch) in batches) {
+                if(id in ids) {
+                    val existing=prefs.getString(KEY_PREFIX+id,null) ?: error("ARCHIVE_UNREADABLE")
+                    val decoded=decrypt(existing)
+                    try { require(json.decodeFromString<VoucherBatch>(String(decoded,Charsets.UTF_8))==batch) { "ARCHIVE_CONFLICT" } } finally { decoded.fill(0) }
+                } else {
+                    val plain=json.encodeToString(batch).toByteArray(Charsets.UTF_8)
+                    try { editor.putString(KEY_PREFIX+id,encrypt(plain)) } finally { plain.fill(0) }
+                    ids+=id;added++
+                }
+            }
+            if(added>0) check(editor.putStringSet(KEY_INDEX,ids).commit()) { "ARCHIVE_WRITE_FAILED" }
+            added
+        }
+    }
 
     private fun encrypt(plaintext: ByteArray): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)

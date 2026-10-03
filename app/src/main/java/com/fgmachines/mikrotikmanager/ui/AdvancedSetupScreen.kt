@@ -1,5 +1,6 @@
 package com.fgmachines.mikrotikmanager.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,14 @@ fun AdvancedSetupScreen(
     val prefs = remember { context.getSharedPreferences("fg_portal_design", 0) }
     var design by remember { mutableStateOf(runCatching { Json.decodeFromString<PortalDesign>(prefs.getString("design", null).orEmpty()) }.getOrDefault(PortalDesign())) }
     var panel by rememberSaveable { mutableStateOf(initialPanel) }
+    var panelHistory by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+    fun openPanel(next: String) {
+        if (next != panel) { panelHistory = ArrayList(panelHistory + panel); panel = next }
+    }
+    fun backPanel() {
+        panel = panelHistory.lastOrNull() ?: "home"
+        panelHistory = ArrayList(panelHistory.dropLast(1))
+    }
     var report by remember { mutableStateOf<ReadinessReport?>(null) }
     var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf("") }
     var details by rememberSaveable { mutableStateOf(false) }
@@ -67,8 +76,8 @@ fun AdvancedSetupScreen(
     fun confirm(ar: String, en: String, action: () -> Unit) { confirmation = label(ar,en) to action }
     fun freshSecret() = UUID.randomUUID().toString().replace("-", "")
     suspend fun protectedBackup(password: String): String { val file = manager!!.backup(password); vault.rememberBackup(file,password); record("إنشاء نسخة احتياطية", "Create encrypted backup", true,file); return file }
-    fun checkNetwork(next: String) { panel=next; run("فحص الشبكة", "Inspect network", false) { report = manager!!.inspect(request?.interfaceName, true); label("اكتمل الفحص", "Inspection completed") } }
-    fun startWizard() { panel="wizard"; wizardStep=0; plan=null; request=report?.let { manager?.suggestion(it) } }
+    fun checkNetwork(next: String) { openPanel(next); run("فحص الشبكة", "Inspect network", false) { report = manager!!.inspect(request?.interfaceName, true); label("اكتمل الفحص", "Inspection completed") } }
+    fun startWizard() { openPanel("wizard"); wizardStep=0; plan=null; request=report?.let { manager?.suggestion(it) } }
     LaunchedEffect(manager) {
         if (manager != null) run("فحص جاهزية الراوتر", "Router readiness", false) { report=manager.inspect(deep=true); backups=manager.listBackups(); label("تم الفحص", "Checked") }
         if (demo) {
@@ -80,6 +89,13 @@ fun AdvancedSetupScreen(
     }
     LaunchedEffect(panel,wizardStep) {
         if (panel=="wizard" && wizardStep==5 && request!=null && manager!=null) run("مراجعة خطة الإعداد", "Preview setup plan", false) { plan=manager.plan(request!!); label("الخطة جاهزة للمراجعة", "Plan ready for review") }
+    }
+    BackHandler(enabled = tools != null || panel != "home") {
+        when {
+            tools != null -> tools = null
+            panel == "wizard" && wizardStep > 0 -> wizardStep--
+            else -> backPanel()
+        }
     }
     LazyColumn(modifier.fillMaxSize(),contentPadding=PaddingValues(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         item {
@@ -108,7 +124,7 @@ fun AdvancedSetupScreen(
             }
             if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if(message.isNotBlank()) Text(message,color=FgSilver)
-            if(panel!="home") TextButton(onClick={ panel="home" }) { Text(label("رجوع للإعداد المتقدم", "Back to Advanced Setup")) }
+            if(panel!="home") TextButton(onClick={ backPanel() }) { Text(label("رجوع للصفحة السابقة", "Back to previous page")) }
         }
         if(panel=="home") {
             report?.let { result -> item {
@@ -121,7 +137,7 @@ fun AdvancedSetupScreen(
                 if(!result.voucherReady) Button(onClick={ startWizard() },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("جهّز الراوتر للكروت", "Prepare router for vouchers")) }
             } }
             items(listOf("readiness" to label("فحص جاهزية الراوتر", "Router readiness check"),"wizard" to label("إعداد HotSpot لأول مرة", "First-time HotSpot setup"),"doctor" to label("تشخيص الشبكة", "Network Doctor"),"repair" to label("إصلاح تلقائي", "Auto repair"),"client" to label("اختبار شبكة العملاء", "Test client network"),"portal" to label("صفحة HotSpot للعملاء", "Customer HotSpot portal"),"backup" to label("نسخة احتياطية واستعادة", "Backup & recovery"),"quick" to label("أدوات سريعة", "Quick tools"),"technical" to label("الإعدادات التقنية", "Technical settings"))) { (key,title) ->
-                OutlinedButton(onClick={ when(key) { "wizard" -> startWizard(); "portal" -> tools="design"; "readiness","doctor","client" -> checkNetwork(key); else -> panel=key } },modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(horizontal=12.dp,vertical=12.dp)) { Text(title,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null) }
+                OutlinedButton(onClick={ when(key) { "wizard" -> startWizard(); "portal" -> tools="design"; "readiness","doctor","client" -> checkNetwork(key); else -> openPanel(key) } },modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(horizontal=12.dp,vertical=12.dp)) { Text(title,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null) }
             }
         }
         if(panel in listOf("readiness","doctor","client")) {
@@ -188,7 +204,7 @@ fun AdvancedSetupScreen(
         }
         if(panel in listOf("quick","technical")) {
             item { Text(label("الأدوات والإعدادات", "Tools & settings"),color=FgBlue,fontWeight=FontWeight.Bold) }
-            item { OutlinedButton(onClick={ panel="backup" },modifier=Modifier.fillMaxWidth()) { Text("Backup Now") } }
+            item { OutlinedButton(onClick={ openPanel("backup") },modifier=Modifier.fillMaxWidth()) { Text("Backup Now") } }
             item { OutlinedButton(onClick={ confirm("إعادة التشغيل ستقطع الاتصال. سيتم حفظ نسخة احتياطية أولًا. متابعة؟", "Restart disconnects this phone. Create a backup first and restart?") { run("إعادة تشغيل الراوتر", "Restart router",false) { protectedBackup(freshSecret());manager!!.reboot();label("أُرسل طلب إعادة التشغيل؛ أعد الاتصال بعد عودة الراوتر.", "Restart requested; reconnect when the router returns.") } } },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("إعادة تشغيل الراوتر", "Restart router")) } }
             item { OutlinedButton(onClick={ run("تنظيف DNS", "Flush DNS cache") { manager!!.flushDns();label("تم التنظيف", "Cache cleared") } },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text("Flush DNS Cache") } }
             item { OutlinedButton(onClick={ checkNetwork("client") },modifier=Modifier.fillMaxWidth()) { Text(label("تحديث توزيع عناوين العملاء", "Refresh DHCP status")) } }

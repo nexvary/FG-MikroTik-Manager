@@ -1,6 +1,8 @@
 package com.fgmachines.mikrotikmanager.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -104,6 +106,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
     }
     var offlineStudio by rememberSaveable { mutableStateOf(false) }
     var businessOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(businessOpen) { if(!businessOpen) viewModel.refreshArchive() }
 
     CompositionLocalProvider(
         LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -321,6 +324,11 @@ private fun ConnectionScreen(
     val protocol = RouterProtocol.valueOf(protocolName)
     val port = if (protocol == RouterProtocol.AUTO) protocol.defaultPort else portText.toIntOrNull()
     val validPort = port != null && port in 1..65535
+    var profilesOpen by rememberSaveable { mutableStateOf(false) }
+    if(profilesOpen) RouterProfilesDialog(arabic,
+        current=if(host.isNotBlank() && username.isNotBlank() && validPort) RouterConnectionSettings(host,port!!,username,"",protocol) else null,
+        onSelect={ profile -> host=profile.host;username=profile.username;password="";protocolName=profile.protocol.name;portText=profile.port.toString();advancedConnection=profile.protocol!=RouterProtocol.AUTO;profilesOpen=false;onClearError() },
+        onDismiss={profilesOpen=false})
     val keyboard = LocalSoftwareKeyboardController.current
     fun connect() {
         if (connecting || host.isBlank() || username.isBlank() || !validPort) return
@@ -391,6 +399,8 @@ private fun ConnectionScreen(
                     )
                 }
             }
+
+            item { OutlinedButton(onClick={profilesOpen=true},enabled=!connecting,modifier=Modifier.fillMaxWidth()) { Text(if(arabic) "مركز الراوترات" else "Router center") } }
 
             if (discoveredRouters.isNotEmpty()) {
                 item {
@@ -596,7 +606,7 @@ private fun ConnectionScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RouterShell(
+internal fun RouterShell(
     state: RouterUiState,
     advancedManager: com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager? = null,
     hotspotManager: com.fgmachines.mikrotikmanager.hotspot.HotspotManager? = null,
@@ -628,16 +638,30 @@ private fun RouterShell(
     val wide = LocalConfiguration.current.screenWidthDp >= 840
     var commandCenterOpen by rememberSaveable { mutableStateOf(commandCenterInitiallyOpen) }
 
+    var sectionHistory by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+    val contentState = rememberSaveableStateHolder()
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    val navigate: (AppSection) -> Unit = { target ->
+        if (target != state.section) {
+            sectionHistory = if (target == AppSection.BUSINESS) sectionHistory else if (target == AppSection.MENU) arrayListOf()
+                else ArrayList(sectionHistory + state.section.name)
+            onSection(target)
+        }
+    }
     val goBack: () -> Unit = {
-        if ((state.section == AppSection.NETWORK || state.section == AppSection.SYSTEM) &&
-            state.adminModule != null) {
-            onCloseAdminModule()
-        } else {
-            onSection(AppSection.MENU)
+        when {
+            commandCenterOpen -> commandCenterOpen = false
+            state.adminModule != null -> onCloseAdminModule()
+            sectionHistory.isNotEmpty() -> {
+                val previous = AppSection.valueOf(sectionHistory.last())
+                sectionHistory = ArrayList(sectionHistory.dropLast(1))
+                onSection(previous)
+            }
+            else -> onSection(AppSection.MENU)
         }
     }
 
-    BackHandler(enabled = state.section != AppSection.MENU || state.adminModule != null) {
+    BackHandler(enabled = commandCenterOpen || state.section != AppSection.MENU || state.adminModule != null) {
         goBack()
     }
 
@@ -651,19 +675,20 @@ private fun RouterShell(
                 PersistentMainMenu(
                     state = state,
                     arabic = arabic,
-                    onSection = onSection,
+                    onSection = navigate,
                     onDisconnect = onDisconnect,
                     modifier = Modifier
                         .width(280.dp)
                         .fillMaxHeight()
                 )
                 VerticalDivider(color = FgBlue.copy(alpha = 0.35f))
+                contentState.SaveableStateProvider(state.section.name) {
                 RouterContent(
                     state = state,
                     hotspotManager = hotspotManager,
                     advancedManager = advancedManager,
                     initialAdvancedPanel = initialAdvancedPanel, advancedDemo = advancedDemo,
-                    onSection = onSection,
+                    onSection = navigate,
                     arabic = arabic,
                     onRefresh = onRefresh,
                     onOpenAdminModule = onOpenAdminModule,
@@ -682,6 +707,7 @@ private fun RouterShell(
                     onClearAdminActionMessage = onClearAdminActionMessage,
                     modifier = Modifier.weight(1f)
                 )
+                }
             }
 
             if ((state.section == AppSection.NETWORK || state.section == AppSection.SYSTEM)) {
@@ -730,7 +756,7 @@ private fun RouterShell(
             CompactAppHeader(
                 subtitle = sectionLabel(state.section, arabic),
                 showBack = state.section != AppSection.MENU || state.adminModule != null,
-                onBack = goBack,
+                onBack = { backDispatcher?.onBackPressed() ?: goBack() },
                 onLanguageToggle = onLanguageToggle,
                 showRefresh = state.section == AppSection.ADVANCED,
                 refreshing = state.refreshing,
@@ -738,6 +764,7 @@ private fun RouterShell(
             )
         }
     ) { padding ->
+        contentState.SaveableStateProvider(state.section.name) {
         RouterContent(
             state = state,
             hotspotManager = hotspotManager,
@@ -762,9 +789,10 @@ private fun RouterShell(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            onSection = onSection,
+            onSection = navigate,
             onDisconnect = onDisconnect
         )
+        }
     }
 
     if (commandCenterOpen) {

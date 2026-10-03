@@ -505,6 +505,10 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    fun refreshArchive() { viewModelScope.launch {
+        _state.value=_state.value.copy(voucherHistoryCount=voucherHistory.count(),recentVoucherBatches=voucherHistory.recent())
+    } }
+
     fun clearError() {
         _state.value = _state.value.copy(error = null)
     }
