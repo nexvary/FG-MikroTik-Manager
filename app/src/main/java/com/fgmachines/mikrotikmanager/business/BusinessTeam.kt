@@ -2,7 +2,7 @@ package com.fgmachines.mikrotikmanager.business
 
 import android.database.sqlite.SQLiteDatabase
 
-/** Local personnel directory and reseller subledger; roles are descriptive, not login permissions. */
+/** Local personnel directory and reseller subledger; roles are enforced only after the device owner enrolls employee sign-in. */
 data class TeamMember(val id:String,val name:String,val phone:String,val role:String,val currency:String,val commissionBps:Int,val active:Boolean)
 data class ResellerEntry(val id:String,val amount:Long,val note:String,val kind:String,val sale:String?,val reversed:Boolean)
 internal object BusinessSchemaV4 {

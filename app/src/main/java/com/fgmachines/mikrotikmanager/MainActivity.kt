@@ -8,10 +8,6 @@ import com.fgmachines.mikrotikmanager.ui.RouterDemoApp
 import com.fgmachines.mikrotikmanager.ui.BusinessAccessRoot
 
 class MainActivity : ComponentActivity() {
-    override fun onStop() {
-        if(!isChangingConfigurations)com.fgmachines.mikrotikmanager.business.IdentitySessions.lock(getDatabasePath("fg_business.db").absolutePath)
-        super.onStop()
-    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

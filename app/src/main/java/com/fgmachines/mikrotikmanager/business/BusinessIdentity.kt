@@ -130,6 +130,7 @@ class BusinessIdentity(private val store:BusinessStore,private val wallClock:()-
             transaction{d->
                 require(null,BusinessPermission.AUTH)
                 val s=d.rawQuery("SELECT organization_id,branch_id FROM local_accounts WHERE id=?",arrayOf(id)).use{require(it.moveToFirst()){"ACCOUNT_NOT_FOUND"};BusinessScope(it.getString(0),it.getString(1))}
+                require(s,BusinessPermission.AUTH)
                 d.execSQL("UPDATE local_accounts SET salt=?,verifier=?,revision=revision+1 WHERE id=?",arrayOf(v.first,v.second,id))
                 audit(d,s,id,"PASSWORD_RESET",actor.id)
             }

@@ -86,15 +86,16 @@ fun BusinessAccessRoot(model:BusinessAccessModel=viewModel(),content:@Composable
     var manage by rememberSaveable{mutableStateOf(false)}
     var business by rememberSaveable{mutableStateOf(false)}
     val holder=androidx.compose.runtime.saveable.rememberSaveableStateHolder()
-    var previousIdentity by remember{mutableStateOf<String?>(null)}
+    var previousIdentity by rememberSaveable{mutableStateOf<String?>(null)}
     fun tr(a:String,e:String)=if(arabic)a else e
     val identityKey=if(!model.enabled)"legacy" else model.principal?.id ?: "locked"
-    val activity=androidx.compose.ui.platform.LocalContext.current as? androidx.activity.ComponentActivity
+    val activity=androidx.activity.compose.LocalActivity.current as? androidx.activity.ComponentActivity
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){delay(2000);model.refresh(true)}}}
     LaunchedEffect(identityKey){
         previousIdentity?.takeIf{it!=identityKey}?.let{holder.removeState(it)}
-        previousIdentity=identityKey;manage=false;business=false
+        if(previousIdentity!=null && previousIdentity!=identityKey){manage=false;business=false}
+        previousIdentity=identityKey
     }
     if(!model.ready){FgMikroTikTheme{Surface(Modifier.fillMaxSize(),color=FgBlack){Column(Modifier.safeDrawingPadding().padding(20.dp)){Text(tr("جارٍ التحقق من الدخول…","Checking access…"));model.error?.let{Text(it)};TextButton(onClick={model.refresh()}){Text(tr("إعادة المحاولة","Retry"))}}}};return}
     val user=model.principal
@@ -159,7 +160,7 @@ fun BusinessAccessRoot(model:BusinessAccessModel=viewModel(),content:@Composable
             Button(onClick={val chars=password.toCharArray();password="";model.login(username,chars)},enabled=!model.busy && username.isNotBlank() && password.isNotEmpty()){Text(tr("دخول","Sign in"))}
             TextButton(onClick=language){Text(tr("English","العربية"))}
             AccessError(arabic,model.error)
-            Text(tr("لا تُحذف البيانات عند القفل. الجلسة تنتهي بعد 15 دقيقة أو عند مغادرة التطبيق. اطلب من المالك إعادة ضبط كلمة المرور إذا نسيتها.","Locking preserves data. Sessions expire after 15 minutes or when leaving the app. Ask the owner to reset a forgotten password."),color=FgSilver)
+            Text(tr("لا تُحذف البيانات عند القفل. الجلسة تنتهي بعد 15 دقيقة، بما فيها وقت الخلفية، أو عند القفل. اطلب من المالك إعادة ضبط كلمة المرور إذا نسيتها.","Locking preserves data. Sessions expire after 15 minutes including background time, or when locked. Ask the owner to reset a forgotten password."),color=FgSilver)
         }
     }
 }

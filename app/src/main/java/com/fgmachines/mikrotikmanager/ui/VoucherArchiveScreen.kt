@@ -27,7 +27,7 @@ class VoucherArchiveModel(app:Application):AndroidViewModel(app) {
     var count by mutableIntStateOf(0);private set
     var message by mutableStateOf<String?>(null);private set
     private val archive=VoucherHistoryStore(app)
-    fun refresh(){viewModelScope.launch{count=archive.count()}}
+    fun refresh(){viewModelScope.launch{try{count=archive.count()}catch(_:Exception){count=0;message="FAILED"}}}
     fun transfer(uri:Uri,password:CharArray,restore:Boolean) {
         if(busy){password.fill('\u0000');return};busy=true;message=null
         viewModelScope.launch {
