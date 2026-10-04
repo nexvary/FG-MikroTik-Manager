@@ -36,7 +36,7 @@ def validate(records,tenant,branch):
     for record in records:
         if not isinstance(record,dict) or set(record)!={'table','id','body'}:raise ValueError('SYNC_RECORD')
         table=record['table']; identifier(record['id'])
-        if table not in FIELDS:raise ValueError('SYNC_TABLE')
+        if not isinstance(table,str) or table not in FIELDS:raise ValueError('SYNC_TABLE')
         body=record['body']
         if not isinstance(body,dict) or set(body)!=set(FIELDS[table].split()):raise ValueError('SYNC_FIELDS')
         key=(table,record['id'])
@@ -57,6 +57,11 @@ def validate(records,tenant,branch):
         if table!='audit' and body.get('id',body.get('ledger_id'))!=record['id']:raise ValueError('SYNC_ID')
         if 'currency' in body and body['currency'] not in CURRENCIES:raise ValueError('SYNC_CURRENCY')
         if 'created_at' in body and body['created_at']<0:raise ValueError('SYNC_DATE')
+        required={'subscribers':('name',),'plans':('name',),'team_members':('name',),'ledger':('note',),'invoice_voids':('reason',),'sale_voids':('reason',),'expenses':('category','note'),'reseller_entries':('note',)}
+        if any(not body[name] for name in required.get(table,())):raise ValueError('SYNC_EMPTY_TEXT')
+        if table=='plans' and len(body['name'])>120:raise ValueError('SYNC_PLAN')
+        if 'service' in body and body['service'] not in ({'HOTSPOT','PPPOE'} if table=='router_bindings' else {'HOTSPOT','PPPOE','OTHER'}):raise ValueError('SYNC_SERVICE')
+
         for name in ('amount_minor','price_minor'):
             if name in body and not 1<=abs(body[name])<=MAX:raise ValueError('SYNC_MONEY')
     if ('organizations',tenant) not in index or ('branches',branch) not in index:raise ValueError('SYNC_SCOPE_MISSING')
@@ -87,7 +92,7 @@ def validate(records,tenant,branch):
             elif b['payment_id'] is not None:raise ValueError('SYNC_PAYMENT')
             if table=='invoices':
                 plan=ref('plans',b['plan_id'])
-                if not(1<=b['days']<=3660 and b['starts_day']>=0 and b['ends_day']==b['starts_day']+b['days'] and b['days']==plan['days'] and b['amount_minor']==plan['price_minor'] and b['currency']==plan['currency'] and sub['service']==plan['service']):raise ValueError('SYNC_INVOICE')
+                if not(1<=b['days']<=3660 and b['starts_day']>=0 and b['ends_day']==b['starts_day']+b['days'] and b['ends_day']<=365241780471 and b['days']==plan['days'] and b['amount_minor']==plan['price_minor'] and b['currency']==plan['currency'] and sub['service']==plan['service']):raise ValueError('SYNC_INVOICE')
             else:
                 lines=json.loads(b['items_json'])
                 if not isinstance(lines,list) or not 1<=len(lines)<=30:raise ValueError('SYNC_SALE')

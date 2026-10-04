@@ -21,6 +21,9 @@ class ContractTest(unittest.TestCase):
         for field,value in [('amount_minor',True),('currency','USD'),('branch_id','other'),('subscriber_id','missing')]:
             bad=copy.deepcopy(a);bad[-1]['body'][field]=value
             with self.subTest(field=field),self.assertRaises((ValueError,PermissionError)):validate(bad,'company','main')
+        for table,field,value in [('ledger','note',''),('subscribers','name',''),('subscribers','service','INVALID')]:
+            bad=copy.deepcopy(a);next(r for r in bad if r['table']==table)['body'][field]=value
+            with self.subTest(field=field),self.assertRaises(ValueError):validate(bad,'company','main')
         changed=copy.deepcopy(a);changed[-1]['body']['note']='changed'
         with self.assertRaises(ValueError):preserve(old,validate(changed,'company','main'))
         with self.assertRaises(ValueError):preserve(old,validate(a[:-1],'company','main'))

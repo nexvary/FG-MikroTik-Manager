@@ -1,6 +1,6 @@
 # Optional FG server — development increment
 
-This service is optional; the Android app continues to operate locally. This increment implements versioned event intake, scoped account authentication, a PostgreSQL journal, a bounded worker, immutable financial appends/reversals, and monotonic RADIUS accounting **event** reconciliation. A PAP REST authentication endpoint is also implemented with NAS-key and tenant/branch checks, expiry and failure throttling. The API is not itself a RADIUS UDP server: the included FreeRADIUS 3.x adapter handles packets. Android includes an explicit one-way financial transfer preview. This is not a deployed service or complete bidirectional synchronization; live NAS commissioning remains open.
+This service is optional; the Android app continues to operate locally. This increment implements versioned event intake, scoped account authentication, a PostgreSQL journal, a bounded worker, immutable financial appends/reversals, and monotonic RADIUS accounting **event** reconciliation. A PAP REST authentication endpoint is also implemented with NAS-key and tenant/branch checks, expiry and failure throttling. The API is not itself a RADIUS UDP server: the included FreeRADIUS 3.x adapter handles packets. Android 0.15.0 includes explicit bidirectional business synchronization for a selected branch. This is not a deployed service; live NAS commissioning and physical acceptance remain open.
 
 ## Isolated setup
 
@@ -25,7 +25,7 @@ POST `/v1/events`: bearer authentication, JSON array of 1–100 events, at most 
 
 GET `/v1/events?after=0`: scoped status page, 100 rows maximum; use the last `seq` as cursor. QUEUED means accepted for processing, not financially applied. APPLIED means the worker committed. QUARANTINED/CONFLICT require review. No route overwrites Android financial records.
 
-Worker batch: 100 events. Backlog: 10,000 queued events per tenant. One PostgreSQL advisory-locked worker preserves event ordering. These are configured safeguards, not measured throughput/capacity claims. No distributed device merge or offline sync is certified.
+Worker batch: 100 events. Backlog: 10,000 queued events per tenant. One PostgreSQL advisory-locked worker preserves event ordering. These are configured safeguards, not measured throughput/capacity claims. Business replica merge uses an explicit revision contract described below; physical two-phone acceptance is still pending.
 
 ## Verification
 
@@ -34,7 +34,7 @@ pip install -r requirements.txt
 FG_DATABASE_URL=postgresql://... python -m unittest discover -s tests -v
 ```
 
-The CI workflow runs an isolated PostgreSQL 16 service. Tests exercise tenant isolation, role enforcement/revocation/throttling, exact replay/conflict behavior, reversal rules, immutable money and accounting stop/counter rules. CI also exercises FreeRADIUS UDP PAP accept/reject and accounting packets against the actual HTTP API and PostgreSQL. Production TLS, a physical MikroTik, complete Android sync and capacity benchmarks remain release gates. The development HTTP runner permits at most 16 concurrent connections, each with a 15-second socket timeout; an idle REST preconnection cannot monopolize the server.
+The CI workflow runs an isolated PostgreSQL 16 service. Tests exercise tenant isolation, role enforcement/revocation/throttling, exact replay/conflict behavior, reversal rules, immutable money and accounting stop/counter rules. CI also exercises FreeRADIUS UDP PAP accept/reject and accounting packets against the actual HTTP API and PostgreSQL. Production TLS, a physical MikroTik, physical two-phone synchronization and capacity benchmarks remain release gates. The development HTTP runner permits at most 16 concurrent connections, each with a 15-second socket timeout; an idle REST preconnection cannot monopolize the server.
 
 ## PAP REST endpoint and FreeRADIUS adapter
 
@@ -42,4 +42,16 @@ GET `/v1/radius/authenticate` uses Basic subscriber credentials plus `X-FG-NAS-K
 
 FreeRADIUS 3.x module reference: https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/rest. Use the configuration syntax for the deployed major version. The supplied loopback smoke configuration is for isolated tests, with disposable credentials; do not copy its shared secret into production.
 
-Android now has an explicit preview transfer screen under Business tools. It requires an HTTPS origin and a server account whose tenant/branch IDs exactly equal the IDs shown in the screen. It transfers financial appends/reversals only, at most 100 per click, compares existing payloads before skipping them, and reports queue states. It never imports remote changes into the phone. Remote history inspection is capped at 10,000 entries. Full branch/customer/plan synchronization is still pending.
+## Android business synchronization
+
+GET `/v1/business/sync`: bearer authentication, owner role only. Returns `revision` and `records` for the authenticated tenant/branch. POST accepts exactly `revision`, `device`, `records` and returns `accepted`, `revision` after commit. Initial revision zero. Each record has exactly `table`, `id`, `body`. Limits: 50,000 records, 20 MiB serialized records, 21 MiB HTTP body. Integer minor units are mandatory.
+
+Business scope: organization/current branch, subscribers, plans, ledger, invoices/voids, expenses/reversals, import batches, payment details, router bindings, network jobs, sales/voids, staff directory, reseller ledger and audit history/device/before/after details. Local staff password verifiers, router passwords, tokens, encrypted voucher archives and physical network confirmations are excluded. Imported network jobs require local REVIEW; acknowledgement does not prove router execution.
+
+Android Business tools → Server synchronization requires an HTTPS origin and owner credentials. For an existing installation provision the account using tenant/branch IDs displayed there. On an unused phone only the explicit Join checkbox aligns its empty store with an existing server branch before local owner enrollment. Populated or enrolled stores are rejected. Sync is explicitly initiated; credentials are never saved for periodic sync.
+
+The client pulls, validates the merged preview using SQLite constraints, posts the revision, then atomically imports after acknowledgement. Financial replacements/deletions are rejected. Three-way merge handles staff activation against the previous accepted baseline. Other conflicts require review. Concurrent revisions return 409; retry from a fresh pull. Lost acknowledgements can replay identical requests. Writes do not have automatic network retries. Original audit device attribution is retained; imports also add local audit records. Device identity is client asserted, not hardware attestation.
+
+Snapshot versions are append-only and database protected. Financial appends also enter the existing immutable server ledger. Identical legacy events replay as APPLIED without another financial insert; changed events are quarantined. Legacy server money absent from a supplied snapshot blocks sync instead of deleting or inventing metadata.
+
+Deploy the updated API image/schema before using Android 0.15.0 sync. Back up the database first. Migration adds replica tables without deleting existing events or money. Production deployment/TLS, physical routers and two-phone acceptance remain unverified.
