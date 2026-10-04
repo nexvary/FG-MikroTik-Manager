@@ -37,6 +37,32 @@ class BusinessSyncTest {
         }}}
         finally {context.deleteDatabase(a);context.deleteDatabase(b)}
     }
+    @Test fun historicalInvoicesSalesWalletsAndDisabledMemberMergeWithoutDroppingGuards() {
+        val a="history-a-${UUID.randomUUID()}";val b="history-b-${UUID.randomUUID()}"
+        try {BusinessStore(BusinessDatabase(context,a)).use{source->BusinessStore(BusinessDatabase(context,b)).use{target->
+            val s=source.defaultScope();val ops=BusinessOperations(source);val team=BusinessTeam(source);val sales=BusinessSales(source)
+            source.addSubscriber(s,"s","Subscriber","","HOTSPOT","account","EGP")
+            ops.addPlan(s,"p","Plan","HOTSPOT","EGP",1000,30)
+            ops.renew(s,"invoice","s","p",600,20000,PaymentMethod.INSTAPAY,"payment")
+            ops.cancelInvoice(s,"invoice","invoice-cancel","Correction")
+            ops.expense(s,"expense","RENT",200,"EGP","Rent");ops.reverseExpense(s,"expense","expense-reverse","Correction")
+            team.add(s,"m","Reseller","","RESELLER","EGP",1000)
+            sales.sell(s,"sale","s",listOf(SaleLine("Item",1,1000)),600,PaymentMethod.CASH,"")
+            team.post(s,"m","commission","COMMISSION",0,"Sale commission",sale="sale")
+            team.post(s,"m","reverse","REVERSAL",0,"Reverse commission",reversal="commission")
+            sales.cancel(s,"sale","sale-cancel","Correction");team.activate(s,"m",false)
+            val one=BusinessReplica(source);val two=BusinessReplica(target);val records=one.snapshot()
+            two.join(s.organizationId,s.branchId,records);val local=two.snapshot();two.validate(records,"https://history",local)
+            two.merge(records,"https://history",local)
+            assertEquals(0L,target.balance(s,"s"));assertEquals(0L,BusinessTeam(target).balance(s,"m"))
+            assertFalse(BusinessTeam(target).members(s).single().active)
+            assertTrue(BusinessOperations(target).invoice(s,"invoice")!!.voided);assertTrue(BusinessSales(target).sale(s,"sale")!!.voided)
+            assertTrue(runCatching{target.helper.writableDatabase.execSQL("DELETE FROM reseller_entries")}.isFailure)
+            assertTrue(runCatching{BusinessTeam(target).post(s,"m","disabled","DEPOSIT",10,"Disabled")}.isFailure)
+            val next=two.combine(two.snapshot(),records,"https://history");two.merge(next,"https://history",two.snapshot())
+            assertEquals(0L,target.balance(s,"s"))
+        }}}finally{context.deleteDatabase(a);context.deleteDatabase(b)}
+    }
     @Test fun concurrentLocalWritesAndWrongJoinAreRejected() {
         val name="sync-${UUID.randomUUID()}"
         try {BusinessStore(BusinessDatabase(context,name)).use{store->

@@ -24,6 +24,8 @@ class BackgroundMonitorTest {
             compose.waitUntil(8000){BackgroundMonitor.routers.value.isNotEmpty()}
             assertTrue(context.getSystemService(NotificationManager::class.java).activeNotifications.any{it.id==700})
             instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+            instrumentation.waitForIdleSync()
+            Thread.sleep(1000) // Give the activity ON_STOP a chance to run before asserting service ownership.
             // Closing the activity/screen must not tear down the separate service scope.
             compose.waitUntil(3000){BackgroundMonitor.routers.value.containsKey("background-test")}
             assertTrue(BackgroundMonitor.pending.isEmpty())

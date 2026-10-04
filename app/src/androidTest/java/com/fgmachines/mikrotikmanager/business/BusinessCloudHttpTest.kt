@@ -12,12 +12,37 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class BusinessCloudHttpTest {
     private val context=InstrumentationRegistry.getInstrumentation().targetContext
     @Test fun actualHttpsClientPullsAndPushesWithoutSendingTenantInLogin()=exercise(false)
     @Test fun failedServerAcknowledgementDoesNotImportFinancialData()=exercise(true)
+    @Test fun httpsOnlyAccessErrorsAndTimeoutDoNotWriteOrRetry() {
+        val name="cloud-errors-${UUID.randomUUID()}"
+        val certificate=HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
+        val trust=HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate).build()
+        val server=MockWebServer();server.useHttps(HandshakeCertificates.Builder().heldCertificate(certificate).build().sslSocketFactory(),false);server.start()
+        try {BusinessStore(BusinessDatabase(context,name)).use{store->
+            var factories=0
+            val cloud=BusinessCloud(store){factories++;OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(),trust.trustManager).callTimeout(2,TimeUnit.SECONDS).retryOnConnectionFailure(false).followRedirects(false).build()}
+            assertTrue(runCatching{cloud.sync("http://localhost/","owner","password")}.isFailure)
+            assertTrue(runCatching{cloud.sync(server.url("/path").toString(),"owner","password")}.isFailure)
+            assertEquals(0,factories)
+            val before=BusinessReplica.canonical(BusinessReplica(store).snapshot())
+            for(code in listOf(401,403,503)){
+                server.enqueue(MockResponse().setResponseCode(code).setBody("{}"))
+                val failure=runCatching{cloud.sync(server.url("/").toString(),"owner","password")}.exceptionOrNull()
+                assertEquals(if(code==503)"CLOUD_REQUEST_FAILED" else "CLOUD_ACCESS_DENIED",failure?.message)
+                assertNotNull(server.takeRequest(3,TimeUnit.SECONDS))
+            }
+            server.enqueue(MockResponse().setBody("{}").setBodyDelay(5,TimeUnit.SECONDS))
+            assertTrue(runCatching{cloud.sync(server.url("/").toString(),"owner","password")}.isFailure)
+            assertNotNull(server.takeRequest(3,TimeUnit.SECONDS));assertEquals(4,server.requestCount)
+            assertEquals(before,BusinessReplica.canonical(BusinessReplica(store).snapshot()))
+        }}finally{server.shutdown();context.deleteDatabase(name)}
+    }
     private fun exercise(fail:Boolean) {
         val a="cloud-http-a-${UUID.randomUUID()}";val b="cloud-http-b-${UUID.randomUUID()}"
         val certificate=HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
