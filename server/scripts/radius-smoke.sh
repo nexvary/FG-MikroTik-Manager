@@ -21,7 +21,7 @@ sudo systemctl stop freeradius || true
 sudo cp radius/fg_mtm_rest.conf /etc/freeradius/3.0/mods-enabled/fg_mtm_rest
 sudo cp radius/fg_mtm_site.conf /etc/freeradius/3.0/sites-enabled/fg_mtm_test
 sudo env FG_REST_ORIGIN="$FG_REST_ORIGIN" FG_NAS_KEY="$FG_NAS_KEY" freeradius -XC >/tmp/fg-radius-config.log 2>&1 || { cat /tmp/fg-radius-config.log; exit 1; }
-sudo env FG_REST_ORIGIN="$FG_REST_ORIGIN" FG_NAS_KEY="$FG_NAS_KEY" freeradius -f -l /tmp/fg-radius.log &
+sudo env FG_REST_ORIGIN="$FG_REST_ORIGIN" FG_NAS_KEY="$FG_NAS_KEY" freeradius -X > /tmp/fg-radius.log 2>&1 &
 radius_pid=$!
 sleep 2
 printf 'User-Name = "packet-user"\nUser-Password = "Packet password 123"\nMessage-Authenticator = 0x00\n' | radclient -x -r 1 -t 10 127.0.0.1:11812 auth testing123 > /tmp/fg-accept.log
