@@ -19,6 +19,7 @@ class BackgroundMonitorTest {
     @Test fun realServiceKeepsMonitoringAfterHomeAndClearsOnStop() {
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
         if(Build.VERSION.SDK_INT>=33)instrumentation.uiAutomation.executeShellCommand("pm grant ${context.packageName} android.permission.POST_NOTIFICATIONS").close()
+        compose.waitUntil(3000){BackgroundMonitor.permitted(context)}
         try {
             compose.runOnUiThread{
                 repeat(4){i->BackgroundMonitor.start(context,RouterProfile("background-test-$i","Test router $i","","127.0.0.1",1,"admin",RouterProtocol.API_SSL),"temporary-test-password",false)}
@@ -32,7 +33,7 @@ class BackgroundMonitorTest {
             // Closing the activity/screen must not tear down the separate service scope.
             compose.waitUntil(36000){BackgroundMonitor.alerts.value.count{it.kind=="UNREACHABLE"}==4}
             assertEquals(4,BackgroundMonitor.routers.value.size)
-            assertTrue(context.getSystemService(NotificationManager::class.java).activeNotifications.any{it.id!=700})
+            compose.waitUntil(3000){context.getSystemService(NotificationManager::class.java).activeNotifications.count{it.id!=700}>=4}
             BackgroundMonitor.stop(context,"background-test-0")
             compose.waitUntil(8000){BackgroundMonitor.routers.value.size==3}
             assertFalse(BackgroundMonitor.routers.value.containsKey("background-test-0"))

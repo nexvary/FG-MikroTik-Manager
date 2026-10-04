@@ -52,10 +52,13 @@ class RouterMonitorService:Service() {
         val manager=getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel("fg-monitor","FG MTM monitoring / المراقبة",NotificationManager.IMPORTANCE_LOW))
         manager.createNotificationChannel(NotificationChannel("fg-router-alerts","FG MTM router alerts / تنبيهات الراوتر",NotificationManager.IMPORTANCE_DEFAULT))
-        scope.launch { monitor.routers.collect { BackgroundMonitor.state.value=it; if(it.isNotEmpty() && BackgroundMonitor.permitted(this@RouterMonitorService))manager.notify(700,notification(it.size)) else if(started && BackgroundMonitor.pending.isEmpty())stopSelf() } }
+        scope.launch { monitor.routers.collect { BackgroundMonitor.state.value=it; if(it.isNotEmpty() && BackgroundMonitor.permitted(this@RouterMonitorService))manager.notify(700,notification(it.size)) else if(started && BackgroundMonitor.pending.isEmpty())scope.launch { yield();if(monitor.routers.value.isEmpty() && BackgroundMonitor.pending.isEmpty())stopSelf() } } }
         scope.launch { monitor.alerts.collect { alerts ->
             BackgroundMonitor.events.value=alerts
-            alerts.firstOrNull()?.let { if(it!=lastAlert){lastAlert=it;postAlert(it)} }
+            // StateFlow may coalesce simultaneous router failures; deliver every unseen alert in its retained list.
+            val unseen=if(lastAlert==null)alerts else alerts.takeWhile{it!=lastAlert}
+            unseen.asReversed().forEach(::postAlert)
+            lastAlert=alerts.firstOrNull()
         } }
     }
     override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int {
