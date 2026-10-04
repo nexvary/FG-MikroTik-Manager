@@ -19,7 +19,8 @@ class OperationsUiTest {
     // Capture the synchronized Compose root rather than a stale SurfaceFlinger frame.
     private fun capture(name:String){
         compose.waitForIdle()
-        val bitmap=compose.onRoot().captureToImage().asAndroidBitmap()
+        val root=if(name=="router-center-en.png") compose.onNode(isRoot() and hasAnyDescendant(hasText("Navigation demo • Cairo"))) else compose.onRoot()
+        val bitmap=root.captureToImage().asAndroidBitmap()
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         context.openFileOutput(name,0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
     }

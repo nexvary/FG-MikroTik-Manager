@@ -78,7 +78,7 @@ class Service:
         if type(after) is not int or after<0 or after>2**63-1: raise ValueError('INVALID_CURSOR')
         with self.connect() as db:
             a=self.principal(db,token)
-            return db.execute('SELECT seq,event_id,kind,state,reason FROM events WHERE tenant=%s AND branch=%s AND seq>%s ORDER BY seq LIMIT 100',
+            return db.execute('SELECT seq,event_id,kind,state,reason,body FROM events WHERE tenant=%s AND branch=%s AND seq>%s ORDER BY seq LIMIT 100',
                               (a['tenant'],a['branch'],after)).fetchall()
     def work(self):
         with self.connect() as db:
@@ -139,3 +139,7 @@ class Service:
                 db.execute("UPDATE radius_users SET failures=failures+1,locked_until=CASE WHEN failures>=4 THEN now()+interval '30 seconds' ELSE NULL END WHERE tenant=%s AND branch=%s AND username=%s",key)
         if not accepted:raise PermissionError('INVALID_LOGIN')
         return True
+    def identity(self,token):
+        with self.connect() as db:
+            account=self.principal(db,token)
+            return {key:account[key] for key in ('tenant','branch','role')}

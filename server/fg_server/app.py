@@ -17,6 +17,7 @@ class Application:
                 username,password=decoded.split(':',1)
                 self.service.radius_authenticate(env.get('HTTP_X_FG_NAS_KEY',''),username,password)
                 status='204 No Content';result=None
+            elif method=='GET' and path=='/v1/identity':result=self.service.identity(token)
             elif method=='GET' and path=='/health': result={'version':1}
             elif method=='POST' and path in {'/v1/login','/v1/events'}:
                 if env.get('CONTENT_TYPE','').split(';')[0]!='application/json': raise ValueError('JSON_REQUIRED')
