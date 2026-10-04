@@ -18,6 +18,12 @@ class Application:
                 self.service.radius_authenticate(env.get('HTTP_X_FG_NAS_KEY',''),username,password)
                 status='204 No Content';result=None
             elif method=='GET' and path=='/v1/identity':result=self.service.identity(token)
+            elif method=='GET' and path=='/v1/radius/users':result={'users':self.service.radius_users(token)}
+            elif method=='GET' and path=='/v1/radius/sessions':
+                from urllib.parse import parse_qs
+                query=parse_qs(env.get('QUERY_STRING',''),strict_parsing=False)
+                active=query.get('active',['0'])[0]=='1'
+                result={'sessions':self.service.radius_sessions(token,active)}
             elif method=='GET' and path=='/health': result={'version':1}
             elif method=='POST' and path in {'/v1/login','/v1/events'}:
                 if env.get('CONTENT_TYPE','').split(';')[0]!='application/json': raise ValueError('JSON_REQUIRED')
