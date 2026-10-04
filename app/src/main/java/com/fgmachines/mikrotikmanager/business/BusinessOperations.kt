@@ -11,7 +11,7 @@ data class BusinessPlan(val id: String,val name: String,val service: String,val 
 data class BusinessInvoice(val sequence: Long,val id: String,val subscriberId: String,val customer: String,val plan: String,val amount: Long,val currency: String,val paid: Long,val start: Long,val end: Long,val voided: Boolean)
 data class BusinessExpense(val sequence: Long,val id: String,val category: String,val amount: Long,val currency: String,val note: String,val reversed: Boolean,val reversalOf: String?)
 data class BusinessBranch(val id: String,val name: String)
-data class BusinessAudit(val sequence: Long,val entity: String,val id: String,val action: String,val at: Long,val actor:String="local-app")
+data class BusinessAudit(val sequence: Long,val entity: String,val id: String,val action: String,val at: Long,val actor:String="local-app",val device:String?=null,val before:String?=null,val after:String?=null)
 data class BusinessTotals(val currency: String,val charges: Long,val receipts: Long,val expenses: Long,val balance: Long)
 
 class BusinessOperations(private val store: BusinessStore) {
@@ -155,6 +155,6 @@ class BusinessOperations(private val store: BusinessStore) {
     fun audit(s: BusinessScope,before: Long=Long.MAX_VALUE): BusinessPage<BusinessAudit> {
         store.authorize(s,BusinessPermission.READ)
 
-        val rows=db.rawQuery("SELECT sequence,entity,entity_id,action,created_at,actor FROM audit WHERE organization_id=? AND branch_id=? AND sequence<? ORDER BY sequence DESC LIMIT 31",args(s)+before.toString()).use { c -> buildList { while(c.moveToNext()) add(BusinessAudit(c.getLong(0),c.getString(1),c.getString(2),c.getString(3),c.getLong(4),c.getString(5))) } };return BusinessPage(rows.take(30),rows.size>30)
+        val rows=db.rawQuery("SELECT a.sequence,a.entity,a.entity_id,a.action,a.created_at,a.actor,d.device,d.before_value,d.after_value FROM audit a LEFT JOIN audit_details d ON d.sequence=a.sequence WHERE a.organization_id=? AND a.branch_id=? AND a.sequence<? ORDER BY a.sequence DESC LIMIT 31",args(s)+before.toString()).use { c -> buildList { while(c.moveToNext()) add(BusinessAudit(c.getLong(0),c.getString(1),c.getString(2),c.getString(3),c.getLong(4),c.getString(5),c.getString(6),c.getString(7),c.getString(8))) } };return BusinessPage(rows.take(30),rows.size>30)
     }
 }

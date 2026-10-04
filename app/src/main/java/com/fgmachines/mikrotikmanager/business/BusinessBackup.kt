@@ -41,8 +41,8 @@ class BusinessBackup(private val store: BusinessStore) {
         store.authorize(null,BusinessPermission.BRANCHES)
         val clear=store.transaction { db ->
             store.authorize(null,BusinessPermission.BRANCHES)
-            val root=JSONObject().put("format","FG-MTM-business").put("schema",4);val tables=JSONObject();var budget=0L
-            for(table in BusinessSchemaV2.tables+BusinessSchemaV3.tables+BusinessSchemaV4.tables) {
+            val root=JSONObject().put("format","FG-MTM-business").put("schema",5);val tables=JSONObject();var budget=0L
+            for(table in BusinessSchemaV2.tables+BusinessSchemaV3.tables+BusinessSchemaV4.tables+BusinessSchemaV6.tables) {
                 val rows=JSONArray()
                 db.rawQuery("SELECT * FROM $table ORDER BY rowid",null).use { c -> while(c.moveToNext()) {
                     val row=JSONObject()
@@ -58,9 +58,9 @@ class BusinessBackup(private val store: BusinessStore) {
         require(!store.identity.enabled()){ "RESTORE_BEFORE_IDENTITY" }
         val clear=BusinessBackupCipher.decrypt(bytes,password)
         val root=try { JSONObject(String(clear,Charsets.UTF_8)) } finally { clear.fill(0) }
-        require(root.getString("format")=="FG-MTM-business" && root.getInt("schema") in 2..4) { "INVALID_BACKUP" }
+        require(root.getString("format")=="FG-MTM-business" && root.getInt("schema") in 2..5) { "INVALID_BACKUP" }
         val tables=root.getJSONObject("tables")
-        val restoreTables=BusinessSchemaV2.tables+(if(root.getInt("schema")>=3) BusinessSchemaV3.tables else emptyList())+(if(root.getInt("schema")>=4) BusinessSchemaV4.tables else emptyList())
+        val restoreTables=BusinessSchemaV2.tables+(if(root.getInt("schema")>=3) BusinessSchemaV3.tables else emptyList())+(if(root.getInt("schema")>=4) BusinessSchemaV4.tables else emptyList())+(if(root.getInt("schema")>=5) BusinessSchemaV6.tables else emptyList())
         require(tables.keys().asSequence().toSet()==restoreTables.toSet()) { "INVALID_BACKUP" }
         store.transaction { db ->
             require(!store.identity.enabled()){ "RESTORE_BEFORE_IDENTITY" }
@@ -112,6 +112,7 @@ class BusinessBackup(private val store: BusinessStore) {
             BusinessSchemaV2.createAuditTriggers(db)
             BusinessSchemaV3.createAudit(db)
             BusinessSchemaV5.rebuildAudit(db)
+            BusinessSchemaV6.rebuild(db)
             // Imported network confirmations are historical; require explicit reconciliation on this installation.
             db.execSQL("INSERT INTO network_results(job_id,state,created_at) SELECT id,'REVIEW',"+System.currentTimeMillis()+" FROM network_jobs")
             val s=store.defaultScope()

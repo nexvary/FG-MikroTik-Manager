@@ -89,7 +89,7 @@ class BusinessIdentityTest {
         context.assets.open("business-v1.sql").bufferedReader().use{it.readText()}.split("\n-- statement\n").filter{it.isNotBlank()}.forEach{db.execSQL(it.trim())}
         BusinessSchemaV2.install(db);BusinessSchemaV3.install(db);BusinessSchemaV4.install(db);db.version=4;db.close()
         store=BusinessStore(BusinessDatabase(context,name));identity=BusinessIdentity(store,{wall},{elapsed});scope=store.defaultScope()
-        assertFalse(identity.enabled());assertEquals(700L,store.balance(scope,"legacy-sub"));assertEquals(5,store.helper.readableDatabase.version)
+        assertFalse(identity.enabled());assertEquals(700L,store.balance(scope,"legacy-sub"));assertEquals(6,store.helper.readableDatabase.version)
         store.post(scope,"legacy-sub","new",LedgerKind.PAYMENT,20,"Still usable")
         assertEquals("local-app",BusinessOperations(store).audit(scope).items.first().actor)
     }

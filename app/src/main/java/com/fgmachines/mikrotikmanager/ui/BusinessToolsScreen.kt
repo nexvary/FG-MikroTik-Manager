@@ -209,6 +209,16 @@ fun BusinessToolsScreen(arabic: Boolean,subscriber: Subscriber?,onBack: ()->Unit
                     items(state.audit,key={it.sequence}) { a -> BusinessToolCard {
                         Text("#${a.sequence} • ${a.entity} • ${a.action}",color=FgMint)
                         Text(a.id,color=FgSilver,style=MaterialTheme.typography.bodySmall)
+                        a.device?.let { Text(tr("الجهاز: ","Device: ")+it,color=FgSilver,style=MaterialTheme.typography.bodySmall) }
+                        var expanded by rememberSaveable(a.sequence) { mutableStateOf(false) }
+                        if(a.before!=null || a.after!=null) {
+                            TextButton(onClick={expanded=!expanded}){Text(tr("تفاصيل التغيير","Change details"))}
+                            if(expanded) {
+                                Text(tr("قبل: ","Before: ")+(a.before ?: "—"),color=FgSilver)
+                                Text(tr("بعد: ","After: ")+(a.after ?: "—"),color=FgWhite)
+                            }
+                        }
+
                         Text(tr("الفاعل: ","Actor: ")+a.actor,color=FgSilver,style=MaterialTheme.typography.bodySmall)
                         Text(DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(a.at)),color=FgWhite)
                     } }
