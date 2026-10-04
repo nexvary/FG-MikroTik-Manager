@@ -143,3 +143,30 @@ class Service:
         with self.connect() as db:
             account=self.principal(db,token)
             return {key:account[key] for key in ('tenant','branch','role')}
+
+
+    def radius_users(self, token):
+        with self.connect() as db:
+            a=self.principal(db,token)
+            if a['role'] not in {'owner','reader'}: raise PermissionError('ACCESS_DENIED')
+            return db.execute("""SELECT u.username,u.expires,u.enabled,
+                COALESCE(sum(rs.seconds),0) AS seconds,
+                COALESCE(sum(rs.input_octets),0) AS input_octets,
+                COALESCE(sum(rs.output_octets),0) AS output_octets,
+                count(rs.session) FILTER (WHERE NOT rs.stopped) AS active_sessions
+                FROM radius_users u LEFT JOIN radius_sessions rs
+                ON rs.tenant=u.tenant AND rs.branch=u.branch AND rs.username=u.username
+                WHERE u.tenant=%s AND u.branch=%s
+                GROUP BY u.username,u.expires,u.enabled ORDER BY u.username LIMIT 2000""",
+                (a['tenant'],a['branch'])).fetchall()
+
+    def radius_sessions(self, token, active_only=False):
+        with self.connect() as db:
+            a=self.principal(db,token)
+            if a['role'] not in {'owner','reader'}: raise PermissionError('ACCESS_DENIED')
+            sql="""SELECT nas,session,username,seconds,input_octets,output_octets,stopped
+                   FROM radius_sessions WHERE tenant=%s AND branch=%s"""
+            args=[a['tenant'],a['branch']]
+            if active_only: sql+=" AND NOT stopped"
+            sql+=" ORDER BY stopped,username,nas,session LIMIT 5000"
+            return db.execute(sql,args).fetchall()
