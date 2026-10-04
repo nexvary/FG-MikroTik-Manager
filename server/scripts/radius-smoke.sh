@@ -12,6 +12,8 @@ s.provision_radius_user('radius-ci','main','packet-user','Packet password 123',d
 print(s.provision_nas('radius-ci','main','ci-nas'))
 PY
 )
+# Mask the disposable CI key in packet diagnostics.
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then echo "::add-mask::$FG_NAS_KEY"; fi
 python -m fg_server serve >/tmp/fg-http.log 2>&1 &
 api_pid=$!
 radius_pid=''

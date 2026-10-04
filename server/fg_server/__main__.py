@@ -2,7 +2,8 @@ import argparse
 import getpass
 import os
 import time
-from wsgiref.simple_server import make_server, WSGIRequestHandler
+from wsgiref.simple_server import make_server
+from .http import BoundedWSGIServer, Handler
 from .service import Service
 from .app import Application
 
@@ -30,9 +31,5 @@ elif args.command=='worker':
     while True:
         service.work();time.sleep(1)
 else:
-    class Handler(WSGIRequestHandler):
-        def setup(self):
-            super().setup();self.connection.settimeout(15)
-        def log_message(self,*args): pass  # no URLs, credentials or request bodies in access logs
-    with make_server(os.environ.get('FG_BIND','127.0.0.1'),8080,Application(service),handler_class=Handler) as server:
+    with make_server(os.environ.get('FG_BIND','127.0.0.1'),8080,Application(service),handler_class=Handler,server_class=BoundedWSGIServer) as server:
         server.serve_forever()
