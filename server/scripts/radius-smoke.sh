@@ -30,8 +30,9 @@ printf 'User-Name = "packet-user"\nUser-Password = "Packet password 123"\nMessag
 grep -q 'Access-Accept' /tmp/fg-accept.log
 printf 'User-Name = "packet-user"\nUser-Password = "wrong"\nMessage-Authenticator = 0x00\n' | radclient -x -r 1 -t 10 127.0.0.1:11812 auth testing123 > /tmp/fg-reject.log || true
 grep -q 'Access-Reject' /tmp/fg-reject.log
-for status in Start Stop; do
-    printf 'User-Name = "packet-user"\nAcct-Session-Id = "packet-session"\nAcct-Status-Type = "%s"\nAcct-Session-Time = 0\nNAS-IP-Address = 127.0.0.1\n' "$status" | radclient -x -r 1 -t 10 127.0.0.1:11813 acct testing123 > /tmp/fg-accounting.log
+for status in Start Interim-Update Stop Stop; do
+    case "$status" in Start) seconds=0;; Interim-Update) seconds=30;; Stop) seconds=60;; esac
+    printf 'User-Name = "packet-user"\nAcct-Session-Id = "packet-session"\nAcct-Status-Type = "%s"\nAcct-Session-Time = %s\nAcct-Input-Octets = %s\nAcct-Input-Gigawords = 1\nNAS-IP-Address = 127.0.0.1\n' "$status" "$seconds" "$seconds" | radclient -x -r 1 -t 10 127.0.0.1:11813 acct testing123 > /tmp/fg-accounting.log
     grep -q 'Accounting-Response' /tmp/fg-accounting.log
 done
 python - <<'PY'
@@ -42,5 +43,8 @@ while s.work():pass
 with s.connect() as db:
     row=db.execute("SELECT * FROM radius_sessions WHERE tenant='radius-ci' AND username='packet-user'").fetchone()
     assert row and row['stopped'], 'Accounting packets did not create a stopped session'
-print('PAP accept/reject and accounting Start/Stop packet integration passed')
+    assert row['seconds']==60 and row['input_octets']==2**32+60
+    count=db.execute("SELECT count(*) AS n FROM events WHERE tenant='radius-ci'").fetchone()['n']
+    assert count==3, 'Duplicate Stop packet must not create another event'
+print('PAP accept/reject and accounting Start/Interim/Stop/replay packet integration passed')
 PY

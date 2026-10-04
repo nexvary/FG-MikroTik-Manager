@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import uuid
 from pathlib import Path
@@ -166,15 +167,20 @@ class Service:
         with self.connect() as db:
             nas=db.execute('SELECT * FROM nas_clients WHERE digest=%s AND enabled',(hashlib.sha256(nas_key.encode()).digest(),)).fetchone()
             if not nas:raise PermissionError('INVALID_NAS')
+        def number(name):
+            item=value(name,0)
+            if type(item) is int:return item
+            if isinstance(item,str) and re.fullmatch(r"[0-9]{1,19}",item):return int(item)
+            raise ValueError("INVALID_COUNTER")
         def counter(low,high):
-            a=int(value(low,0));b=int(value(high,0))
+            a=number(low);b=number(high)
             if not 0<=a<=2**32-1 or not 0<=b<=2**31-1:raise ValueError('INVALID_COUNTER')
             return (b<<32)+a
         body=dict(nas=nas['nas'],session=value('Acct-Unique-Session-Id') or value('Acct-Session-Id'),user=value('User-Name'),
-                  status=value('Acct-Status-Type'),seconds=int(value('Acct-Session-Time',0)),
+                  status=value('Acct-Status-Type'),seconds=number('Acct-Session-Time'),
                   input_octets=counter('Acct-Input-Octets','Acct-Input-Gigawords'),output_octets=counter('Acct-Output-Octets','Acct-Output-Gigawords'))
         raw=json.dumps(body,sort_keys=True,separators=(',',':'))
-        event=dict(version=1,id='radius-'+hashlib.sha256(raw.encode()).hexdigest(),device='radius:'+nas['nas'],kind='radius.accounting',body=body)
+        event=dict(version=1,id='radius-'+hashlib.sha256(raw.encode()).hexdigest(),device='radius:'+hashlib.sha256(nas['nas'].encode()).hexdigest(),kind='radius.accounting',body=body)
         return self.ingest('',[event],nas_key=nas_key)
 
     def radius_users(self, token):

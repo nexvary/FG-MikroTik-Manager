@@ -78,3 +78,19 @@ class IntegrationTest(unittest.TestCase):
             nas=db.execute('SELECT * FROM nas_clients WHERE digest=%s',(hashlib.sha256(key.encode()).digest(),)).fetchone()
             self.assertEqual(self.tenant,nas['tenant']);self.assertIsNotNone(nas['actor'])
             self.assertIsNotNone(db.execute('SELECT 1 FROM accounts WHERE id=%s AND role=%s',(nas['actor'],'radius')).fetchone())
+
+    def test_radius_adapter_rejects_lossy_counters_and_revoked_nas(self):
+        key=self.s.provision_nas(self.tenant,'main','n'*120)
+        values={'User-Name':'subscriber','Acct-Session-Id':'counter-session','Acct-Status-Type':'Start'}
+        attrs={k:{'value':[v]} for k,v in values.items()}
+        for invalid in (True,1.5,'1.5',-1,2**32):
+            with self.subTest(counter=invalid):
+                attrs['Acct-Input-Octets']={'value':[invalid]}
+                with self.assertRaises(ValueError):self.s.radius_accounting(key,attrs)
+        attrs['Acct-Input-Octets']={'value':['123']}
+        self.s.radius_accounting(key,attrs);self.drain()
+        self.assertEqual('APPLIED',self.s.page(self.token)[0]['state'])
+        import hashlib
+        with self.s.connect() as db:
+            db.execute('UPDATE nas_clients SET enabled=false WHERE digest=%s',(hashlib.sha256(key.encode()).digest(),))
+        with self.assertRaises(PermissionError):self.s.radius_accounting(key,attrs)
