@@ -14,3 +14,8 @@ app/build/
 *.jks
 *.keystore
 keystore.properties
+
+# .NET local outputs
+**/bin/
+**/obj/
+desktop/publish/

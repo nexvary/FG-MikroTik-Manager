@@ -44,4 +44,5 @@ jobs:
           path: |
             desktop/FG-MTM-Windows-0.1.0-preview-win-x64.zip
             desktop/SHA256.txt
+            desktop-proof/*.png
           if-no-files-found: error

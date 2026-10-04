@@ -70,6 +70,29 @@ await Test("redirect rejected", async()=> {
 await Test("changing server clears identity",async()=> {
     var(c,h)=Make((r,ct)=>Task.FromResult(Json(r.RequestUri!.AbsolutePath=="/v1/login"?LoginJson:IdentityJson)));using(h) {await Authenticate(c);c.SetBaseAddress("https://other.example");Check(!c.IsAuthenticated&&c.Identity==null);}
 });
+await Test("session expiration blocks authorized calls", async()=> {
+    var(c,h)=Make((r,ct)=>Task.FromResult(Json(r.RequestUri!.AbsolutePath=="/v1/login"?LoginJson.Replace("900","1"):IdentityJson)));
+    using(h) { await Authenticate(c); await Task.Delay(1200); await Throws<UnauthorizedAccessException>(()=>c.GetRadiusUsersAsync()); Check(c.Identity==null); }
+});
+await Test("RouterOS REST reads and redacts secrets",async()=> {
+    using var h=new HttpClient(new Handler((r,ct)=> {
+        Check(r.RequestUri!.Scheme=="https" && r.RequestUri.AbsolutePath.StartsWith("/rest/"));
+        Check(r.Headers.Authorization?.Scheme=="Basic");
+        return Task.FromResult(Json("[{\"name\":\"router\",\"password\":\"hidden\",\"private-key\":\"hidden\",\"cpu-load\":\"10\"}]"));
+    }));
+    using var c=new FG.MTM.Desktop.Router.RouterRestClient(h);
+    await c.ConnectAsync("https://router.example","admin","secret");
+    var row=(await c.ReadAsync("Health")).Single();Check(row.Count==2 && row["cpu-load"]=="10");
+    await Throws<ArgumentException>(()=>c.ReadAsync("../v1/login"));c.Disconnect();
+    await Throws<UnauthorizedAccessException>(()=>c.ReadAsync("Health"));
+});
+await Test("RouterOS object response and failed login",async()=> {
+    bool denied=false;
+    using var h=new HttpClient(new Handler((r,ct)=>Task.FromResult(denied?Json("{}",HttpStatusCode.Forbidden):Json("{\"uptime\":\"1h\"}"))));
+    using var c=new FG.MTM.Desktop.Router.RouterRestClient(h);
+    await c.ConnectAsync("https://router.example","admin","secret");Check((await c.ReadAsync("Health")).Single()["uptime"]=="1h");
+    denied=true;await Throws<UnauthorizedAccessException>(()=>c.ReadAsync("Health"));Check(!c.IsConnected);
+});
 Console.WriteLine($"{passed} client contract tests passed.");
 sealed class Handler(Func<HttpRequestMessage,CancellationToken,Task<HttpResponseMessage>> send):HttpMessageHandler
 { protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)=>send(request,ct); }

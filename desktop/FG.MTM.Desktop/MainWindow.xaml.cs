@@ -2,11 +2,14 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using FG.MTM.Desktop.Server;
+using FG.MTM.Desktop.Router;
+using System.Data;
 namespace FG.MTM.Desktop;
 public partial class MainWindow : Window
 {
     private readonly HttpClient http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(25), MaxResponseContentBufferSize = 4 * 1024 * 1024 };
     private readonly FgServerClient client;
+    private readonly RouterRestClient router;
     private readonly CancellationTokenSource lifetime = new();
     private readonly Stack<string> history = new();
     private string page = "Dashboard";
@@ -16,7 +19,7 @@ public partial class MainWindow : Window
     private static readonly (string Key, string Ar)[] Pages = [("Dashboard","الرئيسية"),("Routers","الراوترات"),("Subscribers","المشتركون"),("HotSpot","هوت سبوت"),("PPPoE","PPPoE"),("RADIUS","RADIUS"),("Vouchers","الكروت"),("Portal Studio","صفحة الدخول"),("Business","الأعمال"),("Employees","الموظفون"),("Diagnostics","التشخيص"),("Advanced","الإعداد المتقدم"),("Settings","الإعدادات")];
     public MainWindow()
     {
-        client = new(http);
+        client = new(http); router = new(http);
         InitializeComponent(); ready = true; Localize(); Navigate("Dashboard", false);
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         timer.Tick += (_, _) => { if (!busy && client.Identity is not null && !client.IsAuthenticated) { client.Logout(); ClearResults(); Status.Text = T("Session expired. Log in again.", "انتهت الجلسة. سجل الدخول مرة أخرى."); } };
@@ -27,15 +30,28 @@ public partial class MainWindow : Window
                     arabic = rtl; Localize();
                     if (FlowDirection != (rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight)) throw new InvalidOperationException("Direction mismatch");
                     AdvancedMode.IsChecked = true;
-                    foreach (var item in Pages) { Navigate(item.Key); if (PageTitle.Text != Label(item.Key)) throw new InvalidOperationException("Navigation mismatch"); }
+                    foreach (var item in Pages) {
+                        Navigate(item.Key);
+                        if (PageTitle.Text != Label(item.Key)) throw new InvalidOperationException("Navigation mismatch");
+                        if (item.Key is "Settings" or "RADIUS" or "Advanced") {
+                            UpdateLayout();
+                            var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)ActualWidth, (int)ActualHeight, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                            bitmap.Render(this);
+                            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                            System.IO.Directory.CreateDirectory("desktop-proof");
+                            using var file = System.IO.File.Create($"desktop-proof/{item.Key}-{(rtl ? "ar" : "en")}.png");
+                            encoder.Save(file);
+                        }
+                    }
                     var previous = history.Peek(); GoBack(this, new RoutedEventArgs()); if (page != previous) throw new InvalidOperationException("Back mismatch");
                     if (Navigation.Children.Count != Pages.Length) throw new InvalidOperationException("Missing navigation");
                 }
                 Application.Current.Shutdown(0);
             } catch { Application.Current.Shutdown(1); }
         };
-        Closed += (_, _) => { timer.Stop(); }; 
-        Closed += (_, _) => { lifetime.Cancel(); client.Logout(); http.Dispose(); lifetime.Dispose(); };
+        Closed += (_, _) => { timer.Stop(); };
+        Closed += (_, _) => { lifetime.Cancel(); client.Logout(); router.Dispose(); http.Dispose(); lifetime.Dispose(); };
     }
     private string T(string en, string ar) => arabic ? ar : en;
     private string Label(string key) => arabic ? Pages.First(p => p.Key == key).Ar : key;
@@ -54,7 +70,9 @@ public partial class MainWindow : Window
         page = key; PageTitle.Text = Label(key); BackButton.IsEnabled = history.Count > 0;
         SettingsPanel.Visibility = key == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         RadiusPanel.Visibility = key is "RADIUS" or "Subscribers" ? Visibility.Visible : Visibility.Collapsed;
-        OverviewPanel.Visibility = SettingsPanel.Visibility == Visibility.Collapsed && RadiusPanel.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
+        RouterPanel.Visibility = key is "Routers" or "HotSpot" or "PPPoE" or "Advanced" or "Diagnostics" ? Visibility.Visible : Visibility.Collapsed;
+        ConfigureRouterModules();
+        OverviewPanel.Visibility = SettingsPanel.Visibility == Visibility.Collapsed && RadiusPanel.Visibility == Visibility.Collapsed && RouterPanel.Visibility == Visibility.Collapsed ? Visibility.Visible : Visibility.Collapsed;
         OverviewText.Text = key == "Dashboard" ? T("Connect to FG Server to inspect RADIUS users and sessions. Router and business modules are still being implemented.","اتصل بخادم FG لعرض مستخدمي RADIUS والجلسات. أقسام إدارة الراوتر والأعمال ما زالت قيد التنفيذ.") : T("This Windows module is not available yet. No live operation has been performed.","القسم ده لسه غير متاح في ويندوز. لم تُنفّذ أي عملية على الشبكة.");
         ScopeText.Text = client.Identity is { } id ? $"{id.Tenant} / {id.Branch} — {id.Role}" : T("Not connected", "غير متصل");
         ApplyFilters();
@@ -76,6 +94,9 @@ public partial class MainWindow : Window
         string[] userHeaders = arabic ? ["اسم المستخدم","مفعّل","الانتهاء","جلسات نشطة","الثواني","رفع (بايت)","تنزيل (بايت)","الإجمالي (بايت)"] : ["Username","Enabled","Expires","Active sessions","Seconds","Upload bytes","Download bytes","Total bytes"];
         string[] sessionHeaders = arabic ? ["اسم المستخدم","NAS","معرّف الجلسة","متوقفة","الثواني","رفع (بايت)","تنزيل (بايت)","الإجمالي (بايت)"] : ["Username","NAS","Session ID","Stopped","Seconds","Upload bytes","Download bytes","Total bytes"];
         for (int i = 0; i < 8; i++) { UsersGrid.Columns[i].Header = userHeaders[i]; SessionsGrid.Columns[i].Header = sessionHeaders[i]; }
+        RouterNotice.Text = T("RouterOS 7 REST requires the router's HTTPS service and a trusted certificate. Views are read-only. Phone/PC reachability does not prove Internet access; physical AP links are unknown. RouterOS 6 API support and write tools are pending.","يلزم RouterOS 7 وخدمة HTTPS وشهادة موثوقة. العرض للقراءة فقط. وصول الكمبيوتر للراوتر لا يثبت اتصال الإنترنت؛ روابط أجهزة الشبكة غير معروفة. دعم API لـ RouterOS 6 وأدوات التعديل قيد التنفيذ.");
+        RouterUrlLabel.Text = T("Router HTTPS address","عنوان الراوتر عبر HTTPS"); RouterUserLabel.Text = T("Router username","اسم مستخدم الراوتر"); RouterPasswordLabel.Text = T("Router password","كلمة مرور الراوتر");
+        RouterConnectButton.Content = T("Connect","اتصال"); RouterDisconnectButton.Content = T("Disconnect","قطع الاتصال"); RouterRefreshButton.Content = T("Refresh","تحديث");
         BuildNavigation();
     }
     private async void Login(object sender, RoutedEventArgs e)
@@ -102,16 +123,64 @@ public partial class MainWindow : Window
     }
     private async Task Run(Func<Task> action)
     {
-        busy = true; LoginButton.IsEnabled = LogoutButton.IsEnabled = RefreshButton.IsEnabled = false;
+        busy = true; LoginButton.IsEnabled = LogoutButton.IsEnabled = RefreshButton.IsEnabled = RouterConnectButton.IsEnabled = RouterDisconnectButton.IsEnabled = RouterRefreshButton.IsEnabled = false;
         Status.Text = T("Loading…","جارٍ التحميل…");
         try { await action(); }
         catch (OperationCanceledException) { if (!lifetime.IsCancellationRequested) Status.Text = T("Request timed out. Retry manually.","انتهت مهلة الطلب. أعد المحاولة."); }
-        catch (UnauthorizedAccessException) { ClearResults(); Status.Text = T("Login required, access denied or account scope mismatch.","سجّل الدخول: الجلسة انتهت أو الوصول مرفوض أو الشركة والفرع مختلفان."); }
+        catch (UnauthorizedAccessException) { ClearResults(); RouterGrid.ItemsSource = null; RouterState.Text = T("Access denied or disconnected","الوصول مرفوض أو الاتصال مقطوع"); Status.Text = T("Login required, access denied or account scope mismatch.","سجّل الدخول: الجلسة انتهت أو الوصول مرفوض أو الشركة والفرع مختلفان."); }
         catch (ArgumentException) { Status.Text = T("Check the HTTPS origin, tenant, branch and username.","راجع عنوان HTTPS والشركة والفرع واسم المستخدم."); }
         catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException or InvalidOperationException)
         { ClearResults(); Status.Text = T("Server unavailable or invalid response. Check the address and retry.","الخادم غير متاح أو الرد غير صالح. راجع العنوان وأعد المحاولة."); }
-        finally { busy = false; LoginButton.IsEnabled = LogoutButton.IsEnabled = RefreshButton.IsEnabled = true; ScopeText.Text = client.Identity is { } id ? $"{id.Tenant} / {id.Branch} — {id.Role}" : T("Not connected","غير متصل"); }
+        finally { busy = false; LoginButton.IsEnabled = LogoutButton.IsEnabled = RefreshButton.IsEnabled = RouterConnectButton.IsEnabled = RouterDisconnectButton.IsEnabled = RouterRefreshButton.IsEnabled = true; ScopeText.Text = client.Identity is { } id ? $"{id.Tenant} / {id.Branch} — {id.Role}" : T("Not connected","غير متصل"); }
     }
+
+    private void ConfigureRouterModules()
+    {
+        if (!ready) return;
+        var selected = RouterModules.SelectedValue as string;
+        var choices = page switch {
+            "HotSpot" => new[] { "HotSpot users", "HotSpot online" },
+            "PPPoE" => new[] { "PPPoE users", "PPPoE online" },
+            "Advanced" => RouterRestClient.Modules.Keys.ToArray(),
+            "Diagnostics" => new[] { "Health", "Interfaces", "Routes", "DNS", "Logs", "Neighbors" },
+            _ => new[] { "Health", "Interfaces", "Neighbors" }
+        };
+        string[] ar = ["حالة الراوتر","المنافذ","الجسر","VLAN","عناوين IP","DHCP","DNS","المسارات","الجدار الناري","NAT","Mangle","السرعات","واي فاي","مستخدمو هوت سبوت","متصلو هوت سبوت","مستخدمو PPPoE","متصلو PPPoE","WireGuard","الملفات","السجلات","السكربتات","المهام المجدولة","الأجهزة المجاورة"];
+        var labels = RouterRestClient.Modules.Keys.Select((key, i) => new KeyValuePair<string,string>(key, arabic ? ar[i] : key)).Where(p => choices.Contains(p.Key)).ToList();
+        RouterModules.DisplayMemberPath = "Value"; RouterModules.SelectedValuePath = "Key";
+        RouterModules.ItemsSource = labels;
+        RouterModules.SelectedValue = choices.Contains(selected) ? selected : choices[0];
+        RouterGrid.ItemsSource = null;
+    }
+    private async void ConnectRouter(object sender, RoutedEventArgs e)
+    {
+        if (busy) return;
+        await Run(async () => {
+            RouterGrid.ItemsSource = null;
+            var password = RouterPassword.Password; RouterPassword.Clear();
+            await router.ConnectAsync(RouterUrl.Text.Trim(), RouterUsername.Text.Trim(), password, lifetime.Token);
+            password = ""; await ReadRouter();
+        });
+    }
+    private void DisconnectRouter(object sender, RoutedEventArgs e)
+    {
+        if (busy) return; router.Disconnect(); RouterPassword.Clear(); RouterGrid.ItemsSource = null;
+        RouterState.Text = T("Disconnected","تم قطع الاتصال");
+    }
+    private async void RefreshRouter(object sender, RoutedEventArgs e) { if (!busy) await Run(ReadRouter); }
+    private void RouterModuleChanged(object sender, SelectionChangedEventArgs e) { if (ready) { RouterGrid.ItemsSource = null; RouterState.Text = T("Press Refresh to read the selected module.","اضغط تحديث لقراءة القسم المختار."); } }
+    private async Task ReadRouter()
+    {
+        RouterGrid.ItemsSource = null;
+        var module = RouterModules.SelectedValue as string ?? "Health";
+        var rows = await router.ReadAsync(module, lifetime.Token);
+        var table = new DataTable();
+        foreach (var field in rows.SelectMany(r => r.Keys).Distinct()) table.Columns.Add(field);
+        foreach (var row in rows) { var item = table.NewRow(); foreach (var field in row) item[field.Key] = field.Value; table.Rows.Add(item); }
+        RouterGrid.ItemsSource = table.DefaultView;
+        RouterState.Text = T($"Router reachable. {rows.Count} records. Internet and AP connectivity unverified.",$"الراوتر متاح. {rows.Count} سجل. اتصال الإنترنت والأكسس غير متحقق منه.");
+    }
+
     private void ClearResults() { users = []; sessions = []; ApplyFilters(); }
     private void FilterChanged(object sender, RoutedEventArgs e) { if (ready) ApplyFilters(); }
     private void SearchChanged(object sender, TextChangedEventArgs e) { if (ready) ApplyFilters(); }

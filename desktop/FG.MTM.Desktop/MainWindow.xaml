@@ -29,6 +29,16 @@
       <WrapPanel><Button x:Name="LoginButton" Content="Login" Click="Login" Margin="0,4,12,4"/><Button x:Name="LogoutButton" Content="Logout" Click="Logout"/></WrapPanel>
       <TextBlock x:Name="ScopeText" Margin="0,12" TextWrapping="Wrap"/>
      </StackPanel>
+     <StackPanel x:Name="RouterPanel" Visibility="Collapsed">
+      <TextBlock x:Name="RouterNotice" TextWrapping="Wrap" Margin="0,0,0,12"/>
+      <TextBlock x:Name="RouterUrlLabel" Text="Router HTTPS address"/><TextBox x:Name="RouterUrl" FlowDirection="LeftToRight"/>
+      <TextBlock x:Name="RouterUserLabel" Text="Router username"/><TextBox x:Name="RouterUsername" FlowDirection="LeftToRight"/>
+      <TextBlock x:Name="RouterPasswordLabel" Text="Router password"/><PasswordBox x:Name="RouterPassword" FlowDirection="LeftToRight"/>
+      <WrapPanel><Button x:Name="RouterConnectButton" Content="Connect" Click="ConnectRouter" Margin="0,4,12,4"/><Button x:Name="RouterDisconnectButton" Content="Disconnect" Click="DisconnectRouter" Margin="0,4,12,4"/><Button x:Name="RouterRefreshButton" Content="Refresh" Click="RefreshRouter"/></WrapPanel>
+      <ComboBox x:Name="RouterModules" SelectionChanged="RouterModuleChanged" Padding="8" Margin="0,12"/>
+      <TextBlock x:Name="RouterState" TextWrapping="Wrap" Margin="0,8"/>
+      <DataGrid x:Name="RouterGrid" AutoGenerateColumns="True" MaxHeight="420"/>
+     </StackPanel>
      <StackPanel x:Name="RadiusPanel" Visibility="Collapsed">
       <TextBlock x:Name="RadiusNotice" TextWrapping="Wrap" Margin="0,0,0,12"/>
       <WrapPanel><Button x:Name="RefreshButton" Content="Refresh" Click="Refresh" Margin="0,0,12,8"/><CheckBox x:Name="ActiveOnly" Content="Active only" Foreground="White" Margin="0,10,12,0" Checked="FilterChanged" Unchecked="FilterChanged"/><CheckBox x:Name="ExpiredOnly" Content="Expired" Foreground="White" Margin="0,10,12,0" Checked="FilterChanged" Unchecked="FilterChanged"/><CheckBox x:Name="DisabledOnly" Content="Disabled" Foreground="White" Margin="0,10" Checked="FilterChanged" Unchecked="FilterChanged"/></WrapPanel>
