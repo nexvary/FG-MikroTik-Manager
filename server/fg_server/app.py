@@ -31,7 +31,7 @@ class Application:
                 active=query.get('active',['0'])[0]=='1'
                 result={'sessions':self.service.radius_sessions(token,active)}
             elif method=='GET' and path=='/health': result={'version':1}
-            elif method=='POST' and path in {'/v1/login','/v1/events'}:
+            elif method=='POST' and path in {'/v1/login','/v1/events','/v1/radius/accounting'}:
                 if env.get('CONTENT_TYPE','').split(';')[0]!='application/json': raise ValueError('JSON_REQUIRED')
                 length=int(env.get('CONTENT_LENGTH','0'))
                 if not 1<=length<=1048576: raise ValueError('BODY_LIMIT')
@@ -41,6 +41,8 @@ class Application:
                 if path=='/v1/login':
                     if not isinstance(body,dict) or set(body)!={'username','password'}: raise ValueError('INVALID_LOGIN')
                     result={'token':self.service.login(body['username'],body['password']),'expires_in':900}
+                elif path=='/v1/radius/accounting':
+                    self.service.radius_accounting(env.get('HTTP_X_FG_NAS_KEY',''),body);status='204 No Content';result=None
                 else: result={'events':self.service.ingest(token,body)}
             elif method=='GET' and path=='/v1/events':
                 from urllib.parse import parse_qs

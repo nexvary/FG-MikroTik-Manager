@@ -57,3 +57,24 @@ class IntegrationTest(unittest.TestCase):
         with self.assertRaises(PermissionError):self.s.radius_authenticate(other,'subscriber','Subscriber password!')
         self.s.provision_radius_user(self.tenant,'main','subscriber','Subscriber password!',datetime.now(timezone.utc)-timedelta(seconds=1))
         with self.assertRaises(PermissionError):self.s.radius_authenticate(key,'subscriber','Subscriber password!')
+    def test_radius_adapter_replay_and_gigawords(self):
+        key=self.s.provision_nas(self.tenant,'main','adapter-nas')
+        def attributes(status,seconds,octets=0):
+            values={'User-Name':'subscriber','Acct-Unique-Session-Id':'unique-session','Acct-Status-Type':status,'Acct-Session-Time':seconds,'Acct-Input-Octets':octets,'Acct-Input-Gigawords':1}
+            return {k:{'value':[v]} for k,v in values.items()}
+        self.s.radius_accounting(key,attributes('Start',0))
+        self.s.radius_accounting(key,attributes('Start',0))
+        self.s.radius_accounting(key,attributes('Stop',60,100));self.drain()
+        with self.s.connect() as db:
+            row=db.execute('SELECT * FROM radius_sessions WHERE tenant=%s',(self.tenant,)).fetchone()
+            self.assertEqual(2**32+100,row['input_octets']);self.assertTrue(row['stopped'])
+        self.assertEqual(2,len(self.s.page(self.token)))
+    def test_existing_nas_key_survives_actor_migration(self):
+        key=self.s.provision_nas(self.tenant,'main','migration-nas')
+        with self.s.connect() as db:db.execute('ALTER TABLE nas_clients DROP COLUMN actor')
+        self.s.migrate()
+        import hashlib
+        with self.s.connect() as db:
+            nas=db.execute('SELECT * FROM nas_clients WHERE digest=%s',(hashlib.sha256(key.encode()).digest(),)).fetchone()
+            self.assertEqual(self.tenant,nas['tenant']);self.assertIsNotNone(nas['actor'])
+            self.assertIsNotNone(db.execute('SELECT 1 FROM accounts WHERE id=%s AND role=%s',(nas['actor'],'radius')).fetchone())

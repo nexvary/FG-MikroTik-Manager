@@ -15,6 +15,13 @@ class Service:
         with self.connect() as db:
             db.execute('SELECT pg_advisory_xact_lock(734892)')
             db.execute(Path(__file__).with_name('schema.sql').read_text())
+            db.execute('ALTER TABLE nas_clients ADD COLUMN IF NOT EXISTS actor uuid REFERENCES accounts(id)')
+            for nas in db.execute('SELECT digest,tenant,branch FROM nas_clients WHERE actor IS NULL').fetchall():
+                actor=uuid.uuid4()
+                db.execute("INSERT INTO accounts(id,tenant,branch,username,salt,verifier,role) VALUES(%s,%s,%s,%s,%s,%s,'radius')",(actor,nas['tenant'],nas['branch'],'nas-'+str(actor),secrets.token_bytes(16),secrets.token_bytes(32)))
+                db.execute('UPDATE nas_clients SET actor=%s WHERE digest=%s',(actor,nas['digest']))
+            db.execute('ALTER TABLE nas_clients ALTER COLUMN actor SET NOT NULL')
+            db.execute('INSERT INTO schema_version VALUES(2) ON CONFLICT DO NOTHING')
     @staticmethod
     def hash_password(password, salt):
         return hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 600000)
@@ -49,12 +56,15 @@ class Service:
                      (hashlib.sha256(token.encode()).digest(),)).fetchone()
         if not a: raise PermissionError('LOGIN_REQUIRED')
         return a
-    def ingest(self, token, events):
+    def ingest(self, token, events, nas_key=None):
         if not isinstance(events,list) or not 1<=len(events)<=100: raise ValueError('BATCH_LIMIT')
         validated=[(e,*canonical(e)) for e in events]
         result=[]
         with self.connect() as db:
-            a=self.principal(db,token)
+            if nas_key is None:a=self.principal(db,token)
+            else:
+                a=db.execute('SELECT a.* FROM nas_clients n JOIN accounts a ON a.id=n.actor WHERE n.digest=%s AND n.enabled AND a.enabled',(hashlib.sha256(nas_key.encode()).digest(),)).fetchone()
+                if not a:raise PermissionError('INVALID_NAS')
             # Serialize queue admission per tenant; no unbounded backlog from concurrent requests.
             db.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',(a['tenant'],))
             for event, raw, digest in validated:
@@ -112,7 +122,9 @@ class Service:
         for value in (tenant,branch,nas):identifier(value)
         key=secrets.token_urlsafe(32)
         with self.connect() as db:
-            db.execute('INSERT INTO nas_clients(digest,tenant,branch,nas) VALUES(%s,%s,%s,%s)',(hashlib.sha256(key.encode()).digest(),tenant,branch,nas))
+            actor=uuid.uuid4()
+            db.execute("INSERT INTO accounts(id,tenant,branch,username,salt,verifier,role) VALUES(%s,%s,%s,%s,%s,%s,'radius')",(actor,tenant,branch,'nas-'+str(actor),secrets.token_bytes(16),secrets.token_bytes(32)))
+            db.execute('INSERT INTO nas_clients(digest,tenant,branch,nas,actor) VALUES(%s,%s,%s,%s,%s)',(hashlib.sha256(key.encode()).digest(),tenant,branch,nas,actor))
         return key
     def provision_radius_user(self, tenant, branch, username, password, expires):
         for value in (tenant,branch,username):identifier(value)
@@ -143,7 +155,27 @@ class Service:
         with self.connect() as db:
             account=self.principal(db,token)
             return {key:account[key] for key in ('tenant','branch','role')}
-
+    def radius_accounting(self,nas_key,attributes):
+        if not isinstance(nas_key,str) or not 20<=len(nas_key)<=100:raise PermissionError('INVALID_NAS')
+        if not isinstance(attributes,dict):raise ValueError('INVALID_ATTRIBUTES')
+        def value(name,default=None):
+            item=attributes.get(name)
+            if item is None:return default
+            if not isinstance(item,dict) or not isinstance(item.get('value'),list) or len(item['value'])!=1:raise ValueError('INVALID_ATTRIBUTE')
+            return item['value'][0]
+        with self.connect() as db:
+            nas=db.execute('SELECT * FROM nas_clients WHERE digest=%s AND enabled',(hashlib.sha256(nas_key.encode()).digest(),)).fetchone()
+            if not nas:raise PermissionError('INVALID_NAS')
+        def counter(low,high):
+            a=int(value(low,0));b=int(value(high,0))
+            if not 0<=a<=2**32-1 or not 0<=b<=2**31-1:raise ValueError('INVALID_COUNTER')
+            return (b<<32)+a
+        body=dict(nas=nas['nas'],session=value('Acct-Unique-Session-Id') or value('Acct-Session-Id'),user=value('User-Name'),
+                  status=value('Acct-Status-Type'),seconds=int(value('Acct-Session-Time',0)),
+                  input_octets=counter('Acct-Input-Octets','Acct-Input-Gigawords'),output_octets=counter('Acct-Output-Octets','Acct-Output-Gigawords'))
+        raw=json.dumps(body,sort_keys=True,separators=(',',':'))
+        event=dict(version=1,id='radius-'+hashlib.sha256(raw.encode()).hexdigest(),device='radius:'+nas['nas'],kind='radius.accounting',body=body)
+        return self.ingest('',[event],nas_key=nas_key)
 
     def radius_users(self, token):
         with self.connect() as db:

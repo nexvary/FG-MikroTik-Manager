@@ -12,6 +12,12 @@ on:
         required: true
         default: "8d0423358d403bcb21306d6a294e2af4d7043b60"
   push:
+    paths-ignore:
+      - 'server/**'
+      - 'desktop/**'
+      - 'docs/**'
+      - '.github/workflows/server-ci.yml'
+      - '.github/workflows/windows-desktop-ci.yml'
     branches:
       - main
       - "dev/**"
