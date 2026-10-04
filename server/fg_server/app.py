@@ -10,7 +10,14 @@ class Application:
             path=env.get('PATH_INFO','');method=env.get('REQUEST_METHOD','')
             auth=env.get('HTTP_AUTHORIZATION','')
             token=auth[7:] if auth.startswith('Bearer ') else ''
-            if method=='GET' and path=='/health': result={'version':1}
+            if method=='GET' and path=='/v1/radius/authenticate':
+                import base64
+                if not auth.startswith('Basic '):raise PermissionError('INVALID_LOGIN')
+                decoded=base64.b64decode(auth[6:],validate=True).decode()
+                username,password=decoded.split(':',1)
+                self.service.radius_authenticate(env.get('HTTP_X_FG_NAS_KEY',''),username,password)
+                status='204 No Content';result=None
+            elif method=='GET' and path=='/health': result={'version':1}
             elif method=='POST' and path in {'/v1/login','/v1/events'}:
                 if env.get('CONTENT_TYPE','').split(';')[0]!='application/json': raise ValueError('JSON_REQUIRED')
                 length=int(env.get('CONTENT_LENGTH','0'))
@@ -33,6 +40,6 @@ class Application:
             status='400 Bad Request';result={'error':'INVALID_REQUEST'}
         except Exception:
             status='503 Service Unavailable';result={'error':'RETRY_LATER'}
-        data=json.dumps(result,separators=(',',':')).encode()
+        data=b'' if result is None else json.dumps(result,separators=(',',':')).encode()
         start(status,[('Content-Type','application/json'),('Content-Length',str(len(data))),('Cache-Control','no-store')])
         return [data]

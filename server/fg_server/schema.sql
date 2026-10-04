@@ -29,3 +29,10 @@ CREATE OR REPLACE FUNCTION forbid_ledger_change() RETURNS trigger LANGUAGE plpgs
 BEGIN RAISE EXCEPTION 'IMMUTABLE_LEDGER'; END; $$;
 DROP TRIGGER IF EXISTS ledger_immutable ON ledger;
 CREATE TRIGGER ledger_immutable BEFORE UPDATE OR DELETE ON ledger FOR EACH ROW EXECUTE FUNCTION forbid_ledger_change();
+CREATE TABLE IF NOT EXISTS nas_clients(
+ digest bytea PRIMARY KEY, tenant text NOT NULL, branch text NOT NULL, nas text NOT NULL, enabled boolean NOT NULL DEFAULT true);
+CREATE TABLE IF NOT EXISTS radius_users(
+ tenant text NOT NULL,branch text NOT NULL,username text NOT NULL,salt bytea NOT NULL,verifier bytea NOT NULL,
+ expires timestamptz NOT NULL,enabled boolean NOT NULL DEFAULT true,
+ failures integer NOT NULL DEFAULT 0,locked_until timestamptz,
+ PRIMARY KEY(tenant,branch,username));

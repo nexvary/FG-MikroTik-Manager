@@ -108,3 +108,34 @@ class Service:
                                    key+(b['user'],b['seconds'],b['input_octets'],b['output_octets'],b['status']=='Stop'))
                 db.execute('UPDATE events SET state=%s,reason=%s WHERE seq=%s',('QUARANTINED' if reason else 'APPLIED',reason,e['seq']))
             return len(rows)
+    def provision_nas(self, tenant, branch, nas):
+        for value in (tenant,branch,nas):identifier(value)
+        key=secrets.token_urlsafe(32)
+        with self.connect() as db:
+            db.execute('INSERT INTO nas_clients(digest,tenant,branch,nas) VALUES(%s,%s,%s,%s)',(hashlib.sha256(key.encode()).digest(),tenant,branch,nas))
+        return key
+    def provision_radius_user(self, tenant, branch, username, password, expires):
+        for value in (tenant,branch,username):identifier(value)
+        if not 12<=len(password)<=128:raise ValueError('PASSWORD_LENGTH')
+        salt=secrets.token_bytes(16)
+        with self.connect() as db:
+            db.execute('INSERT INTO radius_users(tenant,branch,username,salt,verifier,expires,enabled) VALUES(%s,%s,%s,%s,%s,%s,true) ON CONFLICT(tenant,branch,username) DO UPDATE SET salt=excluded.salt,verifier=excluded.verifier,expires=excluded.expires,enabled=true',
+                       (tenant,branch,username,salt,self.hash_password(password,salt),expires))
+    def radius_authenticate(self, nas_key, username, password):
+        if not isinstance(nas_key,str) or not 20<=len(nas_key)<=100:raise PermissionError('INVALID_NAS')
+        if not isinstance(username,str) or len(username)>120 or not isinstance(password,str) or len(password)>128:raise PermissionError('INVALID_LOGIN')
+        accepted=False
+        with self.connect() as db:
+            nas=db.execute('SELECT * FROM nas_clients WHERE digest=%s AND enabled',(hashlib.sha256(nas_key.encode()).digest(),)).fetchone()
+            if not nas:raise PermissionError('INVALID_NAS')
+            key=(nas['tenant'],nas['branch'],username)
+            user=db.execute('SELECT *,locked_until>now() AS locked,expires>now() AS current FROM radius_users WHERE tenant=%s AND branch=%s AND username=%s FOR UPDATE',key).fetchone()
+            salt=bytes(user['salt']) if user else bytes(16)
+            verifier=self.hash_password(password,salt)
+            accepted=bool(user and user['enabled'] and user['current'] and not user['locked'] and hmac.compare_digest(verifier,bytes(user['verifier'])))
+            if accepted:
+                db.execute('UPDATE radius_users SET failures=0,locked_until=NULL WHERE tenant=%s AND branch=%s AND username=%s',key)
+            elif user and not user['locked']:
+                db.execute("UPDATE radius_users SET failures=failures+1,locked_until=CASE WHEN failures>=4 THEN now()+interval '30 seconds' ELSE NULL END WHERE tenant=%s AND branch=%s AND username=%s",key)
+        if not accepted:raise PermissionError('INVALID_LOGIN')
+        return True

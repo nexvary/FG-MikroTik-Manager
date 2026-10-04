@@ -1,6 +1,6 @@
 # Optional FG server — development increment
 
-This service is optional; the Android app continues to operate locally. This increment implements versioned event intake, scoped account authentication, a PostgreSQL journal, a bounded worker, immutable financial appends/reversals, and monotonic RADIUS accounting **event** reconciliation. It is not a deployed service, a RADIUS UDP authentication server, or an Android sync integration. Do not point live NAS traffic at it yet.
+This service is optional; the Android app continues to operate locally. This increment implements versioned event intake, scoped account authentication, a PostgreSQL journal, a bounded worker, immutable financial appends/reversals, and monotonic RADIUS accounting **event** reconciliation. A PAP REST authentication endpoint is also implemented with NAS-key and tenant/branch checks, expiry and failure throttling. It is not a deployed service, a RADIUS UDP server, or an Android sync integration. Do not point live NAS traffic at it yet.
 
 ## Isolated setup
 
@@ -35,3 +35,9 @@ FG_DATABASE_URL=postgresql://... python -m unittest discover -s tests -v
 ```
 
 The CI workflow runs an isolated PostgreSQL 16 service. Tests exercise tenant isolation, role enforcement/revocation/throttling, exact replay/conflict behavior, reversal rules, immutable money and accounting stop/counter rules. Production TLS, a physical MikroTik, a RADIUS adapter, Android sync and capacity benchmarks remain release gates.
+
+## PAP REST endpoint (integration pending)
+
+GET `/v1/radius/authenticate` uses Basic subscriber credentials plus `X-FG-NAS-Key`. It returns 204 on success and 403 otherwise. Provision a hashed NAS key through the `nas` CLI command and subscriber verifiers through `radius-user --expires <ISO date with UTC offset>`. The key is printed once for installation into a trusted FreeRADIUS configuration. Use HTTPS and proxy rate limits. Do not expose subscriber credentials in request URLs or logs. No CHAP/MSCHAP/EAP support is claimed. FreeRADIUS configuration parsing and real packet tests are not yet complete.
+
+Reference: https://www.freeradius.org/documentation/freeradius-server/4.0.0/howto/modules/rest/configuration.html (the deployed FreeRADIUS major version must match its own configuration syntax).
