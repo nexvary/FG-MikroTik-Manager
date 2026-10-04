@@ -19,8 +19,16 @@ class OperationsUiTest {
     // Capture the synchronized Compose root rather than a stale SurfaceFlinger frame.
     private fun capture(name:String){
         compose.waitForIdle()
-        val root=if(name=="router-center-en.png") compose.onNode(isRoot() and hasAnyDescendant(hasText("Navigation demo • Cairo"))) else compose.onRoot()
-        val bitmap=root.captureToImage().asAndroidBitmap()
+        val roots=compose.onAllNodes(isRoot()).fetchSemanticsNodes()
+        check(roots.isNotEmpty()) { "No Compose root available for $name" }
+        // Dialogs create an additional root. Capture the largest root so UI proof remains stable
+        // across screens that use modal surfaces and compact-phone configurations.
+        val rootId=roots.maxBy { it.boundsInRoot.width * it.boundsInRoot.height }.id
+        val bitmap=compose.onNode(hasTestTag("__never__")).runCatching {
+            throw IllegalStateException()
+        }.getOrElse {
+            compose.onAllNodes(isRoot())[roots.indexOfFirst { it.id==rootId }]
+        }.captureToImage().asAndroidBitmap()
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         context.openFileOutput(name,0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
     }
