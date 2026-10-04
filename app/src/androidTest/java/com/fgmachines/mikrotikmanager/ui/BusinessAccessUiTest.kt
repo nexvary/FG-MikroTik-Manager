@@ -2,6 +2,7 @@ package com.fgmachines.mikrotikmanager.ui
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -32,7 +33,13 @@ class BusinessAccessUiTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
     private fun waitText(text:String){compose.waitUntil(15000){compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()}}
     private fun tap(text:String){waitText(text);compose.waitUntil(15000){runCatching{compose.onNodeWithText(text).assertIsEnabled();true}.getOrDefault(false)};val node=compose.onNodeWithText(text);runCatching{node.performScrollTo()};node.performClick()}
-    private fun capture(name:String){compose.waitForIdle();val i=InstrumentationRegistry.getInstrumentation();val bitmap=i.uiAutomation.takeScreenshot();i.targetContext.openFileOutput(name,0).use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()}
+    // Capture the synchronized Compose root rather than a stale SurfaceFlinger frame.
+    private fun capture(name:String){
+        compose.waitForIdle()
+        val bitmap=compose.onRoot().captureToImage().asAndroidBitmap()
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        context.openFileOutput(name,0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
+    }
     @Test fun ownerCreatesLoginAndReadOnlyUserCannotEnterRouterWorkspace() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         val name="access-ui-${UUID.randomUUID()}.db";val store=BusinessStore(BusinessDatabase(context,name));val identity=BusinessIdentity(store)

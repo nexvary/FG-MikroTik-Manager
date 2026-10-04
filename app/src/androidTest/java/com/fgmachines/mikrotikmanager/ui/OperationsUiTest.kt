@@ -1,6 +1,7 @@
 package com.fgmachines.mikrotikmanager.ui
 
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -15,7 +16,13 @@ class OperationsUiTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
     private fun tap(text:String){compose.waitUntil(15000){runCatching{compose.onNodeWithText(text).assertIsEnabled();true}.getOrDefault(false)};val n=compose.onNodeWithText(text);runCatching{n.performScrollTo()};n.performClick();compose.waitForIdle()}
     private fun waitText(text:String){compose.waitUntil(10000){compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()}}
-    private fun capture(name:String){val i=InstrumentationRegistry.getInstrumentation();val b=i.uiAutomation.takeScreenshot();i.targetContext.openFileOutput(name,0).use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
+    // Capture the synchronized Compose root rather than a stale SurfaceFlinger frame.
+    private fun capture(name:String){
+        compose.waitForIdle()
+        val bitmap=compose.onRoot().captureToImage().asAndroidBitmap()
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        context.openFileOutput(name,0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
+    }
     @Test fun routerProfilesTeamWalletAndArchiveScreens(){
         compose.onNodeWithText("Router IP or hostname").performTextInput("192.168.88.1")
         tap("Router center");tap("Save current connection fields")
