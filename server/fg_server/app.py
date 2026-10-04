@@ -1,6 +1,12 @@
 """Bounded WSGI API. Bind to loopback; expose only through an HTTPS reverse proxy."""
 import json
-from .service import Service
+from datetime import datetime
+from decimal import Decimal
+
+def json_value(value):
+    if isinstance(value, datetime): return value.isoformat()
+    if isinstance(value, Decimal) and value.is_finite() and value == value.to_integral_value(): return int(value)
+    raise TypeError("Unsupported response value")
 
 class Application:
     def __init__(self, service): self.service=service
@@ -47,6 +53,6 @@ class Application:
             status='400 Bad Request';result={'error':'INVALID_REQUEST'}
         except Exception:
             status='503 Service Unavailable';result={'error':'RETRY_LATER'}
-        data=b'' if result is None else json.dumps(result,separators=(',',':')).encode()
+        data=b'' if result is None else json.dumps(result,separators=(',',':'),default=json_value).encode()
         start(status,[('Content-Type','application/json'),('Content-Length',str(len(data))),('Cache-Control','no-store')])
         return [data]
