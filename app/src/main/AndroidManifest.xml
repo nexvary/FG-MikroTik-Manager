@@ -4,6 +4,10 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
@@ -12,6 +16,7 @@
         android:theme="@style/Theme.FGMTM"
         android:supportsRtl="true"
         android:usesCleartextTraffic="false">
+        <service android:name=".monitor.RouterMonitorService" android:exported="false" android:foregroundServiceType="connectedDevice" android:stopWithTask="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

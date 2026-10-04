@@ -19,8 +19,8 @@ android {
         applicationId = "com.fgmachines.mikrotikmanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "0.14.0"
+        versionCode = 23
+        versionName = "0.15.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -77,6 +77,8 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    androidTestImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))

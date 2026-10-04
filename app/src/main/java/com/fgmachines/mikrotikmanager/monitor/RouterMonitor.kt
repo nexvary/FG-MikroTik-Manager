@@ -12,7 +12,7 @@ import kotlinx.coroutines.sync.withPermit
 
 data class MonitoredRouter(val profile:RouterProfile,val health:MonitorHealth=MonitorHealth(),val snapshot:DashboardSnapshot?=null,val checking:Boolean=true)
 data class MonitorAlert(val router:String,val kind:String,val at:Long)
-/** Foreground-only, four opted-in routers, two concurrent polls. Passwords never leave memory. */
+/** Four opted-in routers, two concurrent polls. The owning service/screen controls lifetime. */
 class RouterMonitor(private val context:Context,private val scope:CoroutineScope) : AutoCloseable {
     private val jobs=mutableMapOf<String,Job>()
     private val active=java.util.concurrent.ConcurrentHashMap<String,RouterRepository>()
@@ -38,7 +38,14 @@ class RouterMonitor(private val context:Context,private val scope:CoroutineScope
                         } finally {active.remove(profile.id,repository);withContext(Dispatchers.IO){repository.close()}}
                     }
                 } catch(c:CancellationException){throw c}
-                catch(_:Exception){if(isActive)publish(profile,false,null)}
+                catch(e:Exception){
+                    if(e.message in setOf("LOGIN_REQUIRED","ACCESS_DENIED","SESSION_CLOSED")) {
+                        events.value=(listOf(MonitorAlert(profile.name,"AUTH_REQUIRED",System.currentTimeMillis()))+events.value).take(100)
+                        jobs.remove(profile.id);mutable.value=mutable.value-profile.id
+                        return@launch
+                    }
+                    if(isActive)publish(profile,false,null)
+                }
                 delay(30000)
                 mutable.value[profile.id]?.let{mutable.value=mutable.value+(profile.id to it.copy(checking=true))}
             }

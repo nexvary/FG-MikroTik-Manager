@@ -99,6 +99,11 @@ class Service:
             for e in rows:
                 reason=None;b=e['body'];scope=(e['tenant'],e['branch'])
                 if e['kind']=='ledger.append':
+                    existing=db.execute('SELECT * FROM ledger WHERE tenant=%s AND branch=%s AND id=%s',scope+(e['event_id'],)).fetchone()
+                    if existing:
+                        same=all(existing[k]==b[v] for k,v in [('subscriber','subscriber'),('currency','currency'),('amount','amount_minor'),('reversal_of','reversal_of'),('note','note')])
+                        db.execute('UPDATE events SET state=%s,reason=%s WHERE seq=%s',('APPLIED' if same else 'QUARANTINED',None if same else 'LEDGER_CONFLICT',e['seq']))
+                        continue
                     if b['reversal_of']:
                         old=db.execute('SELECT * FROM ledger WHERE tenant=%s AND branch=%s AND id=%s',scope+(b['reversal_of'],)).fetchone()
                         already=db.execute('SELECT 1 FROM ledger WHERE tenant=%s AND branch=%s AND reversal_of=%s',scope+(b['reversal_of'],)).fetchone()
@@ -208,3 +213,45 @@ class Service:
             if active_only: sql+=" AND NOT stopped"
             sql+=" ORDER BY stopped,username,nas,session LIMIT 5000"
             return db.execute(sql,args).fetchall()
+
+    def business_sync_read(self,token):
+        with self.connect() as db:
+            a=self.principal(db,token)
+            if a['role']!='owner':raise PermissionError('ACCESS_DENIED')
+            db.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',(a['tenant'],))
+            return self._business_replica(db,a)
+
+    def _business_replica(self,db,a):
+        head=db.execute('SELECT revision,digest FROM business_sync_heads WHERE tenant=%s AND branch=%s',(a['tenant'],a['branch'])).fetchone()
+        records=db.execute('SELECT DISTINCT ON (kind,id) kind,id,body FROM business_sync_records WHERE tenant=%s AND branch=%s ORDER BY kind,id,revision DESC',(a['tenant'],a['branch'])).fetchall()
+        return dict(revision=head['revision'] if head else 0,records=[dict(table=r['kind'],id=r['id'],body=r['body']) for r in records])
+
+    def business_sync_write(self,token,body):
+        from .business_sync import validate,preserve,digest,SyncConflict
+        if not isinstance(body,dict) or set(body)!={'revision','device','records'} or type(body['revision']) is not int or not 0<=body['revision']<2**63-1:raise ValueError('SYNC_REQUEST')
+        identifier(body['device'])
+        with self.connect() as db:
+            a=self.principal(db,token)
+            if a['role']!='owner':raise PermissionError('ACCESS_DENIED')
+            # Same worker lock as financial event application; then the admission lock.
+            db.execute('SELECT pg_advisory_xact_lock(734893)')
+            db.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',(a['tenant'],))
+            incoming=validate(body['records'],a['tenant'],a['branch'])
+            old=self._business_replica(db,a);existing={(r['table'],r['id']):r['body'] for r in old['records']}
+            if incoming==existing:return dict(revision=old['revision'],accepted=True)
+            if old['revision']!=body['revision']:raise SyncConflict('SYNC_REVISION_CONFLICT')
+            preserve(existing,incoming)
+            financial=db.execute('SELECT * FROM ledger WHERE tenant=%s AND branch=%s',(a['tenant'],a['branch'])).fetchall()
+            for entry in financial:
+                row=incoming.get(('ledger',entry['id']))
+                if row is None or any(row[k]!=entry[v] for k,v in [('subscriber_id','subscriber'),('currency','currency'),('amount_minor','amount'),('reversal_of','reversal_of'),('note','note')]):raise ValueError('SYNC_LEDGER_CONFLICT')
+            known={r['id'] for r in financial}
+            ordered=sorted((r for (t,_),r in incoming.items() if t=='ledger' and r['id'] not in known),key=lambda r:(r['reversal_of'] is not None,r['created_at'],r['id']))
+            for row in ordered:
+                db.execute('INSERT INTO ledger VALUES(%s,%s,%s,%s,%s,%s,%s,%s)',(a['tenant'],a['branch'],row['id'],row['subscriber_id'],row['currency'],row['amount_minor'],row['reversal_of'],row['note']))
+            revision=old['revision']+1
+            for (table,key),row in incoming.items():
+                if existing.get((table,key))!=row:
+                    db.execute('INSERT INTO business_sync_records(tenant,branch,kind,id,revision,body,actor,device) VALUES(%s,%s,%s,%s,%s,%s::jsonb,%s,%s)',(a['tenant'],a['branch'],table,key,revision,json.dumps(row),a['id'],body['device']))
+            db.execute('INSERT INTO business_sync_heads VALUES(%s,%s,%s,%s) ON CONFLICT(tenant,branch) DO UPDATE SET revision=excluded.revision,digest=excluded.digest',(a['tenant'],a['branch'],revision,digest(body['records'])))
+            return dict(revision=revision,accepted=True)

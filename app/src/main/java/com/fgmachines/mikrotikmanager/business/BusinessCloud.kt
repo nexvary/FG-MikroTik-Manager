@@ -9,8 +9,47 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/** Explicit one-way append/reversal transfer. Never replaces local financial records. */
-class BusinessCloud(private val store:BusinessStore) {
+/** Explicit HTTPS business synchronization. Credentials and tokens are request-local. */
+class BusinessCloud(private val store:BusinessStore,private val httpFactory:()->OkHttpClient={OkHttpClient.Builder().connectTimeout(10,TimeUnit.SECONDS).readTimeout(30,TimeUnit.SECONDS).callTimeout(60,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).build()}) {
+
+    data class SyncResult(val sent:Int,val imported:Int,val revision:Long)
+    fun sync(url:String,username:String,password:String,joinEmpty:Boolean=false):SyncResult {
+        store.authorize(null,BusinessPermission.BRANCHES)
+        val base=url.trim().toHttpUrl()
+        require(base.isHttps && base.username.isEmpty() && base.password.isEmpty() && base.query==null && base.fragment==null && base.encodedPath=="/"){"HTTPS_ORIGIN_REQUIRED"}
+        val client=httpFactory()
+        fun call(path:String,body:Any?=null,token:String?=null):JSONObject {
+            val request=Request.Builder().url(base.newBuilder().encodedPath(path).build())
+            if(token!=null)request.header("Authorization","Bearer $token")
+            if(body!=null)request.post(body.toString().toRequestBody("application/json".toMediaType()))
+            client.newCall(request.build()).execute().use {response->
+                require(response.code!=409){"CLOUD_REVISION_CONFLICT"}
+                require(response.code!=401 && response.code!=403){"CLOUD_ACCESS_DENIED"}
+                require(response.isSuccessful){"CLOUD_REQUEST_FAILED"}
+                return JSONObject(String(BusinessBackupCipher.readBounded(response.body!!.byteStream(),22*1024*1024),Charsets.UTF_8))
+            }
+        }
+        try {
+            val token=call("/v1/login",JSONObject().put("username",username).put("password",password)).getString("token")
+            require(token.length in 20..100){"CLOUD_INVALID_TOKEN"}
+            val identity=call("/v1/identity",token=token)
+            require(identity.getString("role")=="owner"){"CLOUD_OWNER_REQUIRED"}
+            val replica=BusinessReplica(store);val remote=call("/v1/business/sync",token=token);val remoteRecords=remote.getJSONArray("records")
+            val own=store.defaultScope();val tenant=identity.getString("tenant");val branch=identity.getString("branch")
+            if(own.organizationId!=tenant || own.branchId!=branch){require(joinEmpty){"CLOUD_SCOPE_MISMATCH"};replica.join(tenant,branch,remoteRecords)}
+            val local=replica.snapshot();val merged=replica.combine(local,remoteRecords,base.toString())
+            replica.validate(merged,base.toString(),local)
+            // Concurrent local changes or another phone revision are explicit conflicts, never last-writer-wins.
+            require(BusinessReplica.canonical(replica.snapshot())==BusinessReplica.canonical(local)){"CLOUD_LOCAL_CHANGED"}
+            val acknowledged=call("/v1/business/sync",JSONObject().put("revision",remote.getLong("revision")).put("device",replica.device()).put("records",merged),token)
+            require(acknowledged.getBoolean("accepted")){"CLOUD_NOT_CONFIRMED"}
+            val imported=replica.merge(merged,base.toString(),local)
+            val known=BusinessReplica.index(remoteRecords)
+            val sent=BusinessReplica.index(merged).count{(key,r)->known[key]?.let{BusinessReplica.canonical(it)!=BusinessReplica.canonical(r)} ?: true}
+            return SyncResult(sent,imported,acknowledged.getLong("revision"))
+        }finally{client.dispatcher.cancelAll();client.connectionPool.evictAll();client.dispatcher.executorService.shutdown()}
+    }
+
     data class Result(val count:Int,val remaining:Boolean,val statuses:String)
     fun upload(url:String,username:String,password:String):Result {
         store.authorize(null,BusinessPermission.BRANCHES)

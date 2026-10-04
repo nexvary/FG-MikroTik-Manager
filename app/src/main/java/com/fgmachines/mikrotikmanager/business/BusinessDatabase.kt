@@ -7,7 +7,7 @@ import java.util.UUID
 
 /** One versioned business database. Legacy encrypted voucher storage is deliberately preserved. */
 class BusinessDatabase(context: Context, name: String = "fg_business.db") :
-    SQLiteOpenHelper(context.applicationContext, name, null, 6) {
+    SQLiteOpenHelper(context.applicationContext, name, null, 7) {
     init { setWriteAheadLoggingEnabled(true) }
     override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true) }
     override fun onCreate(db: SQLiteDatabase) {
@@ -52,17 +52,19 @@ class BusinessDatabase(context: Context, name: String = "fg_business.db") :
         BusinessSchemaV4.install(db)
         BusinessSchemaV5.install(db)
         BusinessSchemaV6.install(db)
+        BusinessReplica.install(db)
         val org = UUID.randomUUID().toString(); val branch = UUID.randomUUID().toString()
         db.execSQL("INSERT INTO organizations VALUES (?,?)", arrayOf(org,"Local business"))
         db.execSQL("INSERT INTO branches VALUES (?,?,?)", arrayOf(branch,org,"Main branch"))
         db.execSQL("INSERT INTO settings VALUES (1,?,?)", arrayOf(org,branch))
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        require(oldVersion in 1..5 && newVersion==6) { "Unsupported database migration" }
+        require(oldVersion in 1..6 && newVersion==7) { "Unsupported database migration" }
         if(oldVersion==1) BusinessSchemaV2.install(db)
         if(oldVersion<=2) BusinessSchemaV3.install(db)
         if(oldVersion<=3) BusinessSchemaV4.install(db)
         if(oldVersion<=4) BusinessSchemaV5.install(db)
-        BusinessSchemaV6.install(db)
+        if(oldVersion<=5) BusinessSchemaV6.install(db)
+        BusinessReplica.install(db)
     }
 }

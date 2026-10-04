@@ -36,3 +36,13 @@ CREATE TABLE IF NOT EXISTS radius_users(
  expires timestamptz NOT NULL,enabled boolean NOT NULL DEFAULT true,
  failures integer NOT NULL DEFAULT 0,locked_until timestamptz,
  PRIMARY KEY(tenant,branch,username));
+-- Business synchronization keeps immutable record versions, not mutable financial snapshots.
+CREATE TABLE IF NOT EXISTS business_sync_heads(
+ tenant text NOT NULL,branch text NOT NULL,revision bigint NOT NULL,digest text NOT NULL,PRIMARY KEY(tenant,branch));
+CREATE TABLE IF NOT EXISTS business_sync_records(
+ tenant text NOT NULL,branch text NOT NULL,kind text NOT NULL,id text NOT NULL,revision bigint NOT NULL,
+ body jsonb NOT NULL,actor uuid NOT NULL REFERENCES accounts(id),device text NOT NULL,created timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(tenant,branch,kind,id,revision));
+CREATE INDEX IF NOT EXISTS business_sync_latest ON business_sync_records(tenant,branch,kind,id,revision DESC);
+DROP TRIGGER IF EXISTS business_sync_immutable ON business_sync_records;
+CREATE TRIGGER business_sync_immutable BEFORE UPDATE OR DELETE ON business_sync_records FOR EACH ROW EXECUTE FUNCTION forbid_ledger_change();
