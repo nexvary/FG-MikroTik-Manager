@@ -1,3 +1,9 @@
+## Neon silver panel and network diagnostics
+
+The control center now uses neon green, silver frames and cyan/gold/violet status accents with consistent SVG icons. **Network diagnostics** runs on demand through authenticated `POST /v1/diagnostics` with an exact empty object body, owner/reader only. It checks a read-only PostgreSQL query, DNS for example.com, TCP to 1.1.1.1:443 and a CA/hostname-verified TLS handshake to cloudflare-dns.com through that IP. Each result shows execution time, a fixed target, success/failure, source and timestamp; the panel offers a text report and suggested checks on failure.
+
+These probes measure **server connectivity**, not the user's phone or physical MikroTik LAN. A target timeout or blocked egress is not proof of a total internet outage. Router diagnostics remain in the connected Android app. External destinations cannot be submitted by clients. Resolver work is isolated in a child process with a 2-second deadline; TCP/TLS also have 2-second timeouts. One diagnostics run per API process is allowed; completed results are cached for 15 seconds and labeled when reused. Account validity is rechecked after probing. No credentials, resolver IPs or exception details enter the report. Browser acceptance uses real HTTP/PostgreSQL but mocks external probes for deterministic pass/failure presentation; actual server egress needs checking on deployment.
+
 # Optional FG server — development increment
 
 ## Web panel and Ubuntu test deployment

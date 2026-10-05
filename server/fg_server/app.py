@@ -10,7 +10,10 @@ def json_value(value):
     raise TypeError("Unsupported response value")
 
 class Application:
-    def __init__(self, service): self.service=service
+    def __init__(self, service):
+        from .diagnostics import Diagnostics
+        self.service=service
+        self.diagnostics=Diagnostics()
     def __call__(self, env, start):
         status='200 OK'
         try:
@@ -36,7 +39,7 @@ class Application:
                 active=query.get('active',['0'])[0]=='1'
                 result={'sessions':self.service.radius_sessions(token,active)}
             elif method=='GET' and path=='/health': result={'version':1}
-            elif method=='POST' and path in {'/v1/login','/v1/logout','/v1/events','/v1/radius/accounting','/v1/business/sync'}:
+            elif method=='POST' and path in {'/v1/login','/v1/logout','/v1/events','/v1/radius/accounting','/v1/business/sync','/v1/diagnostics'}:
                 if env.get('CONTENT_TYPE','').split(';')[0]!='application/json': raise ValueError('JSON_REQUIRED')
                 length=int(env.get('CONTENT_LENGTH','0'))
                 if not 1<=length<=(21*1024*1024 if path=='/v1/business/sync' else 1048576): raise ValueError('BODY_LIMIT')
@@ -46,6 +49,11 @@ class Application:
                 if path=='/v1/login':
                     if not isinstance(body,dict) or set(body)!={'username','password'}: raise ValueError('INVALID_LOGIN')
                     result={'token':self.service.login(body['username'],body['password']),'expires_in':900}
+                elif path=='/v1/diagnostics':
+                    if body!={}:raise ValueError('INVALID_DIAGNOSTICS')
+                    if self.service.identity(token)['role'] not in {'owner','reader'}:raise PermissionError()
+                    result=self.diagnostics.run(self.service)
+                    if self.service.identity(token)['role'] not in {'owner','reader'}:raise PermissionError()
                 elif path=='/v1/logout':
                     if body!={}:raise ValueError('INVALID_LOGOUT')
                     self.service.logout(token);status='204 No Content';result=None

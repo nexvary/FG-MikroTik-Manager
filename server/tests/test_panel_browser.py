@@ -79,6 +79,31 @@ class PanelBrowserTest(unittest.TestCase):
                 page.set_viewport_size({'width':1440,'height':900});expect(page.locator('table')).to_contain_text('1.00')
                 page.get_by_role('button',name='RADIUS users',exact=True).click();expect(page.locator('#updated')).to_contain_text('Last read')
                 page.screenshot(path=str(proof/'radius-en-desktop.png'),full_page=True)
+                # External probes are deterministic here; database check uses real PostgreSQL.
+                from unittest.mock import patch
+                from fg_server.diagnostics import Diagnostics
+                page.get_by_role('button',name='Network diagnostics',exact=True).click()
+                expect(page.locator('.diagnostic-card')).to_have_count(4)
+                with patch.object(Diagnostics,'dns'), patch.object(Diagnostics,'tcp'), patch.object(Diagnostics,'tls',side_effect=OSError('isolated failed TLS')):
+                    page.get_by_role('button',name='Run diagnostics',exact=True).click()
+                    expect(page.locator('.diagnostic-card[data-state=passed]')).to_have_count(3)
+                    expect(page.locator('.diagnostic-card[data-state=failed]')).to_have_count(1)
+                expect(page.locator('#view')).to_contain_text('Probe source: server')
+                with page.expect_download() as report_download:
+                    page.get_by_role('button',name='Download diagnostics report',exact=True).click()
+                self.assertIn('cloudflare-dns.com',Path(report_download.value.path()).read_text(encoding='utf-8-sig'))
+                page.screenshot(path=str(proof/'diagnostics-en-desktop.png'),full_page=True)
+                page.get_by_role('button',name='العربية',exact=True).click()
+                expect(page.locator('#view')).to_contain_text('بدء التشخيص')
+                page.set_viewport_size({'width':320,'height':844})
+                self.assertTrue(page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+                page.get_by_role('button',name='بدء التشخيص',exact=True).click()
+                expect(page.locator('.diagnostic-card[data-state=failed]')).to_have_count(1)
+                page.screenshot(path=str(proof/'diagnostics-ar-mobile.png'),full_page=True)
+                page.get_by_role('button',name='English',exact=True).click()
+                page.set_viewport_size({'width':1440,'height':900})
+                page.get_by_role('button',name='RADIUS users',exact=True).click()
+                expect(page.locator('#updated')).to_contain_text('Last read')
                 page.get_by_role('button',name='Synchronization events',exact=True).click();expect(page.locator('table')).to_contain_text('APPLIED')
                 page.get_by_role('button',name='Back',exact=True).click();expect(page.locator('#page-title')).to_have_text('RADIUS users');expect(page.locator('table')).to_contain_text('old-user')
                 self.assertEqual(0,page.evaluate('localStorage.length'));self.assertEqual(0,page.evaluate('sessionStorage.length'))
