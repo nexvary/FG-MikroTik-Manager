@@ -272,6 +272,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         transport.execute("/system/backup/load", mapOf("name" to file, "password" to password))
     }
     suspend fun reboot() { transport.execute("/system/reboot") }
+    fun dnsProtection()=DnsProtectionManager(transport,routerKey)
     suspend fun flushDns() { transport.execute("/ip/dns/cache/flush") }
     suspend fun repairDns(password: String, onBackup: (String) -> Unit = {}): String {
         val row = transport.read("ip/dns").firstOrNull().orEmpty()

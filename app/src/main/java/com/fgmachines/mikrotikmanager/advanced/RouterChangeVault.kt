@@ -16,7 +16,7 @@ import javax.crypto.spec.GCMParameterSpec
 @Serializable
 data class RouterChange(val at: Long, val ar: String, val en: String, val success: Boolean, val backup: String = "")
 @Serializable
-private data class VaultContents(val backups: Map<String, String> = emptyMap(), val changes: List<RouterChange> = emptyList())
+private data class VaultContents(val backups: Map<String, String> = emptyMap(), val changes: List<RouterChange> = emptyList(), val dnsProtection: DnsProtectionReceipt? = null)
 
 /** Backup unlock secrets and audit history are authenticated-encrypted with an Android Keystore key. */
 class RouterChangeVault(context: Context, routerKey: String) {
@@ -42,6 +42,8 @@ class RouterChangeVault(context: Context, routerKey: String) {
         val bytes = cipher.iv + cipher.doFinal(Json.encodeToString(value).toByteArray())
         check(prefs.edit().putString(slot, Base64.encodeToString(bytes, Base64.NO_WRAP)).commit()) { "Could not protect backup secrets on this phone" }
     }
+    fun dnsProtection(): DnsProtectionReceipt? = contents().dnsProtection
+    fun rememberDnsProtection(receipt: DnsProtectionReceipt?) { val value=contents();save(value.copy(dnsProtection=receipt)) }
     fun password(file: String): String? = contents().backups[file]
     fun changes(): List<RouterChange> = contents().changes
     fun rememberBackup(file: String, password: String) { val value = contents(); save(value.copy(backups = value.backups + (file to password))) }

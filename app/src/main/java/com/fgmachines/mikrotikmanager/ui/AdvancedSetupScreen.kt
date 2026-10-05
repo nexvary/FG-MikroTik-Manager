@@ -49,6 +49,7 @@ fun AdvancedSetupScreen(
         panel = panelHistory.lastOrNull() ?: "home"
         panelHistory = ArrayList(panelHistory.dropLast(1))
     }
+    if(panel=="protection") { DnsProtectionScreen(arabic,manager,{backPanel()},modifier);return }
     var report by remember { mutableStateOf<ReadinessReport?>(null) }
     var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf("") }
     var details by rememberSaveable { mutableStateOf(false) }
@@ -136,7 +137,7 @@ fun AdvancedSetupScreen(
                 }
                 if(!result.voucherReady) Button(onClick={ startWizard() },enabled=manager!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("جهّز الراوتر للكروت", "Prepare router for vouchers")) }
             } }
-            items(listOf("readiness" to label("فحص جاهزية الراوتر", "Router readiness check"),"wizard" to label("إعداد HotSpot لأول مرة", "First-time HotSpot setup"),"doctor" to label("تشخيص الشبكة", "Network Doctor"),"repair" to label("إصلاح تلقائي", "Auto repair"),"client" to label("اختبار شبكة العملاء", "Test client network"),"portal" to label("صفحة HotSpot للعملاء", "Customer HotSpot portal"),"backup" to label("نسخة احتياطية واستعادة", "Backup & recovery"),"quick" to label("أدوات سريعة", "Quick tools"),"technical" to label("الإعدادات التقنية", "Technical settings"))) { (key,title) ->
+            items(listOf("readiness" to label("فحص جاهزية الراوتر", "Router readiness check"),"wizard" to label("إعداد HotSpot لأول مرة", "First-time HotSpot setup"),"doctor" to label("تشخيص الشبكة", "Network Doctor"),"repair" to label("إصلاح تلقائي", "Auto repair"),"client" to label("اختبار شبكة العملاء", "Test client network"),"portal" to label("صفحة HotSpot للعملاء", "Customer HotSpot portal"),"backup" to label("نسخة احتياطية واستعادة", "Backup & recovery"),"protection" to label("حظر الإباحية والإعلانات والتتبع", "Block adult content, ads & trackers"),"quick" to label("أدوات سريعة", "Quick tools"),"technical" to label("الإعدادات التقنية", "Technical settings"))) { (key,title) ->
                 OutlinedButton(onClick={ when(key) { "wizard" -> startWizard(); "portal" -> tools="design"; "readiness","doctor","client" -> checkNetwork(key); else -> openPanel(key) } },modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(horizontal=12.dp,vertical=12.dp)) { Text(title,modifier=Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null) }
             }
         }
