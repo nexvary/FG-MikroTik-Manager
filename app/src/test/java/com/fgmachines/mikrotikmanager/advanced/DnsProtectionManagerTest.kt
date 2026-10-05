@@ -32,7 +32,7 @@ class DnsProtectionManagerTest {
         val plan=m.plan(m.inspect(),setOf("*1"),DnsProtectionMode.FAMILY)
         var saved:DnsProtectionReceipt?=null;var backedUp=false
         val receipt=m.apply(plan,{backedUp=true;"encrypted.backup"}){saved=it}!!
-        assertTrue(backedUp);assertEquals("ACTIVE",saved!!.state)
+        assertTrue(backedUp);assertEquals("ACTIVE",saved!!.state);assertTrue(m.verified(receipt,m.inspect()))
         assertEquals("94.140.14.15,94.140.15.16",t.tables.getValue("ip/dns").single()["servers"])
         assertEquals("no",t.tables.getValue("ip/dns").single()["allow-remote-requests"])
         assertEquals("",t.tables.getValue("ip/dns").single()["use-doh-server"])
@@ -60,6 +60,7 @@ class DnsProtectionManagerTest {
         val t=Fake();val m=DnsProtectionManager(t,"router");val plan=m.plan(m.inspect(),setOf("*1"),DnsProtectionMode.FAMILY)
         val r=m.apply(plan,{"encrypted.backup"}){}!!
         t.tables["ip/dns"]=t.tables.getValue("ip/dns").map{it+("servers" to "1.1.1.1")}
+        assertFalse(m.verified(r,m.inspect()))
         val n=t.calls.size;assertTrue(runCatching{m.restore(r){}}.isFailure);assertEquals(n,t.calls.size)
         t.tables["ip/dns"]=t.tables.getValue("ip/dns").map{it+("servers" to DnsProtectionMode.FAMILY.servers)}
         t.tables["interface"]=listOf(mapOf("type" to "ether","mac-address" to "AA:BB:CC:DD:EE:FF"))

@@ -79,6 +79,9 @@ class DnsProtectionManager(private val transport:RouterOsTransport,private val r
             throw IllegalStateException("DNS_APPLY_FAILED_CHECK_RECOVERY",failure)
         }
     }
+    fun verified(receipt:DnsProtectionReceipt,current:DnsProtectionInspection):Boolean=runCatching {
+        receipt.router==router && ownedValues(receipt,current,false) && current.tables.getValue("ip/dns").single()["dynamic-servers"].orEmpty().split(',').map{it.trim()}.filter{it.isNotEmpty()}.all{it in DnsProtectionMode.valueOf(receipt.mode).servers.split(',')}
+    }.getOrDefault(false)
     suspend fun restore(receipt:DnsProtectionReceipt,save:(DnsProtectionReceipt?)->Unit) {
         require(receipt.router==router){"WRONG_ROUTER"}
         require(ownedValues(receipt,inspect(),true)){"DNS_RESTORE_CONFLICT"}
