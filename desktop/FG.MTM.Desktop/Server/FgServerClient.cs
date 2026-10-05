@@ -69,6 +69,35 @@ public sealed class FgServerClient(HttpClient http)
         var sessions = envelope.Sessions ?? throw new InvalidOperationException("Missing sessions response.");
         return activeOnly ? sessions.Where(s => !s.Stopped).ToList() : sessions;
     }
+    public async Task<BusinessSnapshot> GetBusinessAsync(CancellationToken ct = default)
+    {
+        using var request = Authorized("v1/business/sync");
+        using var response = await SendAsync(request, ct);
+        var data = await ReadAsync<BusinessSnapshot>(response, ct);
+        if (data.Records is null || data.Revision < 0 || data.Records.Any(r => r.Body.ValueKind != JsonValueKind.Object || string.IsNullOrWhiteSpace(r.Table) || string.IsNullOrWhiteSpace(r.Id))) throw new InvalidOperationException("Invalid business response.");
+        return data;
+    }
+    public async Task<DiagnosticReport> DiagnoseAsync(CancellationToken ct = default)
+    {
+        using var request = Authorized("v1/diagnostics");
+        request.Method = HttpMethod.Post;
+        request.Content = JsonContent.Create(new { });
+        using var response = await SendAsync(request, ct);
+        var report = await ReadAsync<DiagnosticReport>(response, ct);
+        if (report.Source != "server" || report.Checks is null) throw new InvalidOperationException("Invalid diagnostic response.");
+        return report;
+    }
+    public async Task LogoutAsync(CancellationToken ct = default)
+    {
+        try {
+            if (IsAuthenticated) {
+                using var request = Authorized("v1/logout");
+                request.Method = HttpMethod.Post;
+                request.Content = JsonContent.Create(new { });
+                using var response = await SendAsync(request, ct);
+            }
+        } finally { Logout(); }
+    }
     private HttpRequestMessage Request(HttpMethod method, string path) =>
         new(method, new Uri(origin ?? throw new InvalidOperationException("Configure FG Server first."), path));
     private HttpRequestMessage Authorized(string path)
@@ -111,3 +140,10 @@ public sealed record RadiusSession(string Nas, string Session, string Username, 
 {
     public decimal TotalUsage => (decimal)InputOctets + OutputOctets;
 }
+
+public sealed record BusinessRecord(string Table, string Id, JsonElement Body);
+public sealed record BusinessSnapshot(long Revision, List<BusinessRecord>? Records);
+public sealed record DiagnosticCheck(string Key, string Target, string State,
+    [property: JsonPropertyName("elapsed_ms")] double? ElapsedMs);
+public sealed record DiagnosticReport(string Source,
+    [property: JsonPropertyName("checked_at")] string CheckedAt, List<DiagnosticCheck>? Checks, bool Cached);

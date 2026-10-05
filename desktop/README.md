@@ -1,21 +1,17 @@
-# FG MTM Desktop 0.1.0 preview
+# FG MTM Desktop 0.2.0
 
-.NET 8 / WPF. Existing foundation extended, not replaced. This is an early functional preview, not Android parity or production final.
+Windows 10/11 x64, .NET 8 WPF, self-contained installer and portable ZIP. Arabic RTL default / English, vector menu icons, crimson/royal gold/neon/silver styling, FG Machines executable icon, real Back navigation.
 
-Working: Arabic RTL / English, sidebar navigation and actual Back history, advanced visibility, HTTPS FG Server login, identity verification against the selected tenant/branch, in-memory token with 15-minute expiry, logout (local; server logout endpoint not present), RADIUS users and sessions, active/expired/disabled search filters, exact byte counters and safe network errors. The API supplies no session start timestamp. Automatic retries are deliberately disabled (including login POST); Refresh provides manual read retry. Redirects are disabled on the actual HttpClient.
+Works: HTTPS FG Server login and tenant/branch identity check, server-side logout, scoped RADIUS users/sessions and filters, all 17 synchronized business record types with search, 50-row pages and safe UTF-8 CSV export, bounded server diagnostics (database/DNS/TCP/verified TLS). Business data is read-only; financial integer minor units remain exact. Existing RouterOS 7 HTTPS REST reads for health/interfaces/neighbors/HotSpot/PPP and advanced menus remain available. Trusted TLS is required; no certificate bypass or stored passwords/tokens. Use a dedicated Windows owner account in the same company/branch, distinct from phone and web accounts: another login for the same username revokes its previous session.
 
-RouterOS 7 HTTPS REST reads are available for health, interfaces, neighbors, HotSpot/PPP users and active sessions, and 23 advanced menus including NAT/Mangle/WireGuard. Secret fields are removed before display. Trusted router TLS certificates are required. There is no insecure TLS bypass. RouterOS 6 binary API, writes, discovery, multi-router and commerce sections remain pending. No mock results. RADIUS mutation and disconnect endpoints do not exist yet, so these actions are not offered. Changing branch requires another authorized account. The current API caps users at 2000 and sessions at 5000; pagination is still required for larger deployments.
+Pending: Android parity, local commerce writes, voucher creation/printing, portal deployment, RouterOS 6 binary API, router writes/discovery, multi-router monitoring and field commissioning. This is an incremental release, not completion of Windows parity. No public server address or user identity is embedded. In Settings enter your HTTPS origin (IP certificates work), exact tenant/branch IDs, and the dedicated Windows account.
 
-Run client contract tests:
+Build/tests:
 
 ```sh
 dotnet run --project desktop/FG.MTM.Desktop.Tests -c Release
+dotnet build desktop/FG.MTM.Desktop -c Release
+dotnet publish desktop/FG.MTM.Desktop -c Release -r win-x64 --self-contained true -o desktop/publish
 ```
 
-Build/launch on Windows:
-
-```sh
-dotnet run --project desktop/FG.MTM.Desktop -c Release
-```
-
-CI runs contract tests, builds, publishes a self-contained portable preview, then launches the actual WPF executable and checks page/back navigation and both RTL/LTR layouts. It does not prove visual quality or real server/network commissioning. Installer is intentionally pending functional parity and acceptance; the portable is labelled preview.
+Windows CI builds and launches both portable and installed apps; tests navigation, RTL/LTR, business search/pagination and session cleanup. --smoke-test uses explicitly labeled deterministic UI fixtures, never production data. API contracts use transport fixtures; actual user-server credentials and physical RouterOS commissioning are separate acceptance steps. Screenshots are CI acceptance fixtures. Installer is per-user, requires no separately installed .NET, and is unsigned.

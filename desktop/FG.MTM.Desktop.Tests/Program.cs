@@ -93,6 +93,26 @@ await Test("RouterOS object response and failed login",async()=> {
     await c.ConnectAsync("https://router.example","admin","secret");Check((await c.ReadAsync("Health")).Single()["uptime"]=="1h");
     denied=true;await Throws<UnauthorizedAccessException>(()=>c.ReadAsync("Health"));Check(!c.IsConnected);
 });
+await Test("business snapshot preserves financial integers and table kinds",async()=> {
+    var(c,h)=Make((r,ct)=>Task.FromResult(Json(r.RequestUri!.AbsolutePath switch {"/v1/login"=>LoginJson,"/v1/identity"=>IdentityJson,_=>"{\"revision\":4,\"records\":[{\"table\":\"ledger\",\"id\":\"l1\",\"body\":{\"amount_minor\":9007199254740993,\"note\":\"=HYPERLINK(x)\"}}]}"})));
+    using(h) {await Authenticate(c);var snapshot=await c.GetBusinessAsync();Check(snapshot.Revision==4 && snapshot.Records!.Single().Body.GetProperty("amount_minor").GetInt64()==9007199254740993);var csv=BusinessCsv.Write(snapshot.Records);Check(csv.Contains("9007199254740993") && csv.Contains("'=HYPERLINK"));}
+});
+await Test("diagnostics is a scoped POST with an empty body",async()=> {
+    var(c,h)=Make(async(r,ct)=> {
+        if(r.RequestUri!.AbsolutePath=="/v1/diagnostics") {Check(r.Method==HttpMethod.Post && r.Headers.Authorization?.Scheme=="Bearer");Check(await r.Content!.ReadAsStringAsync(ct)=="{}");return Json("{\"source\":\"server\",\"checked_at\":\"2026-10-05T00:00:00Z\",\"cached\":true,\"checks\":[{\"key\":\"tls\",\"target\":\"fixed\",\"state\":\"failed\",\"elapsed_ms\":25}]}");}
+        return Json(r.RequestUri.AbsolutePath=="/v1/login"?LoginJson:IdentityJson);
+    });using(h) {await Authenticate(c);var report=await c.DiagnoseAsync();Check(report.Cached && report.Checks!.Single().ElapsedMs==25);}
+});
+await Test("logout revokes on server and clears memory even on failure",async()=> {
+    bool revoked=false;var(c,h)=Make(async(r,ct)=> {
+        if(r.RequestUri!.AbsolutePath=="/v1/logout") {revoked=true;Check(r.Method==HttpMethod.Post && await r.Content!.ReadAsStringAsync(ct)=="{}");return Json("{}",HttpStatusCode.ServiceUnavailable);}
+        return Json(r.RequestUri.AbsolutePath=="/v1/login"?LoginJson:IdentityJson);
+    });using(h) {await Authenticate(c);await Throws<HttpRequestException>(()=>c.LogoutAsync());Check(revoked && !c.IsAuthenticated && c.Identity is null);}
+});
+await Test("invalid business bodies rejected",async()=> {
+    var(c,h)=Make((r,ct)=>Task.FromResult(Json(r.RequestUri!.AbsolutePath switch {"/v1/login"=>LoginJson,"/v1/identity"=>IdentityJson,_=>"{\"revision\":1,\"records\":[{\"table\":\"ledger\",\"id\":\"a\",\"body\":[]}]}"})));
+    using(h){await Authenticate(c);await Throws<InvalidOperationException>(()=>c.GetBusinessAsync());}
+});
 Console.WriteLine($"{passed} client contract tests passed.");
 sealed class Handler(Func<HttpRequestMessage,CancellationToken,Task<HttpResponseMessage>> send):HttpMessageHandler
 { protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)=>send(request,ct); }

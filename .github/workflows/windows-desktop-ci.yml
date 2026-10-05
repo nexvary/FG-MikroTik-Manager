@@ -25,7 +25,7 @@ jobs:
         run: dotnet build desktop/FG.MTM.Desktop/FG.MTM.Desktop.csproj --configuration Release --no-restore
       - name: Client contract tests
         run: dotnet run --project desktop/FG.MTM.Desktop.Tests --configuration Release
-      - name: Publish preview portable
+      - name: Publish Windows app
         run: dotnet publish desktop/FG.MTM.Desktop/FG.MTM.Desktop.csproj --configuration Release --runtime win-x64 --self-contained true -o desktop/publish
       - name: Launch and navigation smoke test
         shell: pwsh
@@ -33,16 +33,27 @@ jobs:
           $app = Start-Process desktop/publish/FG.MTM.Desktop.exe -ArgumentList '--smoke-test' -PassThru
           if (-not $app.WaitForExit(30000)) { $app.Kill(); throw 'Launch test timed out' }
           if ($app.ExitCode -ne 0) { throw "Launch test failed: $($app.ExitCode)" }
+      - name: Build and test installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" desktop/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          $setup = Start-Process desktop/installer-output/FG-MTM-Windows-0.2.0-Setup.exe -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\fg-mtm-install-test"' -PassThru -Wait
+          if ($setup.ExitCode -ne 0) { throw 'Installer failed' }
+          $app = Start-Process C:/fg-mtm-install-test/FG.MTM.Desktop.exe -ArgumentList '--smoke-test' -PassThru
+          if (-not $app.WaitForExit(30000)) { $app.Kill(); throw 'Installed app timed out' }
+          if ($app.ExitCode -ne 0) { throw 'Installed app failed' }
       - name: Package portable and hashes
         shell: pwsh
         run: |
-          Compress-Archive -Path desktop/publish/* -DestinationPath desktop/FG-MTM-Windows-0.1.0-preview-win-x64.zip
-          Get-FileHash desktop/FG-MTM-Windows-0.1.0-preview-win-x64.zip -Algorithm SHA256 | Format-List | Out-File desktop/SHA256.txt
+          Compress-Archive -Path desktop/publish/* -DestinationPath desktop/FG-MTM-Windows-0.2.0-win-x64.zip
+          Get-FileHash desktop/FG-MTM-Windows-0.2.0-win-x64.zip -Algorithm SHA256 | Format-List | Out-File desktop/SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-Windows-0.1.0-preview
+          name: FG-MTM-Windows-0.2.0
           path: |
-            desktop/FG-MTM-Windows-0.1.0-preview-win-x64.zip
+            desktop/FG-MTM-Windows-0.2.0-win-x64.zip
             desktop/SHA256.txt
+            desktop/installer-output/*.exe
             desktop-proof/*.png
           if-no-files-found: error
