@@ -19,3 +19,8 @@ keystore.properties
 **/bin/
 **/obj/
 desktop/publish/
+
+# Server local secrets and test output
+server/.env
+server/panel-proof/
+**/__pycache__/

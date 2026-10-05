@@ -51,6 +51,10 @@ class Service:
                 db.execute("UPDATE accounts SET failures=failures+1,locked_until=CASE WHEN failures>=4 THEN now()+interval '30 seconds' ELSE NULL END WHERE id=%s",(account['id'],))
         if token is None: raise PermissionError('INVALID_LOGIN')
         return token
+    def logout(self, token):
+        if not isinstance(token,str) or not 20<=len(token)<=100:raise PermissionError('LOGIN_REQUIRED')
+        with self.connect() as db:
+            db.execute('DELETE FROM sessions WHERE digest=%s',(hashlib.sha256(token.encode()).digest(),))
     def principal(self, db, token):
         if not isinstance(token,str) or not 20<=len(token)<=100: raise PermissionError('LOGIN_REQUIRED')
         a=db.execute('SELECT a.* FROM sessions s JOIN accounts a ON a.id=s.account WHERE s.digest=%s AND s.expires>now() AND a.enabled',

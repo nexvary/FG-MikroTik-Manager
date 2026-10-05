@@ -1,5 +1,45 @@
 # Optional FG server — development increment
 
+## Web panel and Ubuntu test deployment
+
+The server now serves `/panel/`: Arabic RTL / English, responsive dark UI with silver borders, owner/reader login, scoped identity, RADIUS users/search/status filters, RADIUS sessions/active-only, read-only synchronized subscriber/ledger/sales/expense/audit records, paged ingest events and operation details. Every displayed record is read from the existing authenticated API. There is no sample data in the panel. Counts reflect bounded API result sets, not an unrestricted total. Business records require owner. Financial edits and RADIUS renew/disable/top-up/profile/disconnect are explicitly unavailable in this web increment; use supported Android business operations and the existing provisioning CLI. No cross-branch selector or new tenant permission is invented.
+
+Tokens remain in memory; no local/session storage or password persistence. Reload requires sign-in. Expired/revoked/forbidden sessions clear displayed data. POST `/v1/logout` accepts exactly `{}` and revokes only the supplied hashed bearer token, including idempotent replay. Public UI assets use a fixed whitelist, CSP, frame denial and no-store. Login UI requires HTTPS except loopback for isolated tests. The loopback HTTP API requires a TLS proxy; never expose port 8080 directly. Existing API login lockout remains active; apply upstream request rate limits before general public use. This is a test deployment candidate, not production acceptance or a capacity claim.
+
+Requirements: Ubuntu with Python 3, Docker Engine and Compose V2. Official Docker installation: https://docs.docker.com/engine/install/ubuntu/ . Use a dedicated DNS subdomain pointing to the host. Do not replace another project's proxy/site or take over its ports. Caddy HTTPS reference: https://caddyserver.com/docs/automatic-https .
+
+Extract the tested `FG-Server-Ubuntu.tar.gz` into a new directory. On a dedicated host with ports 80/443/8080 free:
+
+```sh
+mkdir -p ~/fg-mtm-server
+tar -xzf FG-Server-Ubuntu.tar.gz -C ~/fg-mtm-server
+cd ~/fg-mtm-server
+bash scripts/start-ubuntu.sh mtm.example.com TENANT_ID BRANCH_ID OWNER_USERNAME
+```
+
+Replace all four arguments. Use the exact tenant/branch IDs displayed by **Android → Business tools → Server synchronization** for an existing installation. The script creates a private random database password in `.env`, starts PostgreSQL/API/worker/Caddy and prompts for the owner password without printing it or putting it in command arguments. Panel: `https://mtm.example.com/panel/`. Android origin: `https://mtm.example.com` (without `/panel/`). Verify HTTPS/login, explicit Android sync, matching revision/records and disconnect/reconnect behavior before commissioning routers. A new login for the same username revokes its previous session; provision a separate owner account in the same scope for simultaneous Android/panel use.
+
+On a host already running Caddy/Nginx or other apps, do not run the dedicated-host script. Retain loopback-only API publishing in `compose.yml`; configure a separate HTTPS virtual host forwarding to `127.0.0.1:8080` and provision the owner using the existing CLI. Check port 8080 first; choose a different loopback host port if occupied. Optional `compose.https.yml` is for free public ports, not a replacement for another proxy. The script refuses existing `.env` or occupied listening ports; it never stops existing services or removes volumes.
+
+Keep `.env` and backups private. Before upgrading an existing dedicated test installation:
+
+```sh
+umask 077
+docker compose -p fg-mtm -f compose.yml -f compose.https.yml exec -T db pg_dump -U fgmtm -Fc fgmtm > fgmtm-backup.dump
+test -s fgmtm-backup.dump
+```
+
+Retain the original `.env` and project name. Replace reviewed app files, not `.env`; build first, stop only this project's API/worker before migration, then start:
+
+```sh
+docker compose -p fg-mtm -f compose.yml -f compose.https.yml build
+docker compose -p fg-mtm -f compose.yml -f compose.https.yml stop api worker
+docker compose -p fg-mtm -f compose.yml -f compose.https.yml run --rm migrate
+docker compose -p fg-mtm -f compose.yml -f compose.https.yml up -d
+```
+
+Never use `down -v` for upgrades. No existing deployment was upgraded by this change. CI checks PostgreSQL/logout/session isolation, real HTTP + Chromium login/RTL/search/active sessions/business minor units/XSS-safe rendering/revocation, JS logic, container packaging and existing FreeRADIUS packets. Browser fixtures are isolated test data only. Live DNS/TLS, physical MikroTik and two physical phones remain **PHYSICAL ACCEPTANCE PENDING**.
+
 This service is optional; the Android app continues to operate locally. This increment implements versioned event intake, scoped account authentication, a PostgreSQL journal, a bounded worker, immutable financial appends/reversals, and monotonic RADIUS accounting **event** reconciliation. A PAP REST authentication endpoint is also implemented with NAS-key and tenant/branch checks, expiry and failure throttling. The API is not itself a RADIUS UDP server: the included FreeRADIUS 3.x adapter handles packets. Android 0.15.0 includes explicit bidirectional business synchronization for a selected branch. This is not a deployed service; live NAS commissioning and physical acceptance remain open.
 
 ## Isolated setup

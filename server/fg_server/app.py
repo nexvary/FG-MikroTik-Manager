@@ -15,6 +15,9 @@ class Application:
         status='200 OK'
         try:
             path=env.get('PATH_INFO','');method=env.get('REQUEST_METHOD','')
+            from .panel import asset
+            public=asset(path,method,start)
+            if public is not None:return public
             auth=env.get('HTTP_AUTHORIZATION','')
             token=auth[7:] if auth.startswith('Bearer ') else ''
             if method=='GET' and path=='/v1/radius/authenticate':
@@ -33,7 +36,7 @@ class Application:
                 active=query.get('active',['0'])[0]=='1'
                 result={'sessions':self.service.radius_sessions(token,active)}
             elif method=='GET' and path=='/health': result={'version':1}
-            elif method=='POST' and path in {'/v1/login','/v1/events','/v1/radius/accounting','/v1/business/sync'}:
+            elif method=='POST' and path in {'/v1/login','/v1/logout','/v1/events','/v1/radius/accounting','/v1/business/sync'}:
                 if env.get('CONTENT_TYPE','').split(';')[0]!='application/json': raise ValueError('JSON_REQUIRED')
                 length=int(env.get('CONTENT_LENGTH','0'))
                 if not 1<=length<=(21*1024*1024 if path=='/v1/business/sync' else 1048576): raise ValueError('BODY_LIMIT')
@@ -43,6 +46,9 @@ class Application:
                 if path=='/v1/login':
                     if not isinstance(body,dict) or set(body)!={'username','password'}: raise ValueError('INVALID_LOGIN')
                     result={'token':self.service.login(body['username'],body['password']),'expires_in':900}
+                elif path=='/v1/logout':
+                    if body!={}:raise ValueError('INVALID_LOGOUT')
+                    self.service.logout(token);status='204 No Content';result=None
                 elif path=='/v1/business/sync':result=self.service.business_sync_write(token,body)
                 elif path=='/v1/radius/accounting':
                     self.service.radius_accounting(env.get('HTTP_X_FG_NAS_KEY',''),body);status='204 No Content';result=None

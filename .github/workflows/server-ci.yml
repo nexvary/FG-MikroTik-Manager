@@ -25,9 +25,40 @@ jobs:
       - run: pip install -r server/requirements.txt
       - run: python -m unittest discover -s tests -v
         working-directory: server
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: node --test tests/panel_logic.test.mjs
+        working-directory: server
+      - run: pip install playwright==1.55.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m unittest discover -s tests -p test_panel_browser.py -v
+        working-directory: server
+        env: {FG_PANEL_UI: '1'}
+      - name: Validate container bundle
+        working-directory: server
+        env: {FG_DB_PASSWORD: isolated-ci-only, FG_DOMAIN: fg-mtm.example.com}
+        run: |
+          bash -n scripts/start-ubuntu.sh
+          docker compose -f compose.yml -f compose.https.yml config --quiet
+          docker build -t fg-mtm-server-test .
+          docker run --rm fg-mtm-server-test python -c 'from fg_server.panel import ASSETS; from pathlib import Path; assert all((Path("fg_server/web")/name).is_file() for name, mime in ASSETS.values())'
       - run: sudo apt-get update -qq && sudo apt-get install -y freeradius freeradius-rest freeradius-utils
       - run: timeout 90 bash scripts/radius-smoke.sh
         working-directory: server
       - name: Failure diagnostics
         if: failure()
         run: cat /tmp/fg-radius-config.log /tmp/fg-radius.log /tmp/fg-http.log /tmp/fg-accept.log /tmp/fg-reject.log /tmp/fg-accounting.log 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: FG-Server-panel-proof
+          path: server/panel-proof/*.png
+          if-no-files-found: ignore
+      - name: Package tested Ubuntu server
+        if: success()
+        run: tar --exclude='__pycache__' -czf FG-Server-Ubuntu.tar.gz -C server fg_server requirements.txt Dockerfile compose.yml compose.https.yml deploy scripts radius README.md
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: FG-Server-Ubuntu
+          path: FG-Server-Ubuntu.tar.gz
