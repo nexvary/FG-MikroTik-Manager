@@ -3,7 +3,8 @@ from pathlib import Path
 
 ASSETS = {'/panel/': ('index.html', 'text/html; charset=utf-8'),
           '/panel/panel.css': ('panel.css', 'text/css; charset=utf-8'),
-          '/panel/panel.js': ('panel.js', 'text/javascript; charset=utf-8')}
+          '/panel/panel.js': ('panel.js', 'text/javascript; charset=utf-8'),
+          '/panel/fg-machines.svg': ('fg-machines.svg', 'image/svg+xml')}
 
 
 def asset(path, method, start):

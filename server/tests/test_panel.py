@@ -18,7 +18,7 @@ def request(app, path, method='GET', body=None, token=''):
 class PanelAssetsTest(unittest.TestCase):
     def test_public_assets_have_security_headers_and_no_directory_traversal(self):
         app=Application(None)
-        for path,mime in [('/panel/','text/html'),('/panel/panel.js','text/javascript'),('/panel/panel.css','text/css')]:
+        for path,mime in [('/panel/','text/html'),('/panel/panel.js','text/javascript'),('/panel/panel.css','text/css'),('/panel/fg-machines.svg','image/svg+xml')]:
             status,headers,body=request(app,path)
             self.assertEqual('200 OK',status);self.assertTrue(headers['Content-Type'].startswith(mime));self.assertTrue(body)
             self.assertIn("frame-ancestors 'none'",headers['Content-Security-Policy'])
