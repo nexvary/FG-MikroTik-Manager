@@ -43,6 +43,10 @@ public partial class MainWindow : Window
                     AdvancedMode.IsChecked = true;
                     foreach (var item in Pages) {
                         Navigate(item.Key);
+                        if (item.Key == "Diagnostics") {
+                            await LoadDiagnostics();
+                            if (DiagnosticGrid.Items.Count != 3) throw new InvalidOperationException("Diagnostic view failed");
+                        }
                         if (PageTitle.Text != Label(item.Key)) throw new InvalidOperationException("Navigation mismatch");
                         if (item.Key is "Dashboard" or "Business" or "Settings" or "RADIUS" or "Diagnostics" or "Advanced") {
                             UpdateLayout();

@@ -47,7 +47,7 @@ jobs:
         shell: pwsh
         run: |
           Compress-Archive -Path desktop/publish/* -DestinationPath desktop/FG-MTM-Windows-0.2.0-win-x64.zip
-          Get-FileHash desktop/FG-MTM-Windows-0.2.0-win-x64.zip -Algorithm SHA256 | Format-List | Out-File desktop/SHA256.txt
+          Get-FileHash desktop/FG-MTM-Windows-0.2.0-win-x64.zip, desktop/installer-output/FG-MTM-Windows-0.2.0-Setup.exe -Algorithm SHA256 | Format-List | Out-File desktop/SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: FG-MTM-Windows-0.2.0

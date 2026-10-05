@@ -75,14 +75,17 @@ public partial class MainWindow
     private async void RunDiagnostics(object sender,RoutedEventArgs e)
     {
         if (busy) return;
-        await Run(async () => {
+        await Run(LoadDiagnostics);
+    }
+    private async Task LoadDiagnostics()
+    {
             DiagnosticGrid.ItemsSource = null;
             var report = await client.DiagnoseAsync(lifetime.Token);
             var table = new DataTable(); foreach (var label in new[]{T("Check","الفحص"),T("Target","الهدف"),T("Result","النتيجة"),T("Time (ms)","الوقت (مللي ثانية)")}) table.Columns.Add(label);
             foreach (var check in report.Checks!) table.Rows.Add(check.Key,check.Target,check.State switch {"passed"=>T("Passed","نجح"),"failed"=>T("Failed","فشل"),_=>T("Not measured","لم يُقَس")},check.ElapsedMs?.ToString("0.##")??"—");
             DiagnosticGrid.ItemsSource=table.DefaultView;
             Status.Text = T("Server check: ","فحص الخادم: ")+report.CheckedAt+(report.Cached?T(" · cached"," · نتيجة محفوظة"):"");
-        });
+
     }
     private void UpdateSummary() { if (ready) DashboardSummary.Text = client.IsAuthenticated ? T($"FG Server connected · {users.Count} RADIUS users · {business.Count} business records · revision {revision}",$"متصل بخادم FG · {users.Count} مستخدم RADIUS · {business.Count} سجل أعمال · إصدار {revision}") : T("FG Machines · connect to your server","FG Machines · اتصل بخادمك"); }
     private object NavigationLabel(string key)

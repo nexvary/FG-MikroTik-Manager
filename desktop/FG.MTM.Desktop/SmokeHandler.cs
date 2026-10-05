@@ -14,6 +14,7 @@ internal sealed class SmokeHandler : HttpMessageHandler
             "/v1/radius/users" => new {users=Array.Empty<object>()},
             "/v1/radius/sessions" => new {sessions=Array.Empty<object>()},
             "/v1/business/sync" => new {revision=1,records=Enumerable.Range(1,51).Select(i=>new {table="subscribers",id="fixture-"+i,body=new {name="Customer "+i,account="fixture-"+i,service="HotSpot"}})},
+            "/v1/diagnostics" => new {source="server",checked_at="2026-10-05T12:00:00Z",cached=false,checks=new[]{new{key="database",target="PostgreSQL",state="passed",elapsed_ms=2.0},new{key="dns",target="example.com",state="passed",elapsed_ms=12.0},new{key="tcp",target="example.com:443",state="failed",elapsed_ms=250.0}}},
             _ => new { }
         };
         return Task.FromResult(new HttpResponseMessage(request.RequestUri.AbsolutePath=="/v1/logout"?HttpStatusCode.NoContent:HttpStatusCode.OK){Content=new StringContent(JsonSerializer.Serialize(body),Encoding.UTF8,"application/json")});
