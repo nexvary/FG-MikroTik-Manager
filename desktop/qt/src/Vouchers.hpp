@@ -17,6 +17,7 @@ class Vouchers:public QObject{
 public:
  explicit Vouchers(RouterClient *router,QObject *parent=nullptr);
  QVariantList cards()const{return batch["vouchers"].toArray().toVariantList();} QVariantList archive()const;QString status()const{return message;}bool busy()const{return working;}
+ void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  static QJsonObject generateBatch(QJsonObject request);
  static QString quote(QString value);
  static QString script(const QJsonObject &batch);
@@ -31,6 +32,7 @@ public:
  Q_INVOKABLE void importArchive(QUrl path,QString password);
 signals:void changed();
 private:
+ std::function<bool()> authorization=[](){return true;};
  RouterClient *router;QJsonObject batch;QString batchId,message;bool working=false;QString directory;
  void save();void provision(int index,QString menu,QSet<QString> existing);
  void expire(QJsonObject voucher,QString id,std::function<void(RouterReply)> done);

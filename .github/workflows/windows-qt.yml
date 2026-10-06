@@ -28,6 +28,19 @@ jobs:
           $env:PATH = "C:\Qt\6.8.3\msvc2022_64\bin;$env:PATH"
           ctest --test-dir qt-build -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+      - name: Print test evidence
+        if: always()
+        shell: pwsh
+        run: |
+          Get-ChildItem qt-build/*-test.xml -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_ }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-Qt-test-evidence
+          path: |
+            qt-build/*-test.xml
+            qt-build/Testing/Temporary/LastTest.log
+            qt-build/voucher-qr-test.*
       - name: Deploy Qt
         shell: pwsh
         run: |

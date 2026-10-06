@@ -24,6 +24,7 @@ public:
  using Done=std::function<void(RouterReply)>;
  explicit RouterClient(QObject *parent=nullptr);
  bool busy()const{return active;} bool connected()const{return authenticated;} QString status()const{return message;}
+ void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  void configure(QString host,int port,QString user,QString password,QString protocol);
  void close();
  void read(QString menu,Done done);
@@ -37,5 +38,6 @@ private:
  QString host,username,password,protocol,message;int port=443;
  bool active=false,authenticated=false,loggingIn=false,wrote=false;
  QByteArray input; QString path,action;QJsonObject attributes;QJsonArray rows,neighbors;QString trap;Done callback;quint64 generation=0;
+ std::function<bool()> authorization=[](){return true;};
  void sendLogin();void sendPending();void receive();void finish(RouterReply result);void fail(QString reason);
 };
