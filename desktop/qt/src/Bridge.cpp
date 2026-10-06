@@ -1,6 +1,7 @@
 #include "Bridge.hpp"
 #include "Business.hpp"
 #include "Protocol.hpp"
+#include "NetworkInventory.hpp"
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
@@ -64,7 +65,23 @@ void Bridge::command(QString value){auto c=RouterCodec::parse(value);if(!c.valid
  routerClient.command(value,[this](RouterReply reply){if(!reply.ok()){m_status=reply.error;emit changed();return;}auto v=Protocol::redact(reply.rows);showRows(v.toArray());m_terminal+="\n> print\n"+QString::fromUtf8(QJsonDocument(v.toArray()).toJson());if(m_terminal.size()>100000)m_terminal=m_terminal.right(100000);emit changed();});}
 void Bridge::previewCommand(QString value){auto c=RouterCodec::parse(value);pendingCommand.clear();if(!c.valid()){m_preview=c.error;}else{pendingCommand=value;m_preview=c.risk+" /"+c.menu+"/"+c.action+"\n"+QString::fromUtf8(QJsonDocument(Protocol::redact(c.attributes).toObject()).toJson());}emit changed();}
 void Bridge::executePreview(){if(busy()||pendingCommand.isEmpty())return;auto value=pendingCommand;pendingCommand.clear();m_preview.clear();routerClient.command(value,[this](RouterReply reply){m_status=reply.ok()?"تم تنفيذ الأمر • Command applied":reply.error;if(reply.uncertain)m_status+=" — تحقق من النتيجة قبل إعادة المحاولة • Verify outcome before retrying";m_terminal+="\n"+m_status+"\n";if(reply.ok()&&!reply.rows.isEmpty())showRows(Protocol::redact(reply.rows).toArray());emit changed();});emit changed();}
-void Bridge::discoverRouters(){routerClient.discover();}
+void Bridge::discoverRouters(){if(!busy())routerClient.discover();}
+void Bridge::discoverNetworkDevices(){
+ if(busy())return;if(!routerConnected()){m_status="اتصل بالميكروتيك أولًا • Connect to MikroTik first";emit changed();return;}
+ inventoryBusy=true;emit changed();
+ routerClient.read("ip/neighbor",[this](RouterReply first){
+  routerClient.read("ip/dhcp-server/lease",[this,first](RouterReply second){
+   routerClient.read("ip/arp",[this,first,second](RouterReply third){
+    QStringList failed;if(!first.ok())failed.append("Neighbor: "+first.error);if(!second.ok())failed.append("DHCP: "+second.error);if(!third.ok())failed.append("ARP: "+third.error);
+    auto rows=NetworkInventory::combine(first.ok()?first.rows:QJsonArray{},second.ok()?second.rows:QJsonArray{},third.ok()?third.rows:QJsonArray{});
+    inventoryBusy=false;showRows(rows);
+    m_status=QString("%1 جهاز من سجلات الراوتر؛ الاتصال غير مختبر • %1 devices from router tables; availability untested").arg(rows.size());
+    if(!failed.isEmpty())m_status+=" • "+failed.join(" | ");emit changed();
+   });
+  });
+ });
+}
+
 QVariantList Bridge::profiles()const{QSettings s;return s.value("routers/profiles").toList();}
 void Bridge::saveRouterProfile(QString name,QString branch,QString host,int port,QString user,QString protocol){if(name.trimmed().isEmpty()||host.trimmed().isEmpty()||port<1||port>65535)return;auto list=profiles();list.append(QVariantMap{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"name",name.trimmed()},{"branch",branch.trimmed()},{"host",host.trimmed()},{"port",port},{"user",user},{"protocol",protocol}});QSettings s;s.setValue("routers/profiles",list);emit changed();}
 void Bridge::deleteRouterProfile(QString id){auto list=profiles();for(int i=list.size()-1;i>=0;i--)if(list[i].toMap()["id"].toString()==id)list.removeAt(i);QSettings s;s.setValue("routers/profiles",list);emit changed();}
