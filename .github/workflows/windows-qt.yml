@@ -1,0 +1,60 @@
+name: Windows Qt Desktop
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev/product-family]
+    paths: ['desktop/qt/**', '.github/workflows/windows-qt.yml']
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install Qt acquisition tool
+        run: python -m pip install aqtinstall
+      - name: Install Qt
+        run: aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 -O C:\Qt
+      - name: Configure
+        run: cmake -S desktop/qt -B qt-build -A x64 -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
+      - name: Build
+        run: cmake --build qt-build --config Release
+      - name: Contract tests
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Qt\6.8.3\msvc2022_64\bin;$env:PATH"
+          ctest --test-dir qt-build -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+      - name: Deploy Qt
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force qt-package | Out-Null
+          Copy-Item qt-build/Release/fg_mtm.exe qt-package/
+          & C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --release --qmldir desktop/qt/qml --compiler-runtime qt-package/fg_mtm.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Deployment failed' }
+      - name: Test packaged UI
+        shell: pwsh
+        run: |
+          $app=Start-Process qt-package/fg_mtm.exe -ArgumentList '--smoke-test' -PassThru
+          if (-not $app.WaitForExit(30000)) { $app.Kill(); throw 'UI timeout' }
+          if ($app.ExitCode -ne 0) { throw 'UI failed' }
+      - name: Build and test installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" desktop/qt/packaging/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
+          $setup=Start-Process qt-installer/FG-MTM-Qt-Windows-0.3.0-Setup.exe -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\fg-mtm-qt-test"' -PassThru -Wait
+          if ($setup.ExitCode -ne 0) { throw 'Install failed' }
+          $app=Start-Process C:/fg-mtm-qt-test/fg_mtm.exe -ArgumentList '--smoke-test' -PassThru
+          if (-not $app.WaitForExit(30000)) { $app.Kill(); throw 'Installed UI timeout' }
+          if ($app.ExitCode -ne 0) { throw 'Installed UI failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FG-MTM-Qt-Windows-0.3.0
+          path: |
+            qt-installer/*.exe
+            FG-MTM-Qt.png
+          if-no-files-found: error

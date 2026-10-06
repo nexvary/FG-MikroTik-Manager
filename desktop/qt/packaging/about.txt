@@ -1,0 +1,14 @@
+FG MTM by FG Machines
+
+A Windows workspace for MikroTik network management and synchronized business data.
+Qt 6 / QML interface, C++20 engine. Arabic RTL and English.
+
+This edition supports FG Server login, scoped business browsing and CSV export,
+RADIUS users/sessions, server diagnostics, RouterOS 7 REST reads and a floating read terminal.
+Passwords and login sessions are not saved. Trusted HTTPS is required.
+
+Android parity is still in progress: voucher creation/printing, financial edits,
+HotSpot setup, portal deployment, router writes and RouterOS 6 API are not included yet.
+
+Use a separate Windows account in the same tenant and branch to avoid revoking
+sessions on your phone or web panel. This installer does not modify your routers.
