@@ -16,12 +16,13 @@ ApplicationWindow {
  property var tableAr: ["المشتركون","الباقات","الفواتير","السجل المالي","المبيعات","المصروفات","الموظفون والموزعون","حركة الموزعين","الراوترات","مهام الشبكة","تفاصيل الدفع","إلغاء الفواتير","إلغاء المبيعات","دفعات الاستيراد","التدقيق","المؤسسة","الفروع"]
  function tr(ar,en){return arabic?ar:en}
  function navigate(value){if(value!==page){history=history.concat([page]);page=value;backend.clearView();if(page==="business")filter()}}
+ function showTerminal(){terminalWindow.show();terminalWindow.raise()}
  function filter(){backend.filter(tableKeys[tables.currentIndex],search.text,businessPage)}
  Theme {id: theme}
  palette.windowText: theme.white; palette.text: theme.white; palette.buttonText: theme.white; palette.base: theme.navy; palette.highlight: theme.blue; palette.button: theme.panel
  font.family: "Segoe UI"; font.pixelSize: 15
  LayoutMirroring.enabled: arabic; LayoutMirroring.childrenInherit: true
- Shortcut {sequence: "F4"; onActivated: {terminalWindow.show();terminalWindow.raise()}}
+ Shortcut {sequence: "F4"; onActivated: root.showTerminal()}
  FileDialog {id: csvDialog; title: root.tr("تصدير CSV","Export CSV"); fileMode: FileDialog.SaveFile; nameFilters: ["CSV (*.csv)"]; defaultSuffix: "csv"; onAccepted: backend.exportCsv(selectedFile)}
  RowLayout {
   anchors.fill: parent; spacing: 0
