@@ -56,5 +56,5 @@ jobs:
           name: FG-MTM-Qt-Windows-0.3.0
           path: |
             qt-installer/*.exe
-            FG-MTM-Qt.png
+            qt-proof/*.png
           if-no-files-found: error
