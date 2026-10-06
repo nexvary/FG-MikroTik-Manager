@@ -83,7 +83,7 @@ ColumnLayout {
   FgButton {text: workspace.tr("نسخة احتياطية","Back up"); enabled: commerce.allowed("BRANCHES")&&backupPassword.text.length>=12; onClicked: backup.open()}
   FgButton {text: workspace.tr("استعادة","Restore"); enabled: !commerce.enrolled&&backupPassword.text.length>=12; onClicked: restore.open()}
  }
- Dialog {
+ FgDialog {
   id: editor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(780,parent.width-40); height: Math.min(660,parent.height-40); title: workspace.arabic?workspace.labels[action.currentIndex]:workspace.enLabels[action.currentIndex]
   contentItem: ColumnLayout {
    ScrollView {Layout.fillWidth: true; Layout.fillHeight: true; clip: true
@@ -149,7 +149,7 @@ ColumnLayout {
    }}
   }
  }
- Dialog {id:wallet;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(700,parent.width-40);height:Math.min(520,parent.height-40);title:workspace.tr("محفظة الموزع","Reseller wallet")
+ FgDialog {id:wallet;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(700,parent.width-40);height:Math.min(520,parent.height-40);title:workspace.tr("محفظة الموزع","Reseller wallet")
   contentItem:ColumnLayout {Text {Layout.fillWidth:true;color:theme.gold;text:(workspace.walletData.name||"")+" • "+workspace.tr("الرصيد بالوحدة الصغرى: ","Balance in minor units: ")+(workspace.walletData.balance_minor||"0")+" "+(workspace.walletData.currency||"")} ListView {Layout.fillWidth:true;Layout.fillHeight:true;clip:true;model:workspace.walletData.entries||[];delegate:Text {required property var modelData;width:ListView.view.width;wrapMode:Text.Wrap;color:theme.silver;text:modelData.kind+" • "+modelData.amount_minor+" • "+modelData.note}}}
  }
  ListModel {id: lines}

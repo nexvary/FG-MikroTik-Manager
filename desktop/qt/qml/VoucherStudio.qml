@@ -73,7 +73,7 @@ ColumnLayout {
   ComboBox {id: format; model: ["PDF","PNG","HTML","CSV","RSC"]}
   FgButton {text: studio.tr("تصدير","Export"); enabled: vouchers.cards.length>0&&!vouchers.busy; onClicked: {studio.exportFormat=format.currentText;saveFile.open()}}
  }
- Dialog {id: activation; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 520; title: studio.tr("تفعيل دفعة الكروت","Activate voucher batch"); contentItem: ColumnLayout {Text {Layout.fillWidth: true; wrapMode: Text.Wrap; text: studio.tr("سيُنشئ كروت الدفعة على الراوتر المتصل. راجع الخدمة والباقات والصلاحية أولًا.","Creates this batch on the connected router. Review service, profile and expiry first."); color: theme.silver} FgButton {text: studio.tr("تأكيد التفعيل","Confirm activation"); onClicked: {vouchers.activate();activation.close()}}}}
+ FgDialog {id: activation; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 520; title: studio.tr("تفعيل دفعة الكروت","Activate voucher batch"); contentItem: ColumnLayout {Text {Layout.fillWidth: true; wrapMode: Text.Wrap; text: studio.tr("سيُنشئ كروت الدفعة على الراوتر المتصل. راجع الخدمة والباقات والصلاحية أولًا.","Creates this batch on the connected router. Review service, profile and expiry first."); color: theme.silver} FgButton {text: studio.tr("تأكيد التفعيل","Confirm activation"); onClicked: {vouchers.activate();activation.close()}}}}
  Text {text: vouchers.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
  Flow {
   Layout.fillWidth: true;spacing:8
@@ -93,7 +93,7 @@ ColumnLayout {
    RowLayout {anchors.fill: parent; anchors.margins: 12; Text {text: modelData.username; color: theme.white; font.bold: true; Layout.fillWidth: true} Text {text: modelData.password; color: theme.silver; Layout.fillWidth: true} Text {text: modelData.profile; color: theme.muted; Layout.fillWidth: true} FgButton {text:studio.tr("مشاركة","Share");implicitHeight:36;onClicked:backend.copyText(vouchers.shareCard(index))} Text {text: modelData.provisionState; color: modelData.provisionState==="CREATED"?theme.mint:theme.gold} ToolTip.visible: cardHover.hovered; ToolTip.text: modelData.provisionMessage||""; HoverHandler {id: cardHover}}
   }
  }
- Dialog {id:cardPreview;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(700,parent.width-40);height:Math.min(560,parent.height-40);title:studio.tr("معاينة الكارت وQR","Voucher & QR preview")
+ FgDialog {id:cardPreview;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(700,parent.width-40);height:Math.min(560,parent.height-40);title:studio.tr("معاينة الكارت وQR","Voucher & QR preview")
   contentItem:ColumnLayout {Image {Layout.fillWidth:true;Layout.fillHeight:true;source:studio.previewImage;fillMode:Image.PreserveAspectFit} Flow {Layout.fillWidth:true;spacing:8;FgButton {text:"PDF";onClicked:oneCardFile.open()} FgButton {text:studio.tr("طباعة الكارت","Print voucher");onClicked:vouchers.print(paper.currentText,true)} FgButton {text:studio.tr("رجوع","Back");onClicked:cardPreview.close()}}}
  }
 

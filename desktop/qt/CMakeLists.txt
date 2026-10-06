@@ -24,7 +24,7 @@ set(portal_assets
  resources/hotspot/login.html resources/hotspot/error.html)
 qt_add_executable(fg_mtm WIN32 src/main.cpp)
 qt_add_resources(fg_mtm "ui" PREFIX "/" FILES
- qml/Main.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/NavIcon.qml
+ qml/Main.qml qml/FgDialog.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/NavIcon.qml
  qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml
  qml/MonitorWorkspace.qml qml/BusinessTransferWorkspace.qml qml/CommandLibrary.qml
  qml/NetworkBillingWorkspace.qml qml/AboutWorkspace.qml qml/HomeWorkspace.qml qml/FgTab.qml

@@ -32,7 +32,7 @@ ColumnLayout {
   FgButton {text:pane.tr("تعليق الحساب والتحقق","Suspend & verify account");enabled:!networkBilling.busy&&networkBilling.target.account!==undefined&&commerce.allowed("ROUTER");accent:theme.error;onClicked:{confirm.suspending=true;confirm.open()}}
  }
  Item {Layout.fillHeight:true}
- Dialog {id:confirm;property bool suspending:false;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:600;title:pane.tr("تأكيد تغيير الحساب","Confirm account change")
+ FgDialog {id:confirm;property bool suspending:false;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:600;title:pane.tr("تأكيد تغيير الحساب","Confirm account change")
   contentItem:ColumnLayout {Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:confirm.suspending?pane.tr("سيُعطّل الحساب وتُفصل جلساته. لا تُلغِ الفاتورة قبل ظهور SUSPENDED.","This disables the account and disconnects sessions. Do not void the invoice until SUSPENDED is verified."):pane.tr("سيُثبّت قيد الانتهاء ويُتحقق منه قبل تفعيل الحساب. أي نتيجة غير مؤكدة تظل REVIEW.","Expiry protection is installed and verified before enabling the account. Uncertain outcomes remain REVIEW.")} FgButton {text:pane.tr("تأكيد التنفيذ","Confirm execution");onClicked:{networkBilling.apply(confirm.suspending);confirm.close()}}}
  }
 }

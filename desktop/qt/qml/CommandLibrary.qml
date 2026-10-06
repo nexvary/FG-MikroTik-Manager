@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-Dialog {
+FgDialog {
  id: library
  property bool arabic:true
  property var chosen:null

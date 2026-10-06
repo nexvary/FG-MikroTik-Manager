@@ -176,13 +176,13 @@ ApplicationWindow {
    Item {visible: root.page==="settings"; Layout.fillHeight: true}
   }
  }
- Dialog {
+ FgDialog {
   id: commandPreview; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(640,parent.width-40)
   title: root.tr("مراجعة أمر الراوتر","Review router command")
   contentItem: ColumnLayout {Text {text: backend.preview; color: theme.white; Layout.fillWidth: true; wrapMode: Text.Wrap} FgButton {text: root.tr("تأكيد التنفيذ","Confirm execution"); enabled: !backend.busy; onClicked: {backend.executePreview();commandPreview.close()}}}
  }
  Connections {target: backend; function onChanged(){if(backend.preview.length>0&&!commandPreview.visible)commandPreview.open()}}
- Dialog {
+ FgDialog {
   id: adminEditor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(680,parent.width-40);height:Math.min(620,parent.height-40)
   property var values:({})
   function put(key,value){let next=Object.assign({},values);if(value.length)next[key]=value;else delete next[key];values=next}
