@@ -55,7 +55,7 @@ ApplicationWindow {
    RowLayout {
     Layout.fillWidth: true
     FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked: {var items=root.history.slice();root.page=items.pop();root.history=items;backend.clearView();if(root.page==="business")root.filter()}}
-    Text {text: "FG MTM"; color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
+    Text {text: root.tr(({home:"الرئيسية",business:"الأعمال",radius:"RADIUS",router:"الراوتر والأوامر",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم"})[root.page],({home:"Overview",business:"Business",radius:"RADIUS",router:"Router & commands",diagnostics:"Server diagnostics",settings:"Server connection"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
     Rectangle {width: 10; height: 10; radius: 5; color: backend.connected ? theme.mint : theme.muted}
     Text {text: backend.connected?root.tr("متصل","Connected"):root.tr("غير متصل","Disconnected"); color: theme.silver}
    }
@@ -69,6 +69,22 @@ ApplicationWindow {
      RowLayout {
       FgButton {text: root.tr("الاتصال بخادم FG","Connect FG Server"); onClicked: root.navigate("settings")}
       FgButton {text: root.tr("فتح الأعمال","Open business"); onClicked: root.navigate("business"); accent: theme.mint}
+     }
+     GridLayout {
+      Layout.fillWidth: true; columns: 2; columnSpacing: 16; rowSpacing: 16
+      Repeater {
+       model: [{key:"business",ar:"الأعمال والمشتركون",en:"Business & subscribers",detailAr:"17 نوعًا من السجلات • بحث وتصدير",detailEn:"17 record types • search & export",icon:1},{key:"radius",ar:"جلسات RADIUS",en:"RADIUS sessions",detailAr:"المستخدمون والاستهلاك والجلسات",detailEn:"Users, usage and sessions",icon:2},{key:"router",ar:"الراوتر والترمنال",en:"Router & terminal",detailAr:"23 قسمًا • أوامر قراءة منظمة",detailEn:"23 menus • organized read commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",detailAr:"قاعدة البيانات • DNS • TCP • TLS",detailEn:"Database • DNS • TCP • TLS",icon:3}]
+       delegate: Rectangle {
+        required property var modelData
+        Layout.fillWidth: true; Layout.preferredHeight: 140; color: theme.raised; radius: 14; border.color: theme.muted
+        ColumnLayout {
+         anchors.fill: parent; anchors.margins: 16; spacing: 8
+         RowLayout {NavIcon {kind: modelData.icon; ink: theme.blue} Text {text: root.tr(modelData.ar,modelData.en); color: theme.white; font.pixelSize: 18; font.bold: true; Layout.fillWidth: true; elide: Text.ElideRight}}
+         Text {text: root.tr(modelData.detailAr,modelData.detailEn); color: theme.silver; font.pixelSize: 13; Layout.fillWidth: true; wrapMode: Text.Wrap}
+         FgButton {text: root.tr("فتح","Open"); Layout.alignment: Qt.AlignRight; implicitHeight: 36; onClicked: root.navigate(modelData.key)}
+        }
+       }
+      }
      }
      Text {text: root.tr("بيانات مالية بوحدات صحيحة؛ كلمة المرور والجلسة لا تُحفظان.","Exact financial units; passwords and sessions are not saved."); color: theme.muted; wrapMode: Text.Wrap; Layout.fillWidth: true}
      Item {Layout.fillHeight: true}
