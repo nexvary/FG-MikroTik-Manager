@@ -14,6 +14,7 @@ ApplicationWindow {
  property string routerGroup:"ALL"
  readonly property int toolsTab:toolsWorkspace.currentTab
  readonly property bool onlineOnly:toolsWorkspace.onlineOnly
+ readonly property string commerceTable:localBusiness.selectedTable
  property string page: "home"
  property var history: []
  property int businessPage: 0
@@ -23,10 +24,12 @@ ApplicationWindow {
  property var tableKeys: ["subscribers","plans","invoices","ledger","sales","expenses","team_members","reseller_entries","router_bindings","network_jobs","payment_details","invoice_voids","sale_voids","import_batches","audit","organizations","branches"]
  property var tableAr: ["المشتركون","الباقات","الفواتير","السجل المالي","المبيعات","المصروفات","الموظفون والموزعون","حركة الموزعين","الراوترات","مهام الشبكة","تفاصيل الدفع","إلغاء الفواتير","إلغاء المبيعات","دفعات الاستيراد","التدقيق","المؤسسة","الفروع"]
  function tr(ar,en){return arabic?ar:en}
- function snapshot(){return {page:page,routerGroup:routerGroup,toolsTab:toolsWorkspace.currentTab,online:toolsWorkspace.onlineOnly}}
+ function snapshot(){return {page:page,routerGroup:routerGroup,toolsTab:toolsWorkspace.currentTab,online:toolsWorkspace.onlineOnly,commerceTable:localBusiness.selectedTable,routerMenu:menu.currentText}}
  function navigate(value){if(value!==page){history=history.concat([snapshot()]);page=value;backend.clearView();if(page==="business")filter()}}
  function navigateTask(value){var parts=value.split(":");if(parts[0]===page&&parts.length>1)history=history.concat([snapshot()]);navigate(parts[0]);if(parts[0]==="router"){routerGroup=parts[1]||"ALL";menu.currentIndex=0}if(parts[0]==="tools")toolsWorkspace.showTab(Number(parts[1]||0),parts[2]==="online");if(parts[0]==="commerce"&&parts[1])localBusiness.openTable(parts[1])}
- function goBack(){if(!history.length)return;var items=history.slice(),previous=items.pop();history=items;page=previous.page;routerGroup=previous.routerGroup;toolsWorkspace.showTab(previous.toolsTab,previous.online);backend.clearView();if(page==="business")filter()}
+ function goBack(){if(!history.length)return;var items=history.slice(),previous=items.pop();history=items;page=previous.page;routerGroup=previous.routerGroup;menu.currentIndex=menu.model.indexOf(previous.routerMenu);if(page==="commerce")localBusiness.openTable(previous.commerceTable);toolsWorkspace.showTab(previous.toolsTab,previous.online);backend.clearView();if(page==="business")filter()}
+ function showPlans(){navigateTask("commerce:plans")}
+ function showSales(){navigateTask("commerce:sales")}
  function showSubscribers(){navigateTask("tools:2")}
  function showOnline(){navigateTask("tools:2:online")}
 
@@ -76,8 +79,8 @@ ApplicationWindow {
     Layout.fillWidth: true
     FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked:root.goBack()}
     Text {text: root.tr(({home:"الرئيسية",business:"أعمال الخادم",commerce:"الأعمال المحلية",vouchers:"الكروت والأرشيف",radius:"RADIUS",router:"الراوتر والأوامر",tools:"إدارة الشبكة",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم",monitor:"المراقبة والتنبيهات",transfer:"الاستيراد والتقارير",billing:"ربط وتجديد الشبكة",about:"عنا"})[root.page],({home:"Overview",business:"Server business",commerce:"Local business",vouchers:"Vouchers & archive",radius:"RADIUS",router:"Router & commands",tools:"Network tools",diagnostics:"Server diagnostics",settings:"Server connection",monitor:"Monitoring & alerts",transfer:"Import & reports",billing:"Bindings & renewal",about:"About"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
-    Rectangle {width: 10; height: 10; radius: 5; color: backend.connected ? theme.mint : theme.muted}
-    Text {text: backend.connected?root.tr("متصل","Connected"):root.tr("غير متصل","Disconnected"); color: theme.silver}
+    Rectangle {width: 10; height: 10; radius: 5; color: backend.routerConnected ? theme.mint : theme.muted}
+    Text {text: backend.routerConnected?root.tr("الراوتر متصل","Router connected"):root.tr("الراوتر غير متصل","Router disconnected"); color: theme.silver}
    }
    Text {Layout.fillWidth: true; text: backend.status.includes(" • ") ? backend.status.split(" • ")[root.arabic?0:1] : backend.status; color: theme.mint; wrapMode: Text.Wrap}
    HomeWorkspace {visible:root.page==="home";arabic:root.arabic;Layout.fillWidth:true;Layout.fillHeight:true;onOpenPage:function(key){root.navigateTask(key)}}

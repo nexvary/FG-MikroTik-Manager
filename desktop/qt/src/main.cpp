@@ -27,6 +27,10 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   if(!w)return 1;
   if(!QMetaObject::invokeMethod(w,"showOnline")||w->property("page").toString()!="tools"||w->property("toolsTab").toInt()!=2||!w->property("onlineOnly").toBool())return 12;
   if(!QMetaObject::invokeMethod(w,"goBack")||w->property("page").toString()!="home")return 13;
+  if(!QMetaObject::invokeMethod(w,"showPlans")||w->property("commerceTable").toString()!="plans")return 14;
+  if(!QMetaObject::invokeMethod(w,"showSales")||w->property("commerceTable").toString()!="sales")return 15;
+  if(!QMetaObject::invokeMethod(w,"goBack")||w->property("commerceTable").toString()!="plans")return 16;
+  if(!QMetaObject::invokeMethod(w,"goBack")||w->property("page").toString()!="home")return 17;
   QDir().mkpath("qt-proof");
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
