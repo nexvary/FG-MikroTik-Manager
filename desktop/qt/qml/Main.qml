@@ -11,6 +11,9 @@ ApplicationWindow {
  color: theme.black
  property bool arabic: true
  property bool inventoryView: false
+ property string routerGroup:"ALL"
+ readonly property int toolsTab:toolsWorkspace.currentTab
+ readonly property bool onlineOnly:toolsWorkspace.onlineOnly
  property string page: "home"
  property var history: []
  property int businessPage: 0
@@ -20,7 +23,13 @@ ApplicationWindow {
  property var tableKeys: ["subscribers","plans","invoices","ledger","sales","expenses","team_members","reseller_entries","router_bindings","network_jobs","payment_details","invoice_voids","sale_voids","import_batches","audit","organizations","branches"]
  property var tableAr: ["المشتركون","الباقات","الفواتير","السجل المالي","المبيعات","المصروفات","الموظفون والموزعون","حركة الموزعين","الراوترات","مهام الشبكة","تفاصيل الدفع","إلغاء الفواتير","إلغاء المبيعات","دفعات الاستيراد","التدقيق","المؤسسة","الفروع"]
  function tr(ar,en){return arabic?ar:en}
- function navigate(value){if(value!==page){history=history.concat([page]);page=value;backend.clearView();if(page==="business")filter()}}
+ function snapshot(){return {page:page,routerGroup:routerGroup,toolsTab:toolsWorkspace.currentTab,online:toolsWorkspace.onlineOnly}}
+ function navigate(value){if(value!==page){history=history.concat([snapshot()]);page=value;backend.clearView();if(page==="business")filter()}}
+ function navigateTask(value){var parts=value.split(":");if(parts[0]===page&&parts.length>1)history=history.concat([snapshot()]);navigate(parts[0]);if(parts[0]==="router"){routerGroup=parts[1]||"ALL";menu.currentIndex=0}if(parts[0]==="tools")toolsWorkspace.showTab(Number(parts[1]||0),parts[2]==="online");if(parts[0]==="commerce"&&parts[1])localBusiness.openTable(parts[1])}
+ function goBack(){if(!history.length)return;var items=history.slice(),previous=items.pop();history=items;page=previous.page;routerGroup=previous.routerGroup;toolsWorkspace.showTab(previous.toolsTab,previous.online);backend.clearView();if(page==="business")filter()}
+ function showSubscribers(){navigateTask("tools:2")}
+ function showOnline(){navigateTask("tools:2:online")}
+
  function closeReviewDialogs(){localBusiness.closeDialogs();voucherStudio.closeDialogs();adminEditor.close();terminalWindow.hide()}
  function showBusinessEditor(){localBusiness.showEditorFor("renew")}
  function showVoucherPreview(){voucherStudio.previewFirst()}
@@ -46,32 +55,32 @@ ApplicationWindow {
     ScrollView {id:navScroll;Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth;ScrollBar.vertical:ScrollBar {policy:ScrollBar.AlwaysOn;width:5;background:Rectangle {color:theme.panel;radius:2} contentItem:Rectangle {color:theme.mint;opacity:0.55;radius:2}}
     ColumnLayout {width:navScroll.availableWidth-10;spacing:8
     Repeater {
-     model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"commerce",ar:"الأعمال المحلية",en:"Local business",icon:1},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:1},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:3},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"tools",ar:"إدارة الشبكة",en:"Network tools",icon:3},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4},{key:"about",ar:"عنا",en:"About",icon:5}]
+     model: [{key:"home",ar:"الرئيسية",en:"Main menu",icon:0},{key:"tools",ar:"الإعداد المتقدم",en:"Advanced Setup",icon:7},{key:"router:NETWORK",ar:"الشبكة والاتصال",en:"Network & connectivity",icon:10},{key:"router:SYSTEM",ar:"النظام والأمان",en:"System & security",icon:11},{key:"vouchers",ar:"إنشاء الكروت",en:"Voucher Studio",icon:6},{key:"commerce",ar:"المشتركون والحسابات",en:"Subscribers & accounts",icon:2},{key:"about",ar:"عن المطور",en:"About developer",icon:5},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:9},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:7},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:8}]
      delegate: FgButton {
       required property var modelData
       Layout.fillWidth: true; text: root.tr(modelData.ar,modelData.en); leftPadding: 42; rightPadding: 42
-      accent: root.page===modelData.key ? theme.blue : theme.muted
-      onClicked: root.navigate(modelData.key)
+      accent: root.page===modelData.key.split(":")[0]&&(modelData.key.indexOf("router:")!==0||root.routerGroup===modelData.key.split(":")[1]) ? theme.blue : theme.muted
+      onClicked: root.navigateTask(modelData.key)
       NavIcon {anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; kind: parent.modelData.icon; ink: parent.accent}
      }
     }
     }}
     FgButton {Layout.fillWidth: true; text: root.tr("ترمنال عائم • F4","Floating terminal • F4"); accent: theme.mint; onClicked: {terminalWindow.show();terminalWindow.raise()}}
     FgButton {Layout.fillWidth: true; text: root.arabic ? "English" : "العربية"; onClicked: root.arabic=!root.arabic}
-    Text {text: "FG Machines · 0.14.0"; color: theme.muted; font.pixelSize: 12}
+    Text {text: "FG Machines · 0.17.1"; color: theme.muted; font.pixelSize: 12}
    }
   }
   ColumnLayout {
    Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 24; spacing: 16
    RowLayout {
     Layout.fillWidth: true
-    FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked: {var items=root.history.slice();root.page=items.pop();root.history=items;backend.clearView();if(root.page==="business")root.filter()}}
+    FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked:root.goBack()}
     Text {text: root.tr(({home:"الرئيسية",business:"أعمال الخادم",commerce:"الأعمال المحلية",vouchers:"الكروت والأرشيف",radius:"RADIUS",router:"الراوتر والأوامر",tools:"إدارة الشبكة",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم",monitor:"المراقبة والتنبيهات",transfer:"الاستيراد والتقارير",billing:"ربط وتجديد الشبكة",about:"عنا"})[root.page],({home:"Overview",business:"Server business",commerce:"Local business",vouchers:"Vouchers & archive",radius:"RADIUS",router:"Router & commands",tools:"Network tools",diagnostics:"Server diagnostics",settings:"Server connection",monitor:"Monitoring & alerts",transfer:"Import & reports",billing:"Bindings & renewal",about:"About"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
     Rectangle {width: 10; height: 10; radius: 5; color: backend.connected ? theme.mint : theme.muted}
     Text {text: backend.connected?root.tr("متصل","Connected"):root.tr("غير متصل","Disconnected"); color: theme.silver}
    }
    Text {Layout.fillWidth: true; text: backend.status.includes(" • ") ? backend.status.split(" • ")[root.arabic?0:1] : backend.status; color: theme.mint; wrapMode: Text.Wrap}
-   HomeWorkspace {visible:root.page==="home";arabic:root.arabic;Layout.fillWidth:true;Layout.fillHeight:true;onOpenPage:function(key){root.navigate(key)}}
+   HomeWorkspace {visible:root.page==="home";arabic:root.arabic;Layout.fillWidth:true;Layout.fillHeight:true;onOpenPage:function(key){root.navigateTask(key)}}
    AboutWorkspace {visible:root.page==="about";Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    NetworkBillingWorkspace {visible:root.page==="billing";enabled:!routerTools.busy;Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    BusinessTransferWorkspace {visible:root.page==="transfer";Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
@@ -122,7 +131,7 @@ ApplicationWindow {
    GridLayout {
     visible: root.page==="router"; columns: 2; Layout.fillWidth: true
     FgField {id: routerUrl; Layout.fillWidth: true; placeholderText: root.tr("عنوان IP أو اسم الراوتر","Router IP or hostname"); LayoutMirroring.enabled: false}
-    ComboBox {id: menu; model: backend.menus; Layout.fillWidth: true;onActivated:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
+    ComboBox {id: menu; model: backend.menus.filter(function(key){return root.routerGroup==="ALL"||backend.module(key).group===root.routerGroup}); Layout.fillWidth: true;onActivated:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
     FgField {id: routerUser; Layout.fillWidth: true; placeholderText: root.tr("حساب الراوتر","Router username"); LayoutMirroring.enabled: false}
     FgField {id: routerPassword; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: root.tr("كلمة المرور","Password"); LayoutMirroring.enabled: false}
     ComboBox {id: routerProtocol; model: ["REST","API_SSL","API","AUTO","REST_HTTP"]; Layout.fillWidth: true; onActivated: routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":currentIndex===4?"80":"8728"}
@@ -146,7 +155,7 @@ ApplicationWindow {
     Text {Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;wrapMode:Text.Wrap;text:root.tr("اختر جهازًا لنسخ عنوانه، ثم احفظ كل ميكروتيك باسم مستقل. أجهزة DHCP وARP ليست مؤكدة الاتصال، وضبط الأكسس يعتمد على موديله.","Select a device to fill its IP, then save each MikroTik with a separate name. DHCP/ARP devices are not verified online; AP configuration depends on its model.")}
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
-   RouterToolsWorkspace {enabled:!networkBilling.busy;visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
+   RouterToolsWorkspace {id:toolsWorkspace;enabled:!networkBilling.busy;visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    BusinessWorkspace {id:localBusiness;visible: root.page==="commerce"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    VoucherStudio {id:voucherStudio;visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    Rectangle {

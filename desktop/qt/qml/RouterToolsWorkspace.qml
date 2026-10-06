@@ -5,9 +5,12 @@ import QtQuick.Dialogs
 ColumnLayout {
  id: workspace
  property bool arabic: true
+ property alias currentTab:tabs.currentIndex
+ property alias onlineOnly:subscribers.onlineOnly
  property string userId: ""
  property string logoDataUri:routerTools.portalDesign.logoDataUri||""
  property var selectedNetworks: []
+ function showTab(index,online){tabs.currentIndex=index;subscribers.onlineOnly=online||false}
  function tr(ar,en){return arabic?ar:en}
  function design(){return {networkName:networkName.text,supportPhone:support.text,welcome:welcome.text,color:color.text,terms:terms.text,website:website.text,logoDataUri:workspace.logoDataUri}}
  Theme {id: theme}
@@ -32,11 +35,7 @@ ColumnLayout {
    Repeater {model: routerTools.changes; Text {required property var modelData; text: modelData.label+" • /"+modelData.menu+"/"+modelData.action; color: theme.gold; wrapMode: Text.Wrap; Layout.fillWidth: true}}
    RowLayout {FgField {id: backupPassword; echoMode: TextInput.Password; placeholderText: workspace.tr("كلمة مرور النسخة الاحتياطية (12+)","Router backup password (12+)"); Layout.fillWidth: true} FgButton {text: workspace.tr("تأكيد الخطة وبدء الإعداد","Confirm plan & configure"); enabled: backupPassword.text.length>=12&&!routerTools.busy; onClicked: {routerTools.apply(backupPassword.text);backupPassword.clear()}}}
   }}
-  ColumnLayout {
-   RowLayout {Layout.fillWidth: true; FgButton {text: workspace.tr("تفعيل","Enable"); enabled: workspace.userId.length>0&&!routerTools.busy; onClicked: routerTools.subscriber("enable",workspace.userId,{})} FgButton {text: workspace.tr("تعطيل","Disable"); enabled: workspace.userId.length>0&&!routerTools.busy; onClicked: userAction.openFor("disable")} FgButton {text: workspace.tr("فصل الجلسة","Disconnect"); enabled: workspace.userId.length>0&&!routerTools.busy; onClicked: userAction.openFor("disconnect")} FgButton {text: workspace.tr("حذف","Delete"); accent: theme.error; enabled: workspace.userId.length>0&&!routerTools.busy; onClicked: userAction.openFor("delete")}}
-   RowLayout {FgField {id: userProfile; placeholderText: workspace.tr("الباقة الجديدة","New profile"); Layout.fillWidth: true} FgButton {text: workspace.tr("تغيير الباقة","Change profile"); enabled: workspace.userId.length>0&&userProfile.text.length>0&&!routerTools.busy; onClicked: routerTools.subscriber("update",workspace.userId,{attributes:{profile:userProfile.text}})} FgField {id: seconds; placeholderText: workspace.tr("زيادة الوقت بالثواني","Extra seconds"); Layout.fillWidth: true} FgButton {text: workspace.tr("زيادة الوقت","Add time"); enabled: workspace.userId.length>0&&!routerTools.busy; onClicked: routerTools.subscriber("add_time",workspace.userId,{seconds:seconds.text})}}
-   ListView {Layout.fillWidth: true; Layout.fillHeight: true; model: routerTools.users; clip: true; spacing: 6; ScrollBar.vertical: ScrollBar {} delegate: Rectangle {required property var modelData; width: ListView.view.width; height: 74; radius: 12; color: workspace.userId===modelData[".id"]?theme.raised:theme.panel; border.color: workspace.userId===modelData[".id"]?theme.blue:theme.muted; Text {anchors.fill: parent; anchors.margins: 14; color: theme.white; wrapMode: Text.Wrap; text: modelData.name+" • "+modelData.profile+"\n"+workspace.tr("الاستخدام: ","Usage: ")+(modelData["bytes-in"]||"0")+" / "+(modelData["bytes-out"]||"0")+" • "+(modelData.uptime||"0")+" • "+(modelData.disabled||"no")} TapHandler {onTapped: workspace.userId=parent.modelData[".id"]}}}
-  }
+  SubscriberWorkspace {id:subscribers;arabic:workspace.arabic}
   ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 14
    Text {text: workspace.tr("فلترة DNS للشبكات الخاصة المختارة. تُحفظ الإعدادات السابقة لاستعادتها.","DNS filtering for selected private client networks. Previous settings are saved for restoration."); color: theme.silver; Layout.fillWidth: true; wrapMode: Text.Wrap}
    Repeater {model:routerTools.dhcpNetworks;CheckBox {required property var modelData; text:modelData.address+" • "+workspace.tr("DNS: ","DNS: ")+(modelData["dns-server"]||"");checked:workspace.selectedNetworks.indexOf(modelData[".id"])>=0;onClicked:{let next=workspace.selectedNetworks.slice(),i=next.indexOf(modelData[".id"]);if(checked&&i<0)next.push(modelData[".id"]);else if(!checked&&i>=0)next.splice(i,1);workspace.selectedNetworks=next}}}

@@ -52,7 +52,36 @@ void Vouchers::commitIds(QJsonArray index){check(index.size()<=10000,"ARCHIVE_LI
 void Vouchers::setArchivePage(int value){page=std::clamp(value,0,499);emit changed();}
 QVariantList Vouchers::archive()const{QVariantList rows;if(!authorization())return rows;QJsonArray index;try{index=ids();}catch(...){return rows;}for(int i=page*20;i<index.size()&&i<(page+1)*20;i++){auto id=index[i].toString();rows.append(QVariantMap{{"id",id},{"date",QDateTime::fromMSecsSinceEpoch(id.section('-',0,0).toLongLong()).toString("yyyy-MM-dd HH:mm")}});}return rows;}
 void Vouchers::selectCard(int index){if(index>=0&&index<batch["vouchers"].toArray().size())selectedCard=index;}
-QString Vouchers::shareCard(int index){if(!authorization()||index<0||index>=batch["vouchers"].toArray().size())return {};return qrPayload(batch["vouchers"].toArray()[index].toObject());}
+QString Vouchers::shareText(QJsonObject v,bool ar){
+ auto b=v["branding"].toObject();QStringList lines{text(b,"networkName","FG Machines WiFi")};
+ auto line=[&](QString a,QString e,QString value){if(!value.isEmpty())lines.append((ar?a:e)+": "+value);};
+ if(v["provisionState"]!="CREATED")lines.append(ar?"الكارت غير مؤكد التفعيل على الراوتر":"Router activation is not confirmed");
+ line("كود الكارت","Voucher code",text(v,"username"));line("كلمة المرور","Password",text(v,"password"));
+ auto allowance=text(v,"limitUptime");if(QStringList{"0","0s","00:00:00"}.contains(allowance))allowance=ar?"بدون حد زمني":"No time limit";
+ if(allowance.isEmpty())allowance=QString::number(v["durationValue"].toInt())+" "+text(v,"durationUnit");line("مدة الاستخدام","Usage allowance",allowance);
+ if(v["limitBytesTotal"].toInteger()>0)line("البيانات","Data",QString::number(v["limitBytesTotal"].toInteger()/1048576.0,'f',2)+" MB");
+ if(v["absoluteExpiryEpochMs"].toInteger()>0)line("تاريخ الانتهاء","Expires",QDateTime::fromMSecsSinceEpoch(v["absoluteExpiryEpochMs"].toInteger()).toString("dd/MM/yyyy HH:mm"));
+ line("السعر","Price",text(b,"priceText"));line("الباقة","Profile",text(v,"profile"));
+ if(v["mode"]=="HOTSPOT"){line("صفحة الدخول","Login page",text(b,"portalLoginUrl"));lines.append(ar?"اتصل بواي فاي الشبكة، ثم أدخل الكود وكلمة المرور في صفحة الدخول.":"Connect to the network Wi-Fi, then enter the code and password on its login page.");}
+ if(v["mode"]=="PPPOE")lines.append(ar?"هذه بيانات اتصال PPPoE.":"These are PPPoE connection credentials.");
+ line("الدعم","Support",text(b,"supportPhone"));return lines.join('\n');
+}
+QString Vouchers::shareCard(int index,bool arabic){if(!authorization()||index<0||index>=batch["vouchers"].toArray().size())return {};return shareText(batch["vouchers"].toArray()[index].toObject(),arabic);}
+QVariantList Vouchers::profiles()const{return authorization()&&router->connected()&&catalogIdentity==router->identityKey()?profileCatalog.toVariantList():QVariantList{};}
+QVariantList Vouchers::servers()const{return authorization()&&router->connected()&&catalogIdentity==router->identityKey()?serverCatalog.toVariantList():QVariantList{};}
+void Vouchers::loadProfiles(QString mode){
+ if(working||router->busy())return;profileCatalog={};serverCatalog={};catalogMode=mode;catalogIdentity=router->identityKey();
+ if(mode=="OFFLINE"){emit changed();return;}
+ if(!authorization()||!router->connected()){message="اتصل بالراوتر لقراءة الباقات • Connect a router to load profiles";emit changed();return;}
+ if(!QStringList{"HOTSPOT","PPPOE","USER_MANAGER"}.contains(mode)){message="INVALID_MODE";emit changed();return;}
+ working=true;auto identity=catalogIdentity;auto menu=mode=="HOTSPOT"?"ip/hotspot/user/profile":mode=="PPPOE"?"ppp/profile":"user-manager/profile";
+ router->read(menu,[this,mode,identity](RouterReply r){
+  if(!authorization()||identity!=router->identityKey()){working=false;profileCatalog={};serverCatalog={};emit changed();return;}
+  if(!r.ok()){working=false;message=r.error;emit changed();return;}profileCatalog=r.rows;
+  if(mode!="HOTSPOT"){working=false;message="تمت قراءة الباقات • Profiles loaded";emit changed();return;}
+  router->read("ip/hotspot",[this,identity](RouterReply reply){if(authorization()&&identity==router->identityKey()&&reply.ok())serverCatalog=reply.rows;working=false;message=reply.ok()?"تمت قراءة الباقات والخوادم • Profiles and servers loaded":reply.error;emit changed();});
+ });emit changed();
+}
 void Vouchers::openBatch(QString id){if(!authorization()||working||!QRegularExpression("^[0-9]{1,19}(-[a-fA-F0-9-]{36})?$").match(id).hasMatch())return;try{check(ids().contains(id),"BATCH_NOT_FOUND");auto bytes=Vault::unprotect(readBounded(directory+"/"+id+".fgv"));auto doc=QJsonDocument::fromJson(bytes);bytes.fill('\0');check(doc.isObject()&&doc.object()["vouchers"].isArray(),"ARCHIVE_INVALID");batch=doc.object();batchId=id;message="تم فتح الدفعة • Batch opened";}catch(const std::exception&e){message=e.what();}emit changed();}
 void Vouchers::activate(){if(working||batch.isEmpty()||!router->connected()||!authorization())return;auto mode=text(batch["request"].toObject(),"mode");if(mode=="OFFLINE"){message="دفعة محلية غير مفعلة • Offline batch";emit changed();return;}working=true;QString menu=mode=="HOTSPOT"?"ip/hotspot/user":mode=="PPPOE"?"ppp/secret":"user-manager/user";
  router->read(menu,[this,menu](RouterReply r){if(!r.ok()){working=false;message=r.error;emit changed();return;}QSet<QString> existing;for(auto v:r.rows)existing.insert(text(v.toObject(),"name"));provision(0,menu,existing);});emit changed();}

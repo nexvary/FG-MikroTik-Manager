@@ -3,6 +3,24 @@
 class ToolTests:public QObject{Q_OBJECT
  QJsonObject fixture(){return {{"interface",QJsonArray{QJsonObject{{"name","ether1"},{"type","ether"},{"running","yes"}},QJsonObject{{"name","ether2"},{"type","ether"},{"running","yes"}},QJsonObject{{"name","ether3"},{"type","ether"},{"running","no"}}}},{"ip/route",QJsonArray{QJsonObject{{"dst-address","0.0.0.0/0"},{"active","yes"},{"immediate-gw","192.168.1.1%ether1"}}}},{"ip/dns",QJsonArray{QJsonObject{{"servers",""},{"allow-remote-requests","no"}}}}};}
 private slots:
+ void subscriberUsageIncludesSessions(){
+  QJsonObject user{{"name","alice"},{"uptime","1d00:00:00"},{"limit-uptime","2d"},{"bytes-in","9007199254740993"},{"bytes-out","100"},{"limit-bytes-total","9007199254741993"}};
+  QJsonArray sessions{QJsonObject{{"user","alice"},{"uptime","10m"},{"bytes-in","100"},{"bytes-out","200"}},QJsonObject{{"user","bob"},{"uptime","5h"},{"bytes-in","200"},{"bytes-out","200"}}};
+  auto result=RouterTools::subscriberUsage(user,sessions);
+  QCOMPARE(result["usageState"].toString(),QString("ACTIVE"));QCOMPARE(result["sessionCount"].toInt(),1);
+  QCOMPARE(result["usedSeconds"].toString(),QString("87000"));QCOMPARE(result["remainingSeconds"].toString(),QString("85800"));
+  QCOMPARE(result["uploadBytes"].toString(),QString("9007199254741093"));QCOMPARE(result["remainingBytes"].toString(),QString("600"));
+  result=RouterTools::subscriberUsage(user,{},false);QCOMPARE(result["usageState"].toString(),QString("UNKNOWN"));QVERIFY(result["remainingSeconds"].isNull());QVERIFY(result["sessionCount"].isNull());
+  user["limit-uptime"]="1m";QCOMPARE(RouterTools::subscriberUsage(user,sessions)["usageState"].toString(),QString("EXPIRED"));
+ }
+ void subscriberUsageUnknownAndUnlimited(){
+  QJsonObject user{{"name","alice"},{"uptime","0s"},{"limit-uptime","0s"},{"bytes-in","0"},{"bytes-out","0"},{"limit-bytes-total","0"},{"password","hidden"}};
+  auto result=RouterTools::subscriberUsage(user,{});QVERIFY(result["remainingSeconds"].isNull());QVERIFY(result["remainingBytes"].isNull());QCOMPARE(result["usageState"].toString(),QString("OFFLINE"));QVERIFY(result["password"]!="hidden");
+  user["uptime"]="invalid";QVERIFY(RouterTools::subscriberUsage(user,{})["usedSeconds"].isNull());
+  user["uptime"]="999999999999999999999w";QVERIFY(RouterTools::subscriberUsage(user,{})["usedSeconds"].isNull());
+  user["bytes-in"]="9223372036854775807";user["bytes-out"]="1";QVERIFY(RouterTools::subscriberUsage(user,{})["usedBytes"].isNull());
+ }
+
  void pingSummaries(){auto result=RouterTools::pingEvidence(QJsonArray{QJsonObject{{"time","2ms500us"}},QJsonObject{{"status","timeout"}},QJsonObject{{"time","500us"}}});QCOMPARE(result["received"].toInt(),2);QCOMPARE(result["latency_ms"].toDouble(),1.5);QVERIFY(result["loss_percent"].toDouble()>33);result=RouterTools::pingEvidence(QJsonArray{QJsonObject{{"sent","3"},{"received","1"},{"avg-rtt","4ms"}}});QCOMPARE(result["received"].toInt(),1);QCOMPARE(result["latency_ms"].toDouble(),4.0);QVERIFY(RouterTools::pingEvidence({})["loss_percent"].isNull());}
  void hotspotPreservesWan(){auto f=fixture();QJsonObject request{{"interface","ether2"},{"gateway","192.168.10.1/24"},{"network","192.168.10.0/24"},{"pool","192.168.10.10-192.168.10.250"},{"dnsName","wifi.local"}};auto plan=RouterTools::hotspotPlan(f,request,"192.168.1.2");QVERIFY(plan["changes"].toArray().size()>5);for(auto v:plan["changes"].toArray()){auto step=v.toObject();auto attrs=step["attributes"].toObject();QVERIFY(attrs["interface"]!="ether1");if(step["menu"]=="ip/dns")QVERIFY(!attrs.contains("allow-remote-requests"));}request["interface"]="ether1";QVERIFY_EXCEPTION_THROWN(RouterTools::hotspotPlan(f,request,"192.168.1.2"),std::runtime_error);request["interface"]="ether2";request["pool"]="192.168.10.1-192.168.10.200";QVERIFY_EXCEPTION_THROWN(RouterTools::hotspotPlan(f,request,"192.168.1.2"),std::runtime_error);}
  void overlapRejected(){auto f=fixture();f["ip/address"]=QJsonArray{QJsonObject{{"interface","ether3"},{"address","192.168.10.1/24"}}};QVERIFY_EXCEPTION_THROWN(RouterTools::hotspotPlan(f,{{"interface","ether2"},{"gateway","192.168.10.1/24"},{"network","192.168.10.0/24"},{"pool","192.168.10.10-192.168.10.250"}},"192.168.1.2"),std::runtime_error);}

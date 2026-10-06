@@ -24,7 +24,10 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   vouchers.generate({{"quantity",8},{"mode","OFFLINE"},{"usernameLength",8},{"durationValue",60},{"durationUnit","MINUTES"},{"branding",QJsonObject{{"networkName","FG Machines WiFi"},{"supportPhone","01234567890"},{"priceText","10 EGP"}}}});if(vouchers.cards().size()!=8)return 10;
   auto today=QDate::currentDate().toString("yyyy-MM-dd");commerce.report(today,today);
   bridge.smoke();if(bridge.rows().size()!=50)return 3;bridge.filter("subscribers","Customer 51",0);if(bridge.rows().size()!=1)return 4;bridge.filter("subscribers","",1);if(bridge.rows().size()!=1)return 5;bridge.filter("subscribers","",0);auto w=qobject_cast<QQuickWindow*>(engine.rootObjects().first());
-  if(!w)return 1;QDir().mkpath("qt-proof");
+  if(!w)return 1;
+  if(!QMetaObject::invokeMethod(w,"showOnline")||w->property("page").toString()!="tools"||w->property("toolsTab").toInt()!=2||!w->property("onlineOnly").toBool())return 12;
+  if(!QMetaObject::invokeMethod(w,"goBack")||w->property("page").toString()!="home")return 13;
+  QDir().mkpath("qt-proof");
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
    const QStringList pages{"home","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing","about"};

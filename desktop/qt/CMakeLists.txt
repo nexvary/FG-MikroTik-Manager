@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(FgMtmDesktop VERSION 0.14.0 LANGUAGES CXX)
+project(FgMtmDesktop VERSION 0.17.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -25,7 +25,7 @@ set(portal_assets
 qt_add_executable(fg_mtm WIN32 src/main.cpp)
 qt_add_resources(fg_mtm "ui" PREFIX "/" FILES
  qml/Main.qml qml/FgDialog.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/NavIcon.qml
- qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml
+ qml/SubscriberWorkspace.qml qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml
  qml/MonitorWorkspace.qml qml/BusinessTransferWorkspace.qml qml/CommandLibrary.qml
  qml/NetworkBillingWorkspace.qml qml/AboutWorkspace.qml qml/HomeWorkspace.qml qml/FgTab.qml
  resources/business-schema.json resources/command-library.json resources/router-modules.json ${portal_assets} packaging/fg-mtm.png)

@@ -1,4 +1,4 @@
-# FG MTM for Windows 0.14.0
+# FG MTM for Windows 0.17.1
 
 Native C++20 and Qt 6.8.3 Quick/QuickControls2, Network, Widgets/PrintSupport and SQLite, built with CMake/MSVC 2022 and packaged with Inno Setup. This follows the applicable desktop stack in `nexvary/NEXVARY-Avionics-Lab`; the application runs locally without a browser engine.
 
@@ -33,7 +33,7 @@ Connection passwords and server sessions stay in memory. Router backup passwords
 
 ## First use
 
-1. Install `FG-MTM-Windows-0.14.0-Setup.exe` on Windows x64.
+1. Install `FG-MTM-Windows-0.17.1-Setup.exe` on Windows x64.
 2. For an existing server branch, sign in under Server synchronization and join the empty local store before setting up the local owner. Otherwise, create the owner in Local business first.
 3. Connect to a MikroTik router in Routers using its actual transport and enabled port. Save a named connection if monitoring is needed. Stored profiles exclude passwords.
 4. Server synchronization is optional. The supplied server origin is `https://3.65.234.184`, tenant `d1d1af2d-10f7-41ab-ae96-bdc10333d781`, branch `8f2aeb05-aac9-4769-a2a4-920aa1e1859e`. Use an independently created Windows server account to keep single-session server authentication from revoking another device's token.

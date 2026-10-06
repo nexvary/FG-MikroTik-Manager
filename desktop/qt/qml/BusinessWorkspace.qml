@@ -17,6 +17,7 @@ ColumnLayout {
  property var memberChoices:[]
  property var labels: ["إضافة مشترك","إضافة باقة","تجديد اشتراك","إضافة مديونية","تحصيل دفعة","عملية بيع","مصروف","عكس قيد مالي","إلغاء فاتورة","إلغاء بيع","عكس مصروف","إضافة موظف / موزع","تفعيل موظف","تعطيل موظف","حركة محفظة موزع","إضافة فرع","اختيار فرع","إنشاء حساب موظف","تغيير كلمة مرور"]
  property string op: operations[action.currentIndex]
+ function openTable(table){selectedTable=table;records.currentIndex=records.model.findIndex(function(item){return item.id===table});page=0;selectedId="";refresh()}
  function tr(ar,en){return arabic?ar:en}
  function includes(values){return values.indexOf(op)>=0}
  function amount(value){let s=String(value),negative=s[0]==='-';if(negative)s=s.substring(1);s=s.padStart(3,'0');return (negative?'-':'')+s.slice(0,-2)+'.'+s.slice(-2)}

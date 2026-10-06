@@ -16,12 +16,17 @@ class Vouchers:public QObject{
  Q_PROPERTY(int archiveCount READ archiveCount NOTIFY changed)
  Q_PROPERTY(QString status READ status NOTIFY changed)
  Q_PROPERTY(bool busy READ busy NOTIFY changed)
+ Q_PROPERTY(QVariantList profiles READ profiles NOTIFY changed)
+ Q_PROPERTY(QVariantList servers READ servers NOTIFY changed)
 public:
  explicit Vouchers(RouterClient *router,QObject *parent=nullptr,QString archiveDirectory={});
  QVariantList cards()const{return authorization()?batch["vouchers"].toArray().toVariantList():QVariantList{};} QVariantList archive()const;QString status()const{return message;}bool busy()const{return working;}
  int archivePage()const{return page;}int archiveCount()const{try{return authorization()?ids().size():0;}catch(...){return 0;}}
  Q_INVOKABLE void setArchivePage(int value);
- Q_INVOKABLE QString shareCard(int index);
+ Q_INVOKABLE QString shareCard(int index,bool arabic=true);
+ static QString shareText(QJsonObject card,bool arabic=true);
+ Q_INVOKABLE void loadProfiles(QString mode);
+ QVariantList profiles()const;QVariantList servers()const;
  Q_INVOKABLE QString previewCard(int index)const;
  Q_INVOKABLE void selectCard(int index);
  void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
@@ -43,6 +48,7 @@ private:
  RouterClient *router;QJsonObject batch;QString batchId,message;bool working=false;QString directory;int page=0,selectedCard=0;QJsonArray ids()const;void commitIds(QJsonArray ids);
  void save();void provision(int index,QString menu,QSet<QString> existing);
  void expire(QJsonObject voucher,QString id,std::function<void(RouterReply)> done);
+ QString catalogIdentity,catalogMode;QJsonArray profileCatalog,serverCatalog;
  static void paintCard(QPainter &p,QRectF rect,QJsonObject card);
  void render(class QPagedPaintDevice &device,QString paper,bool selectedOnly=false);
 };
