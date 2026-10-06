@@ -1,8 +1,8 @@
 # FG MikroTik Manager
 
-Native Android management client for MikroTik RouterOS, designed for phones and tablets.
+Native Android and Windows clients for MikroTik RouterOS, network operations and local business management.
 
-> Status: early foundation. The project is being built as a native Android application, not as a WinBox wrapper or Windows emulator.
+> Current Android: 0.17.1. Native Windows: 0.17.1 parity release candidate. See [Windows capability comparison and validation](docs/product-family/WINDOWS-PARITY-0.17.1.md). Live router, printer and physical-device acceptance is tracked separately.
 
 ## Goals
 
