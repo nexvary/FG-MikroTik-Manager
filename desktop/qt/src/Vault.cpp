@@ -21,11 +21,13 @@ QByteArray crypt(const QByteArray &bytes,const QString &password,bool encrypt){
  if(status<0){SecureZeroMemory(output.data(),output.size());throw std::runtime_error("BACKUP_AUTHENTICATION_FAILED");}output.resize(written);return encrypt?header+output+tag:output;
 }
 }
+QByteArray Vault::derive(const QString &password,const QByteArray &salt){Alg hash;require(BCryptOpenAlgorithmProvider(&hash.h,BCRYPT_SHA256_ALGORITHM,nullptr,BCRYPT_ALG_HANDLE_HMAC_FLAG)>=0,"KDF_PROVIDER");QByteArray pass=password.toUtf8(),key(32,'\0');auto status=BCryptDeriveKeyPBKDF2(hash.h,reinterpret_cast<PUCHAR>(pass.data()),ULONG(pass.size()),reinterpret_cast<PUCHAR>(const_cast<char*>(salt.constData())),ULONG(salt.size()),210000,reinterpret_cast<PUCHAR>(key.data()),32,0);SecureZeroMemory(pass.data(),pass.size());require(status>=0,"KDF_FAILED");return key;}
 QByteArray Vault::protect(const QByteArray &clear){DATA_BLOB in{DWORD(clear.size()),reinterpret_cast<BYTE*>(const_cast<char*>(clear.data()))},out{};require(CryptProtectData(&in,L"FG MTM",nullptr,nullptr,nullptr,CRYPTPROTECT_UI_FORBIDDEN,&out),"VAULT_PROTECT_FAILED");QByteArray result(reinterpret_cast<char*>(out.pbData),out.cbData);SecureZeroMemory(out.pbData,out.cbData);LocalFree(out.pbData);return result;}
 QByteArray Vault::unprotect(const QByteArray &cipher){DATA_BLOB in{DWORD(cipher.size()),reinterpret_cast<BYTE*>(const_cast<char*>(cipher.data()))},out{};require(CryptUnprotectData(&in,nullptr,nullptr,nullptr,nullptr,CRYPTPROTECT_UI_FORBIDDEN,&out),"VAULT_UNPROTECT_FAILED");QByteArray result(reinterpret_cast<char*>(out.pbData),out.cbData);SecureZeroMemory(out.pbData,out.cbData);LocalFree(out.pbData);return result;}
 QByteArray Vault::encrypt(const QByteArray &clear,const QString &password){return crypt(clear,password,true);}
 QByteArray Vault::decrypt(const QByteArray &cipher,const QString &password){return crypt(cipher,password,false);}
 #else
+QByteArray Vault::derive(const QString &,const QByteArray &){throw std::runtime_error("Windows CNG required");}
 QByteArray Vault::protect(const QByteArray &){throw std::runtime_error("Windows DPAPI required");}
 QByteArray Vault::unprotect(const QByteArray &){throw std::runtime_error("Windows DPAPI required");}
 QByteArray Vault::encrypt(const QByteArray &,const QString &){throw std::runtime_error("Windows CNG required");}
