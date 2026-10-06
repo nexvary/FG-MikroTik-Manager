@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 TextField {
  color: "#F4F7FA"
  placeholderTextColor: "#8FA5B5"

@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import QtQuick.Window
@@ -59,7 +59,7 @@ ApplicationWindow {
     Rectangle {width: 10; height: 10; radius: 5; color: backend.connected ? theme.mint : theme.muted}
     Text {text: backend.connected?root.tr("متصل","Connected"):root.tr("غير متصل","Disconnected"); color: theme.silver}
    }
-   Text {Layout.fillWidth: true; text: backend.status; color: theme.mint; wrapMode: Text.Wrap}
+   Text {Layout.fillWidth: true; text: backend.status.includes(" • ") ? backend.status.split(" • ")[root.arabic?0:1] : backend.status; color: theme.mint; wrapMode: Text.Wrap}
    Rectangle {
     visible: root.page==="home"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.panel; radius: 14; border.color: theme.muted
     ColumnLayout {

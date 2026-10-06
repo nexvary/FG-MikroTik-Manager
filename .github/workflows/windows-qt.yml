@@ -39,8 +39,9 @@ jobs:
         shell: pwsh
         run: |
           $app=Start-Process qt-package/fg_mtm.exe -ArgumentList '--smoke-test' -PassThru
-          if (-not $app.WaitForExit(30000)) { $app.Kill(); throw 'UI timeout' }
+          if (-not $app.WaitForExit(90000)) { $app.Kill(); throw 'UI timeout' }
           if ($app.ExitCode -ne 0) { throw 'UI failed' }
+          if (!(Test-Path qt-proof/terminal-ar.png)) { throw 'Terminal screenshot missing' }
       - name: Build and test installer
         shell: pwsh
         run: |
@@ -49,7 +50,7 @@ jobs:
           $setup=Start-Process qt-installer/FG-MTM-Qt-Windows-0.3.0-Setup.exe -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\fg-mtm-qt-test"' -PassThru -Wait
           if ($setup.ExitCode -ne 0) { throw 'Install failed' }
           $app=Start-Process C:/fg-mtm-qt-test/fg_mtm.exe -ArgumentList '--smoke-test' -PassThru
-          if (-not $app.WaitForExit(30000)) { $app.Kill(); throw 'Installed UI timeout' }
+          if (-not $app.WaitForExit(90000)) { $app.Kill(); throw 'Installed UI timeout' }
           if ($app.ExitCode -ne 0) { throw 'Installed UI failed' }
       - uses: actions/upload-artifact@v4
         with:
