@@ -23,6 +23,9 @@ ColumnLayout {
  function label(key){let names={name:["الاسم","Name"],phone:["الهاتف","Phone"],account:["حساب الراوتر","Router account"],service:["الخدمة","Service"],currency:["العملة","Currency"],amount_minor:["المبلغ","Amount"],paid_minor:["المحصّل","Collected"],price_minor:["السعر","Price"],balance_minor:["الرصيد","Balance"],days:["الأيام","Days"],kind:["النوع","Type"],note:["ملاحظات","Notes"],reason:["السبب","Reason"],role:["الدور","Role"],active:["الحالة","State"],method:["طريقة الدفع","Payment method"],reference:["مرجع الدفع","Payment reference"],profile:["الباقة على الراوتر","Router profile"],state:["حالة التطبيق","Applied state"],actor:["الحساب","Account"],action:["الإجراء","Action"],created_at:["التاريخ","Date"],customer:["العميل","Customer"],customer_name:["المشترك","Subscriber"],plan_name:["الباقة","Plan"],starts_day:["بداية الاشتراك","Subscription start"],ends_day:["النهاية غير شاملة","End exclusive"],username:["اسم الحساب","Username"],id:["المرجع","Reference"]};return names[key]?tr(names[key][0],names[key][1]):key.replace(/_/g," ")}
  function tableName(key){let names={subscribers:["المشتركون","Subscribers"],plans:["الباقات","Plans"],invoices:["الفواتير","Invoices"],ledger:["السجل المالي","Ledger"],sales:["المبيعات","Sales"],expenses:["المصروفات","Expenses"],team_members:["الموظفون والموزعون","Staff & resellers"],reseller_entries:["حركة الموزعين","Reseller entries"],local_accounts:["حسابات الدخول","Sign-in accounts"]};return names[key]?tr(names[key][0],names[key][1]):key.replace(/_/g," ")}
  function details(row){let fields=[];for(let key in row){if(["organization_id","branch_id","sequence","items_json","name","customer","customer_name","username"].indexOf(key)>=0)continue;let value=String(row[key]);if(key.endsWith("_minor"))value=amount(value)+" "+(row.currency||"");else if(key==="created_at")value=new Date(Number(value)).toLocaleString();else if(key==="starts_day"||key==="ends_day")value=new Date(Number(value)*86400000).toISOString().slice(0,10);fields.push(label(key)+": "+value)}return fields.join("   •   ")}
+ function closeDialogs(){editor.close();wallet.close()}
+ function requiredPermission(){let permissions={subscriber:"CUSTOMER",plan:"CONFIGURE",renew:"POST",charge:"POST",payment:"POST",sale:"POST",expense:"CONFIGURE",reverse:"REVERSE",void_invoice:"REVERSE",void_sale:"REVERSE",reverse_expense:"REVERSE",team:"TEAM",team_enable:"TEAM",team_disable:"TEAM",wallet:"WALLET",branch:"BRANCHES",select_branch:"BRANCHES",create_account:"AUTH",reset_password:"AUTH"};return permissions[workspace.op]||"AUTH"}
+ function showEditorFor(operation){let index=workspace.operations.indexOf(operation);if(index>=0)action.currentIndex=index;workspace.showEditor()}
  function showEditor(){workspace.subscriberChoices=commerce.choices("subscribers");workspace.planChoices=commerce.choices("plans");workspace.memberChoices=commerce.allowed("TEAM")?commerce.choices("team_members"):[];workspace.requestId="";editor.open()}
  function refresh(){commerce.browse(selectedTable,search.text,page)}
  Theme {id: theme}
@@ -31,18 +34,18 @@ ColumnLayout {
  FileDialog {id:receiptHtml;fileMode:FileDialog.SaveFile;defaultSuffix:"html";onAccepted:commerce.receiptHtmlFile(workspace.selectedId,workspace.selectedTable==="sales",selectedFile,workspace.arabic)}
  FileDialog {id: backup; fileMode: FileDialog.SaveFile; defaultSuffix: "fgbackup"; onAccepted: {commerce.exportBackup(selectedFile,backupPassword.text);backupPassword.clear()}}
  FileDialog {id: restore; fileMode: FileDialog.OpenFile; onAccepted: {commerce.restoreBackup(selectedFile,backupPassword.text);backupPassword.clear();workspace.refresh()}}
- RowLayout {
-  Layout.fillWidth: true
-  Text {text: workspace.tr("مساحة الأعمال المحلية","Local business workspace")+" • "+commerce.role; color: theme.mint; Layout.fillWidth: true}
-  FgField {id: localUser; text: "owner"; placeholderText: workspace.tr("الحساب المحلي","Local account"); Layout.preferredWidth: 150}
-  FgField {id: localPassword; echoMode: TextInput.Password; placeholderText: workspace.tr("كلمة المرور","Password"); Layout.preferredWidth: 190}
+ Flow {
+  Layout.fillWidth: true;spacing:8
+  Text {width:workspace.width;text: workspace.tr("مساحة الأعمال المحلية","Local business workspace")+" • "+commerce.role; color: theme.mint; Layout.fillWidth: true}
+  FgField {id: localUser;width:150; text: "owner"; placeholderText: workspace.tr("الحساب المحلي","Local account"); Layout.preferredWidth: 150}
+  FgField {id: localPassword;width:190; echoMode: TextInput.Password; placeholderText: workspace.tr("كلمة المرور","Password"); Layout.preferredWidth: 190}
   FgButton {text: commerce.enrolled?workspace.tr("دخول","Sign in"):workspace.tr("إنشاء المالك","Create owner"); onClicked: {if(commerce.enrolled)commerce.login(localUser.text,localPassword.text);else commerce.enroll(localPassword.text);localPassword.clear();workspace.refresh()}}
   FgButton {text: workspace.tr("قفل","Lock"); onClicked: commerce.lock()}
  }
- Text {text: commerce.scope; color: theme.muted; wrapMode: Text.Wrap; Layout.fillWidth: true}
+ Text {text:commerce.scopeName;ToolTip.visible:scopeHover.hovered;ToolTip.text:commerce.scope;HoverHandler {id:scopeHover} color: theme.muted; wrapMode: Text.Wrap; Layout.fillWidth: true}
  Flow {
   Layout.fillWidth: true; spacing: 8
-  ComboBox {id: records; textRole:"display";valueRole:"id";model:commerce.tables.concat(["local_accounts"]).map(function(key){return {id:key,display:workspace.tableName(key)}}); currentIndex: 2; Layout.preferredWidth: 190; onActivated: {workspace.selectedTable=currentValue;workspace.page=0;workspace.selectedId="";workspace.refresh()}}
+  ComboBox {id: records; textRole:"display";valueRole:"id";model:commerce.tables.concat(["local_accounts"]).map(function(key){return {id:key,display:workspace.tableName(key)}}); currentIndex:2;onModelChanged:Qt.callLater(function(){records.currentIndex=records.model.findIndex(function(item){return item.id===workspace.selectedTable})});width:190; Layout.preferredWidth: 190; onActivated: {workspace.selectedTable=currentValue;workspace.page=0;workspace.selectedId="";workspace.refresh()}}
   FgField {id: search; width: Math.max(180,workspace.width-770); placeholderText: workspace.tr("بحث","Search"); onTextEdited: {workspace.page=0;workspace.refresh()}}
   FgButton {text: workspace.tr("تحديث","Refresh"); onClicked: workspace.refresh()}
   FgButton {text: workspace.tr("CSV للصفحة","Page CSV"); enabled: commerce.allowed("EXPORT"); onClicked: csv.open()}
@@ -54,7 +57,7 @@ ColumnLayout {
  RowLayout {
   Layout.fillWidth: true
   ComboBox {id: action; model: workspace.arabic?workspace.labels:workspace.enLabels; Layout.preferredWidth: 230}
-  FgButton {text: workspace.tr("فتح العملية","Open operation"); onClicked:workspace.showEditor(); accent: theme.gold}
+  FgButton {text: workspace.tr("فتح العملية","Open operation");enabled:commerce.allowed(workspace.requiredPermission()); onClicked:workspace.showEditor(); accent: theme.gold}
   FgButton {text: workspace.tr("السابق","Previous"); enabled: workspace.page>0; onClicked: {workspace.page--;workspace.refresh()}}
   FgButton {text: workspace.tr("التالي","Next"); enabled: commerce.rows.length===50; onClicked: {workspace.page++;workspace.refresh()}}
   FgButton {text:workspace.tr("عرض المحفظة","View wallet");enabled:commerce.role==="RESELLER"||commerce.allowed("TEAM");onClicked:{workspace.walletData=commerce.resellerWallet(commerce.role==="RESELLER"?"":workspace.selectedId);if(workspace.walletData.name)wallet.open()}}
@@ -139,7 +142,7 @@ ColumnLayout {
     }
    }
    Text {text: commerce.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
-   FgButton {text: workspace.tr("حفظ العملية","Save operation"); accent: theme.mint; onClicked: {
+   FgButton {text: workspace.tr("حفظ العملية","Save operation");enabled:commerce.allowed(workspace.requiredPermission()); accent: theme.mint; onClicked: {
     if(!workspace.requestId.length)workspace.requestId=commerce.newRequestId();var data={id:workspace.requestId,name:name.text,phone:phone.text,service:service.currentText,account:account.text,currency:currency.currentText,subscriber_id:subscriber.text,plan_id:plan.text,price:amount.text,amount:amount.text,days:Number(days.text),paid:paid.text,method:method.currentText,reference:reference.text,category:category.text,note:note.text,reason:note.text,target_id:target.text,role:role.currentText,commission_bps:Number(commission.text),member_id:member.text,kind:kind.currentText,sale_id:sale.text,reversal_of:walletTarget.text,username:username.text,password:password.text}
     var items=[];for(var i=0;i<lines.count;i++){var l=lines.get(i);items.push({name:l.name,quantity:l.quantity,unitPrice:l.unitPrice})}data.lines=items
     var saved=commerce.perform(workspace.op,data);password.clear();if(saved.length){editor.close();workspace.refresh()}

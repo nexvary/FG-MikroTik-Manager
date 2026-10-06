@@ -11,6 +11,7 @@ class RouterTools:public QObject{
  Q_PROPERTY(QString status READ status NOTIFY changed)
  Q_PROPERTY(QVariantList checks READ checks NOTIFY changed)
  Q_PROPERTY(QVariantList changes READ changes NOTIFY changed)
+ Q_PROPERTY(QVariantList backups READ backups NOTIFY changed)
  Q_PROPERTY(QVariantList interfaces READ interfaces NOTIFY changed)
  Q_PROPERTY(QVariantList dhcpNetworks READ dhcpNetworks NOTIFY changed)
  Q_PROPERTY(QVariantList users READ users NOTIFY changed)
@@ -26,6 +27,7 @@ public:
  static QJsonObject hotspotPlan(QJsonObject tables,QJsonObject request,QString management);
  static QJsonObject portsPlan(QJsonObject tables,QString client,QString wan,QString management);
  static QJsonObject dnsPlan(QJsonObject tables,QSet<QString> networks,QString mode);
+ static QJsonObject pingEvidence(QJsonArray rows);
  static QJsonObject renderPortal(QJsonObject design);
  Q_INVOKABLE void inspect();
  Q_INVOKABLE void planHotspot(QJsonObject request);
@@ -34,6 +36,10 @@ public:
  Q_INVOKABLE void apply(QString backupPassword);
  Q_INVOKABLE void restoreDns();
  Q_INVOKABLE void synchronizeClock();
+ Q_INVOKABLE void repairDns();
+ Q_INVOKABLE void loadBackups();
+ Q_INVOKABLE QString backupPassword(QString file);
+ QVariantList backups()const;
  Q_INVOKABLE void backup(QString password);
  Q_INVOKABLE void restoreBackup(QString file,QString password);
  Q_INVOKABLE void exportConfiguration();

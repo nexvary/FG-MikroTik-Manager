@@ -1,15 +1,47 @@
-# FG MTM Qt Desktop 0.3.0
+# FG MTM for Windows 0.14.0
 
-C++20, Qt 6.8.3 Quick/QuickControls2/Network, QML, CMake, MSVC 2022 and Inno Setup: the applicable desktop technologies verified in nexvary/NEXVARY-Avionics-Lab main at ba0c203f55755aab1d22eb0af0cd8bd43f163a9d. WebEngine is unnecessary for the current FG workspace.
+Native C++20 and Qt 6.8.3 Quick/QuickControls2, Network, Widgets/PrintSupport and SQLite, built with CMake/MSVC 2022 and packaged with Inno Setup. This follows the applicable desktop stack in `nexvary/NEXVARY-Avionics-Lab`; the application runs locally without a browser engine.
 
-Android palette is copied from app/.../ui/Theme.kt, not guessed from screenshots. Arabic RTL/English, resizable desktop layout, Back history, consistent vector navigation icons and independent floating terminal window (F4). Installer contains a product introduction and the FG Machines icon. Existing verified WPF edition is preserved.
+Arabic RTL and English use the Android application's black, navy, silver, blue, mint and gold palette. The Windows workspace includes the FG Machines icon, task dashboard, resizable layouts, a floating terminal (F4), 137 searchable Android command templates, and a bilingual installation introduction.
 
-Implemented: FG Server session/identity verification, logout, 17 business tables, search, pagination, formula-safe CSV, server diagnostics, RADIUS reads, RouterOS 7 HTTPS REST reads with redaction, organized print commands in a floating terminal. Session/password memory only, HTTPS validation and no redirect following. Large money values are represented as strings in QML and remain exact in export.
+## Workspaces
 
-## Parity gate — unfinished
+| Android functionality | Windows entry point |
+| --- | --- |
+| Router profiles, MNDP discovery, API/API_SSL, HTTPS REST, explicit HTTP REST and AUTO | Routers |
+| Network/system administration, 33 menu paths, named field forms, previews and confirmations | Routers; floating terminal |
+| Readiness, Internet packet loss/latency, interface and HotSpot checks | Network tools → Diagnostics |
+| HotSpot preparation, DHCP/pool/NAT, client bridge planning, protected WAN and rollback | Network tools → HotSpot setup |
+| Subscriber enable/disable, disconnection/deletion, profile and time top-up | Network tools → Subscribers |
+| DNS family / ads-and-trackers filtering with selected client networks and restoration | Network tools → Protection |
+| Portal branding, logo selection, saved design, login/status preview, verified installation and restoration | Network tools → Login portal |
+| Encrypted router backups, backup password vault, restoration, clock/NTP, missing-DNS repair, export and reboot | Network tools → Backup & clock |
+| HotSpot, PPPoE, User Manager and offline vouchers; bulk generation, expiry, QR, selected-card preview, PDF/PNG/HTML/CSV/RSC, A4/58/80 mm printing | Vouchers & archive |
+| Encrypted archive, paging, portable password-protected export/import | Vouchers & archive |
+| Subscribers, plans, renewal, charges/payments, sales, invoices/receipts, voids and expenses | Local business |
+| Staff roles, local login, disabling staff, reseller commissions/wallets, branch selection and audit | Local business |
+| CSV subscriber import, preview/revalidation, reports by currency and full-period export | Import & reports |
+| Device/account binding, importing router accounts, immutable renewal jobs, expiry enforcement and suspension before invoice void | Bindings & renewal |
+| HTTPS identity verification and two-way, revision-checked replication with conflict protection | Server synchronization |
+| Server business browsing, RADIUS users/sessions and server diagnostics | Server business; RADIUS; Server diagnostics |
+| Four monitored routers, two concurrent polls, health/outage/recovery alerts and optional background tray operation | Monitoring & alerts |
+| Developer and FG Machines links | About |
 
-Android UI inventory: RouterApp/RouterAdminScreen, AdvancedSetupScreen, HotspotToolsScreen, DnsProtectionScreen, VoucherStudioScreen/VoucherArchiveScreen, BusinessScreen/BusinessAccessScreen/BusinessCloudScreen/BusinessToolsScreen/TeamScreen, AboutDeveloperScreen and CommandCenterSheet.
+Router writes require local ROUTER permission and are recorded as PENDING followed by ACKNOWLEDGED or REVIEW, without password or command-argument logging. Financial writes are transactional and use stable operation identifiers; records are reversed or voided rather than overwritten. Lost mutation replies never trigger an automatic replay. Conflicting replica records stop synchronization.
 
-Still requires porting and acceptance tests: RouterOS 6/7 binary API and discovery; guided HotSpot setup/preview/backup/repair/rollback; subscriber enable/disable/renewal/top-up/profile/kick; bulk vouchers/QR/PDF/thermal print/archive; portal design/installation/restoration; local commerce writes/receipts/invoices/payments/voids/expenses; roles/team/audit/replication conflicts; multi-router monitoring/alerts; DNS protection; advanced write commands and developer/About content. These are not advertised as completed. Terminal currently supports allowlisted print reads, not a complete RouterOS scripting shell.
+Connection passwords and server sessions stay in memory. Router backup passwords, voucher archives and recovery journals use Windows DPAPI. Portable backups use the Android-compatible PBKDF2/AES-GCM envelope. HTTPS certificate and host checks remain enabled. A local owner can be enrolled before using staff accounts; restores and joining an empty server branch precede owner enrollment.
 
-Windows CI: C++ contract checks, packaged launch and installed launch, screenshot. Physical router and user-server commissioning are separate. Not release-ready until the full parity gate passes.
+## First use
+
+1. Install `FG-MTM-Windows-0.14.0-Setup.exe` on Windows x64.
+2. For an existing server branch, sign in under Server synchronization and join the empty local store before setting up the local owner. Otherwise, create the owner in Local business first.
+3. Connect to a MikroTik router in Routers using its actual transport and enabled port. Save a named connection if monitoring is needed. Stored profiles exclude passwords.
+4. Server synchronization is optional. The supplied server origin is `https://3.65.234.184`, tenant `d1d1af2d-10f7-41ab-ae96-bdc10333d781`, branch `8f2aeb05-aac9-4769-a2a4-920aa1e1859e`. Use an independently created Windows server account to keep single-session server authentication from revoking another device's token.
+
+## Build and validation
+
+Configure with Qt 6.8.3 for MSVC 2022 x64, then build Release and run CTest. `.github/workflows/windows-qt.yml` builds the native application, runs eight contract groups, independently decodes generated QR pixels, deploys the Qt dependencies, checks every Arabic/English workspace and operation dialogs, builds the installer, and launches the installed application. UI PNGs and JUnit test evidence are uploaded separately.
+
+Tests exercise protocol framing, lost-read recovery and no mutation replay, exact money, roles and wallets, CSV atomicity, receipts and portable/legacy backup restore, preparation/rollback constraints, monitoring transitions, renewal/expiry sequencing with a mock RouterOS server, and HTTPS replication using a process-local public test CA. TLS fixtures are included only in the test executable. Test data and screenshots are explicit fixtures; they are not claimed to come from the user's router or server.
+
+Physical router commissioning, printer-driver operation and the user's live FG Server credentials are not available in the build environment; automated and installed-app checks do not certify those external systems.

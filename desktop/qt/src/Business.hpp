@@ -11,6 +11,7 @@
 class Business:public QObject{
  Q_OBJECT
  Q_PROPERTY(QString status READ status NOTIFY changed)
+ Q_PROPERTY(QString scopeName READ scopeName NOTIFY changed)
  Q_PROPERTY(QString scope READ scope NOTIFY changed)
  Q_PROPERTY(QString role READ role NOTIFY changed)
  Q_PROPERTY(bool enrolled READ enrolled NOTIFY changed)
@@ -20,7 +21,8 @@ class Business:public QObject{
  Q_PROPERTY(QStringList tables READ tables CONSTANT)
 public:
  explicit Business(QString file={},QObject*p=nullptr);~Business();
- QString status()const{return message;}QString scope()const{return organization+" / "+branch;}QString role()const;bool enrolled()const;
+ QString status()const{return message;}QString scopeName()const;
+ QString scope()const{return organization+" / "+branch;}QString role()const;bool enrolled()const;
  QVariantList rows()const{return view;}QStringList tables()const;
  QVariantList importRows()const{return importView;}QVariantList reports()const{return reportView;}
  Q_INVOKABLE void previewImport(QUrl file);
@@ -28,6 +30,8 @@ public:
  Q_INVOKABLE void exportTemplate(QUrl file);
  Q_INVOKABLE void report(QString from,QString until);
  Q_INVOKABLE void exportFinancial(QUrl file,QString from,QString until);
+ QJsonObject beginRouterAttempt(QString command);
+ void finishRouterAttempt(QJsonObject attempt,QString status);
  static qint64 money(QString text);static QSet<QString> permissions(QString role);
  Q_INVOKABLE bool allowed(QString permission)const;
  Q_INVOKABLE QString perform(QString operation,QJsonObject fields);

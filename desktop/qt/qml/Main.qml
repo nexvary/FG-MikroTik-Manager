@@ -20,7 +20,8 @@ ApplicationWindow {
  property var tableAr: ["المشتركون","الباقات","الفواتير","السجل المالي","المبيعات","المصروفات","الموظفون والموزعون","حركة الموزعين","الراوترات","مهام الشبكة","تفاصيل الدفع","إلغاء الفواتير","إلغاء المبيعات","دفعات الاستيراد","التدقيق","المؤسسة","الفروع"]
  function tr(ar,en){return arabic?ar:en}
  function navigate(value){if(value!==page){history=history.concat([page]);page=value;backend.clearView();if(page==="business")filter()}}
- function showBusinessEditor(){localBusiness.showEditor()}
+ function closeReviewDialogs(){localBusiness.closeDialogs();voucherStudio.closeDialogs();adminEditor.close();terminalWindow.hide()}
+ function showBusinessEditor(){localBusiness.showEditorFor("renew")}
  function showVoucherPreview(){voucherStudio.previewFirst()}
  function showRouterEditor(){adminEditor.open()}
  function showTerminal(){terminalWindow.show();terminalWindow.raise()}
@@ -41,8 +42,8 @@ ApplicationWindow {
     Text {text: "FG MTM"; color: theme.blue; font.pixelSize: 18; font.bold: true}
     Text {text: root.tr("إدارة شبكتك وأعمالك","Network & business"); color: theme.muted; font.pixelSize: 13}
     Rectangle {Layout.fillWidth: true; height: 1; color: theme.silver; opacity: 0.5}
-    ScrollView {Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth;ScrollBar.vertical.policy:ScrollBar.AlwaysOn
-    ColumnLayout {width:parent.width;spacing:8
+    ScrollView {id:navScroll;Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth;ScrollBar.vertical:ScrollBar {policy:ScrollBar.AlwaysOn;width:5;background:Rectangle {color:theme.panel;radius:2} contentItem:Rectangle {color:theme.mint;opacity:0.55;radius:2}}
+    ColumnLayout {width:navScroll.availableWidth-10;spacing:8
     Repeater {
      model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"commerce",ar:"الأعمال المحلية",en:"Local business",icon:1},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:1},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:3},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"tools",ar:"إدارة الشبكة",en:"Network tools",icon:3},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4},{key:"about",ar:"عنا",en:"About",icon:5}]
      delegate: FgButton {
@@ -56,7 +57,7 @@ ApplicationWindow {
     }}
     FgButton {Layout.fillWidth: true; text: root.tr("ترمنال عائم • F4","Floating terminal • F4"); accent: theme.mint; onClicked: {terminalWindow.show();terminalWindow.raise()}}
     FgButton {Layout.fillWidth: true; text: root.arabic ? "English" : "العربية"; onClicked: root.arabic=!root.arabic}
-    Text {text: "C++20 · Qt 6 · QML"; color: theme.muted; font.pixelSize: 12}
+    Text {text: "FG Machines · 0.14.0"; color: theme.muted; font.pixelSize: 12}
    }
   }
   ColumnLayout {
@@ -162,7 +163,7 @@ ApplicationWindow {
         required property var modelData
         required property int index
         width: ListView.view.width; height: 46; color: root.page==="router"&&root.selectedRouterId===modelData[".id"] ? theme.blue : index%2===0 ? theme.panel : theme.raised
-        TapHandler {onTapped: if(root.page==="router"){root.selectedRouterId=parent.modelData[".id"]||"";root.selectedRouterRow=parent.modelData}}
+        TapHandler {onTapped: if(root.page==="router"){root.selectedRouterId=parent.modelData[".id"]||"";root.selectedRouterRow=parent.modelData;if(parent.modelData.host)routerUrl.text=parent.modelData.host}}
         Row {Repeater {model: backend.columns; Text {required property string modelData; text: parent.parent.modelData[modelData]||""; width: 190; height: 46; padding: 8; color: theme.white; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter; ToolTip.visible: hovered.hovered; ToolTip.text: text; HoverHandler {id: hovered}}}}
        }
       }
@@ -173,7 +174,7 @@ ApplicationWindow {
   }
  }
  Dialog {
-  id: commandPreview; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 640
+  id: commandPreview; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(640,parent.width-40)
   title: root.tr("مراجعة أمر الراوتر","Review router command")
   contentItem: ColumnLayout {Text {text: backend.preview; color: theme.white; Layout.fillWidth: true; wrapMode: Text.Wrap} FgButton {text: root.tr("تأكيد التنفيذ","Confirm execution"); enabled: !backend.busy; onClicked: {backend.executePreview();commandPreview.close()}}}
  }
@@ -215,9 +216,8 @@ ApplicationWindow {
    anchors.fill: parent; anchors.margins: 18; spacing: 12
    Text {text: root.tr("أوامر RouterOS • راجع التغييرات قبل التنفيذ","RouterOS commands • review changes before execution"); color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
    ScrollView {Layout.fillWidth: true; Layout.fillHeight: true; TextArea {text: backend.terminal; readOnly: true; selectByMouse: true; color: theme.white; font.family: "Consolas"; font.pixelSize: 14; wrapMode: TextEdit.Wrap; background: Rectangle {color: theme.navy}}}
-   RowLayout {
-    Layout.fillWidth: true
-    FgField {id: commandInput; Layout.fillWidth: true; placeholderText: "/system resource print"; LayoutMirroring.enabled: false; onAccepted: if(!backend.busy)backend.command(text)}
+   FgField {id: commandInput; Layout.fillWidth: true; placeholderText: "/system resource print"; LayoutMirroring.enabled: false; onAccepted: if(!backend.busy)backend.command(text)}
+   Flow {Layout.fillWidth:true;spacing:8
     FgButton {text: root.tr("معاينة / تنفيذ","Preview / run"); enabled: !backend.busy; onClicked: backend.command(commandInput.text)}
     FgButton {text: root.tr("المكتبة","Library");onClicked:commandLibrary.open()}
     FgButton {text: root.tr("نسخ","Copy");onClicked:backend.copyText(commandInput.text)}

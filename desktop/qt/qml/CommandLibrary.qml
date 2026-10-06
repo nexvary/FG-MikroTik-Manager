@@ -12,7 +12,7 @@ Dialog {
  function choose(item){chosen=item;let keys=[],m,re=/\{\{([a-z]+)\}\}/g;while((m=re.exec(item.command))!==null)if(keys.indexOf(m[1])<0)keys.push(m[1]);fields=keys;values=({})}
  function command(){return chosen?backend.fillCommand(chosen.command,values):""}
  title:tr("مكتبة أوامر MikroTik","MikroTik command library")
- modal:true;width:840;height:Math.min(680,parent.height-40);anchors.centerIn:parent
+ modal:true;width:Math.min(840,parent.width-40);height:Math.min(680,parent.height-40);anchors.centerIn:parent
  Theme {id:theme}
  contentItem:ColumnLayout {
   FgField {id:search;Layout.fillWidth:true;placeholderText:library.tr("ابحث بالاسم أو القسم أو الأمر","Search name, category or command")}

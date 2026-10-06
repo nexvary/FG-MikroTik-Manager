@@ -6,6 +6,7 @@ ColumnLayout {
  id: studio
  property bool arabic: true
  function tr(ar,en){return arabic?ar:en}
+ function closeDialogs(){cardPreview.close();activation.close()}
  function previewFirst(){vouchers.selectCard(0);studio.previewImage=vouchers.previewCard(0);cardPreview.open()}
  property string exportFormat: "PDF"
  property string previewImage:""

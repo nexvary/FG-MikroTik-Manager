@@ -26,7 +26,7 @@ Item {
     ColumnLayout {anchors.fill:parent;anchors.margins:14
      RowLayout {Layout.fillWidth:true;Text {Layout.fillWidth:true;color:theme.white;font.bold:true;text:modelData.name+" • "+modelData.host} FgButton {text:pane.tr("إيقاف","Stop");onClicked:monitor.stop(modelData.id)}}
      Text {Layout.fillWidth:true;color:theme.silver;wrapMode:Text.Wrap;text:modelData.checking?pane.tr("جارٍ الفحص…","Checking…"):modelData.incident==="UNREACHABLE"?pane.tr("انقطع الاتصال","Unreachable"):modelData.incident==="HIGH_CPU"?pane.tr("المعالج مرتفع","High CPU"):modelData.stale?pane.tr("البيانات قديمة أو لم تصل بعد","Stale or awaiting first sample"):pane.tr("متصل • البيانات حديثة","Online • current data")}
-     Text {Layout.fillWidth:true;color:theme.muted;elide:Text.ElideRight;text:JSON.stringify(modelData.snapshot)}
+     Text {Layout.fillWidth:true;color:theme.muted;elide:Text.ElideRight;text:{let r=modelData.snapshot.resource||{};return "CPU: "+(r["cpu-load"]||"—")+"% • "+pane.tr("الذاكرة الحرة: ","Free memory: ")+(r["free-memory"]?Math.round(Number(r["free-memory"])/1048576)+" MB":"—")+" • "+pane.tr("مدة التشغيل: ","Uptime: ")+(r.uptime||"—")+" • "+pane.tr("الواجهات: ","Interfaces: ")+(modelData.snapshot.interfaces||[]).length}}
     }
    }
   }

@@ -9,6 +9,8 @@
 #include <QElapsedTimer>
 #include <QUrl>
 #include <memory>
+#include <utility>
+#include <stdexcept>
 namespace RouterCodec {
 QByteArray length(quint32 n){QByteArray b;auto put=[&](quint32 x){b.append(char(x&255));};if(n<0x80)put(n);else if(n<0x4000){put((n>>8)|0x80);put(n);}else if(n<0x200000){put((n>>16)|0xc0);put(n>>8);put(n);}else if(n<0x10000000){put((n>>24)|0xe0);put(n>>16);put(n>>8);put(n);}else{put(0xf0);put(n>>24);put(n>>16);put(n>>8);put(n);}return b;}
 QByteArray sentence(const QStringList &words){QByteArray b;for(auto word:words){auto bytes=word.toUtf8();b+=length(quint32(bytes.size()));b+=bytes;}b.append('\0');return b;}
@@ -43,7 +45,7 @@ RouterClient::RouterClient(QObject*p):QObject(p){deadline.setSingleShot(true);co
  connect(&socket,&QSslSocket::disconnected,this,[this]{authenticated=false;if(active)fail("انقطع اتصال الراوتر • Router connection lost",true);emit changed();});}
 RouterClient::~RouterClient(){callback={};active=false;deadline.stop();socket.disconnect(this);socket.abort();net.disconnect(this);password.fill(QChar(0));}
 void RouterClient::configure(QString h,int p,QString u,QString pw,QString proto){close();host=h.trimmed();port=p;username=u;password=pw;autoMode=proto=="AUTO";negotiated=false;selecting=false;protocol=autoMode?"API":proto=="REST_HTTPS"?"REST":proto;port=autoMode?8728:p;message.clear();emit changed();}
-void RouterClient::close(){++configVersion;++generation;selecting=false;negotiated=false;bool running=active||pendingRetry;pendingRetry=false;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
+void RouterClient::close(){auditAttempt={};++configVersion;++generation;selecting=false;negotiated=false;bool running=active||pendingRetry;pendingRetry=false;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
 void RouterClient::read(QString menu,Done done){execute(menu,"print",{},std::move(done));}
 void RouterClient::execute(QString menu,QString operation,QJsonObject attrs,Done done){if(!authorization()){done({{},"ACCESS_DENIED"});return;}if(active||pendingRetry){done({{},"الراوتر مشغول • Router busy"});return;}
  if(autoMode&&!negotiated&&!selecting){selecting=true;const auto version=configVersion;
@@ -57,6 +59,7 @@ void RouterClient::execute(QString menu,QString operation,QJsonObject attrs,Done
  if(!retrying)readRetries=0;retrying=false;
  if(host.isEmpty()||username.isEmpty()||port<1||port>65535||!QStringList{"REST","REST_HTTP","API","API_SSL"}.contains(protocol)||!QRegularExpression("^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$").match(menu).hasMatch()) {done({{},"إعداد اتصال غير صالح • Invalid router settings"});return;}
  if(protocol!="REST"&&protocol!="REST_HTTP"&&!(socket.state()==QAbstractSocket::ConnectedState&&authenticated))socket.abort();
+ auditAttempt={};if(auditBegin&&operation!="print"&&operation!="get"&&operation!="monitor"&&menu!="ping"&&menu!="traceroute"){try{auditAttempt=auditBegin(menu+(operation.isEmpty()?QString{}:"/"+operation));}catch(const std::exception&e){done({{},QString::fromUtf8(e.what())});return;}}
  ++generation;active=true;wrote=false;loggingIn=false;path=menu;action=operation;attributes=attrs;rows={};trap.clear();callback=std::move(done);deadline.start(20000);message="جارٍ الاتصال • Connecting";emit changed();
  if(protocol=="REST"||protocol=="REST_HTTP"){
   QUrl url;url.setScheme(protocol=="REST_HTTP"?"http":"https");url.setHost(host);url.setPort(port);url.setPath("/rest/"+path+(action.isEmpty()||action=="add"||action=="print"&&attributes.isEmpty()?QString{}:"/"+action));
@@ -80,7 +83,7 @@ void RouterClient::receive(){input+=socket.readAll();if(input.size()>64*1024*102
  auto kind=words.first();if(kind=="!trap")trap=attrs["message"].toString("RouterOS rejected request");else if(kind=="!fatal"){fail(attrs["message"].toString("RouterOS closed session"));return;}else if(kind=="!re"){rows.append(attrs);if(rows.size()>100000){fail("عدد سجلات كبير • Too many router records");return;}}else if(kind=="!done"){
   if(!trap.isEmpty()){auto error=trap;if(loggingIn){active=false;authenticated=false;socket.abort();}finish({{},error});return;}if(loggingIn){authenticated=true;rows={};sendPending();}else{if(rows.isEmpty()&&!attrs["ret"].toString().isEmpty())rows.append(QJsonObject{{".id",attrs["ret"]}});finish({rows});return;}
  }} }
-void RouterClient::finish(RouterReply result){++generation;deadline.stop();active=false;loggingIn=false;message=result.ok()?"تم • Done":result.error;auto cb=std::move(callback);callback={};emit changed();if(cb)cb(result);}
+void RouterClient::finish(RouterReply result){if(!auditAttempt.isEmpty()&&auditFinish){auto attempt=std::exchange(auditAttempt,QJsonObject{});try{auditFinish(attempt,result.ok()?"ACKNOWLEDGED":"REVIEW");}catch(const std::exception&e){result.error=QString::fromUtf8(e.what())+"; ROUTER_AUDIT_NEEDS_REVIEW";result.uncertain=true;}}++generation;deadline.stop();active=false;loggingIn=false;message=result.ok()?"تم • Done":result.error;auto cb=std::move(callback);callback={};emit changed();if(cb)cb(result);}
 void RouterClient::fail(QString reason,bool io){if(!active)return;
  if(io&&action=="print"&&wrote&&readRetries==0){active=false;pendingRetry=true;authenticated=false;deadline.stop();++generation;auto current=generation;socket.abort();input.clear();readRetries++;QTimer::singleShot(0,this,[this,current]{if(!pendingRetry||generation!=current)return;pendingRetry=false;auto cb=std::move(callback);callback={};retrying=true;execute(path,action,attributes,std::move(cb));});return;}
 bool uncertain=wrote&&action!="print";active=false;authenticated=false;socket.abort();input.clear();finish({{},reason,uncertain});}
