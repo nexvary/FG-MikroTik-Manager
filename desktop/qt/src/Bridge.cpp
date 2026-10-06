@@ -11,6 +11,9 @@
 #include <memory>
 #include <QSettings>
 #include <QUuid>
+#include <QRegularExpression>
+#include <QApplication>
+#include <QClipboard>
 Bridge::Bridge(QObject *p):QObject(p),routerClient(this) {
  connect(&routerClient,&RouterClient::changed,this,[this]{m_status=routerClient.status();emit changed();});
  connect(&routerClient,&RouterClient::discoveryReady,this,[this](QJsonArray rows){showRows(rows);});
@@ -85,3 +88,7 @@ void Bridge::syncBusiness(bool joinEmpty){
   }catch(const std::exception&e){m_status=e.what();emit changed();}
  });
 }
+
+QVariantList Bridge::commandLibrary()const{QFile f(":/resources/command-library.json");if(!f.open(QIODevice::ReadOnly))return {};return QJsonDocument::fromJson(f.readAll()).array().toVariantList();}
+QString Bridge::fillCommand(QString text,QVariantMap values){QRegularExpression pattern("\\{\\{([a-z]+)\\}\\}");auto matches=pattern.globalMatch(text);QList<QRegularExpressionMatch> found;while(matches.hasNext())found.append(matches.next());for(auto it=found.rbegin();it!=found.rend();++it){auto value=values[it->captured(1)].toString();if(value.trimmed().isEmpty()||value.contains('\n')||value.contains('\r')||value.contains(QChar(0))){m_status="املأ كل المتغيرات بقيم من سطر واحد • Fill every variable with one-line values";emit changed();return {};}value.replace("\\","\\\\").replace("\"","\\\"");text.replace(it->capturedStart(),it->capturedLength(),"\""+value+"\"");}auto command=RouterCodec::parse(text);if(!command.valid()){m_status=command.error;emit changed();return {};}return text;}
+void Bridge::copyText(QString text){QApplication::clipboard()->setText(text);m_status="نُسخ النص • Text copied";emit changed();}

@@ -10,6 +10,7 @@
 class Business;
 class Bridge : public QObject {
  Q_OBJECT
+ Q_PROPERTY(QVariantList commandLibrary READ commandLibrary CONSTANT)
  Q_PROPERTY(bool routerConnected READ routerConnected NOTIFY changed)
  Q_PROPERTY(QString preview READ preview NOTIFY changed)
  Q_PROPERTY(QVariantList profiles READ profiles NOTIFY changed)
@@ -27,6 +28,9 @@ public:
  bool routerConnected()const{return routerClient.connected();} QString preview()const{return m_preview;} QVariantList profiles()const; bool connected()const{return !token.isEmpty() && QDateTime::currentDateTimeUtc()<expires;}
  QString status()const{return m_status;} QString scope()const{return m_scope;} QString terminal()const{return m_terminal;}
  QVariantList rows()const{return m_rows;} QStringList columns()const{return m_columns;} QStringList menus()const;
+ QVariantList commandLibrary()const;
+ Q_INVOKABLE QString fillCommand(QString text,QVariantMap values);
+ Q_INVOKABLE void copyText(QString text);
  void setCommerce(Business *value){commerce=value;}
  RouterClient *routerTransport(){return &routerClient;}
  Q_INVOKABLE void login(QString url,QString tenant,QString branch,QString user,QString password);

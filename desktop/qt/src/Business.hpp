@@ -15,11 +15,19 @@ class Business:public QObject{
  Q_PROPERTY(QString role READ role NOTIFY changed)
  Q_PROPERTY(bool enrolled READ enrolled NOTIFY changed)
  Q_PROPERTY(QVariantList rows READ rows NOTIFY changed)
+ Q_PROPERTY(QVariantList importRows READ importRows NOTIFY changed)
+ Q_PROPERTY(QVariantList reports READ reports NOTIFY changed)
  Q_PROPERTY(QStringList tables READ tables CONSTANT)
 public:
  explicit Business(QString file={},QObject*p=nullptr);~Business();
  QString status()const{return message;}QString scope()const{return organization+" / "+branch;}QString role()const;bool enrolled()const;
  QVariantList rows()const{return view;}QStringList tables()const;
+ QVariantList importRows()const{return importView;}QVariantList reports()const{return reportView;}
+ Q_INVOKABLE void previewImport(QUrl file);
+ Q_INVOKABLE void importSubscribers();
+ Q_INVOKABLE void exportTemplate(QUrl file);
+ Q_INVOKABLE void report(QString from,QString until);
+ Q_INVOKABLE void exportFinancial(QUrl file,QString from,QString until);
  static qint64 money(QString text);static QSet<QString> permissions(QString role);
  Q_INVOKABLE bool allowed(QString permission)const;
  Q_INVOKABLE QString perform(QString operation,QJsonObject fields);
@@ -37,7 +45,7 @@ public:
  QString device()const;
 signals:void changed();
 private:
- QSqlDatabase db;QString connection,message,organization,branch;QVariantList view;QJsonObject principal;QElapsedTimer clock;qint64 expiry=0;
+ QSqlDatabase db;QString connection,message,organization,branch;QVariantList view,importView,reportView;QString importText;QJsonArray parseSubscribers(QString text)const;QJsonObject principal;QElapsedTimer clock;qint64 expiry=0;
  void guard(QString permission)const;QJsonObject session()const;
  class QSqlQuery sql(QString query,QVariantList args={})const;
  QJsonObject one(QString table,QString id)const;QJsonObject scoped(QString table,QString id)const;

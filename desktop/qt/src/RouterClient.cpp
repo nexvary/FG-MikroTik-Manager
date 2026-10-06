@@ -35,29 +35,38 @@ RouterCommand parse(const QString &line){RouterCommand c;QString token;QStringLi
  return c;
 }
 }
-RouterClient::RouterClient(QObject*p):QObject(p){deadline.setSingleShot(true);connect(&deadline,&QTimer::timeout,this,[this]{fail("انتهت مهلة الراوتر • Router timeout");});
+RouterClient::RouterClient(QObject*p):QObject(p){deadline.setSingleShot(true);connect(&deadline,&QTimer::timeout,this,[this]{fail("انتهت مهلة الراوتر • Router timeout",true);});
  connect(&socket,&QSslSocket::connected,this,[this]{if(protocol=="API")sendLogin();});connect(&socket,&QSslSocket::encrypted,this,&RouterClient::sendLogin);
  connect(&socket,&QSslSocket::readyRead,this,&RouterClient::receive);
- connect(&socket,&QSslSocket::errorOccurred,this,[this](QAbstractSocket::SocketError){if(active)fail("انقطع اتصال الراوتر • Router connection lost");});
+ connect(&socket,&QSslSocket::errorOccurred,this,[this](QAbstractSocket::SocketError){if(active)fail("انقطع اتصال الراوتر • Router connection lost",true);});
  connect(&socket,&QSslSocket::sslErrors,this,[this](const QList<QSslError>&){fail("شهادة الراوتر غير موثوقة • Router certificate rejected");});
- connect(&socket,&QSslSocket::disconnected,this,[this]{authenticated=false;if(active)fail("انقطع اتصال الراوتر • Router connection lost");emit changed();});}
+ connect(&socket,&QSslSocket::disconnected,this,[this]{authenticated=false;if(active)fail("انقطع اتصال الراوتر • Router connection lost",true);emit changed();});}
 RouterClient::~RouterClient(){callback={};active=false;deadline.stop();socket.disconnect(this);socket.abort();net.disconnect(this);password.fill(QChar(0));}
-void RouterClient::configure(QString h,int p,QString u,QString pw,QString proto){close();host=h.trimmed();port=p;username=u;password=pw;protocol=proto;message.clear();emit changed();}
-void RouterClient::close(){++generation;bool running=active;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
+void RouterClient::configure(QString h,int p,QString u,QString pw,QString proto){close();host=h.trimmed();port=p;username=u;password=pw;autoMode=proto=="AUTO";negotiated=false;selecting=false;protocol=autoMode?"API":proto=="REST_HTTPS"?"REST":proto;port=autoMode?8728:p;message.clear();emit changed();}
+void RouterClient::close(){++configVersion;++generation;selecting=false;negotiated=false;bool running=active;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
 void RouterClient::read(QString menu,Done done){execute(menu,"print",{},std::move(done));}
 void RouterClient::execute(QString menu,QString operation,QJsonObject attrs,Done done){if(!authorization()){done({{},"ACCESS_DENIED"});return;}if(active){done({{},"الراوتر مشغول • Router busy"});return;}
- if(host.isEmpty()||username.isEmpty()||port<1||port>65535||!QStringList{"REST","API","API_SSL"}.contains(protocol)||!QRegularExpression("^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$").match(menu).hasMatch()) {done({{},"إعداد اتصال غير صالح • Invalid router settings"});return;}
- if(protocol!="REST"&&!(socket.state()==QAbstractSocket::ConnectedState&&authenticated))socket.abort();
+ if(autoMode&&!negotiated&&!selecting){selecting=true;const auto version=configVersion;
+  read("system/identity",[this,menu,operation,attrs,done,version](RouterReply probe){
+   if(version!=configVersion){done({{},"SESSION_CHANGED"});return;}
+   if(probe.ok()){negotiated=true;selecting=false;execute(menu,operation,attrs,done);return;}
+   protocol="REST";port=443;
+   read("system/identity",[this,menu,operation,attrs,done,version](RouterReply fallback){if(version!=configVersion){done({{},"SESSION_CHANGED"});return;}selecting=false;if(!fallback.ok()){done(fallback);return;}negotiated=true;execute(menu,operation,attrs,done);});
+  });return;
+ }
+ if(!retrying)readRetries=0;retrying=false;
+ if(host.isEmpty()||username.isEmpty()||port<1||port>65535||!QStringList{"REST","REST_HTTP","API","API_SSL"}.contains(protocol)||!QRegularExpression("^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$").match(menu).hasMatch()) {done({{},"إعداد اتصال غير صالح • Invalid router settings"});return;}
+ if(protocol!="REST"&&protocol!="REST_HTTP"&&!(socket.state()==QAbstractSocket::ConnectedState&&authenticated))socket.abort();
  ++generation;active=true;wrote=false;loggingIn=false;path=menu;action=operation;attributes=attrs;rows={};trap.clear();callback=std::move(done);deadline.start(20000);message="جارٍ الاتصال • Connecting";emit changed();
- if(protocol=="REST"){
-  QUrl url;url.setScheme("https");url.setHost(host);url.setPort(port);url.setPath("/rest/"+path+(action.isEmpty()||action=="add"||action=="print"&&attributes.isEmpty()?QString{}:"/"+action));
+ if(protocol=="REST"||protocol=="REST_HTTP"){
+  QUrl url;url.setScheme(protocol=="REST_HTTP"?"http":"https");url.setHost(host);url.setPort(port);url.setPath("/rest/"+path+(action.isEmpty()||action=="add"||action=="print"&&attributes.isEmpty()?QString{}:"/"+action));
   QNetworkRequest req(url);req.setTransferTimeout(20000);req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::ManualRedirectPolicy);req.setHeader(QNetworkRequest::ContentTypeHeader,"application/json");req.setRawHeader("Authorization","Basic "+(username+":"+password).toUtf8().toBase64());
   auto reply=action=="print"&&attributes.isEmpty()?net.get(req):net.sendCustomRequest(req,action=="add"?"PUT":"POST",QJsonDocument(attributes).toJson(QJsonDocument::Compact));
   auto bytes=std::make_shared<QByteArray>();auto current=generation;wrote=action!="print";
   connect(reply,&QNetworkReply::readyRead,this,[reply,bytes]{*bytes+=reply->readAll();if(bytes->size()>32*1024*1024)reply->abort();});
   connect(&deadline,&QTimer::timeout,reply,&QNetworkReply::abort);
   connect(reply,&QNetworkReply::finished,this,[this,reply,bytes,current]{*bytes+=reply->readAll();int code=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();reply->deleteLater();if(!active||current!=generation)return;
-   if(reply->error()!=QNetworkReply::NoError||code<200||code>=300){finish({{},QString("رفض الراوتر أو فشل الاتصال (%1) • Router request failed (%1)").arg(code),code==0&&wrote});return;}
+   if(reply->error()!=QNetworkReply::NoError||code<200||code>=300){if(code==0&&action=="print"&&readRetries==0&&reply->error()!=QNetworkReply::SslHandshakeFailedError){wrote=true;fail("Router connection lost",true);return;}finish({{},QString("رفض الراوتر أو فشل الاتصال (%1) • Router request failed (%1)").arg(code),code==0&&wrote});return;}
    QJsonParseError e;auto doc=QJsonDocument::fromJson(*bytes,&e);if(!bytes->trimmed().isEmpty()&&e.error!=QJsonParseError::NoError){finish({{},"رد الراوتر غير صالح • Invalid router reply",wrote});return;}
    authenticated=true;finish({doc.isArray()?doc.array():doc.isObject()?QJsonArray{doc.object()}:QJsonArray{}});
   });return;
@@ -72,7 +81,9 @@ void RouterClient::receive(){input+=socket.readAll();if(input.size()>64*1024*102
   if(!trap.isEmpty()){auto error=trap;if(loggingIn){active=false;authenticated=false;socket.abort();}finish({{},error});return;}if(loggingIn){authenticated=true;rows={};sendPending();}else{if(rows.isEmpty()&&!attrs["ret"].toString().isEmpty())rows.append(QJsonObject{{".id",attrs["ret"]}});finish({rows});return;}
  }} }
 void RouterClient::finish(RouterReply result){++generation;deadline.stop();active=false;loggingIn=false;message=result.ok()?"تم • Done":result.error;auto cb=std::move(callback);callback={};emit changed();if(cb)cb(result);}
-void RouterClient::fail(QString reason){if(!active)return;bool uncertain=wrote&&action!="print";active=false;authenticated=false;socket.abort();input.clear();finish({{},reason,uncertain});}
+void RouterClient::fail(QString reason,bool io){if(!active)return;
+ if(io&&action=="print"&&wrote&&readRetries==0){auto savedPath=path,savedAction=action;auto attrs=attributes;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();readRetries++;retrying=true;execute(savedPath,savedAction,attrs,std::move(cb));return;}
+bool uncertain=wrote&&action!="print";active=false;authenticated=false;socket.abort();input.clear();finish({{},reason,uncertain});}
 void RouterClient::command(QString text,Done done){auto c=RouterCodec::parse(text);if(!c.valid()){done({{},c.error});return;}
  if(QStringList{"set","enable","disable","remove","renew","release"}.contains(c.action)){
   bool singleton=c.action=="set"&&QStringList{"system/identity","system/clock","system/ntp/client","ip/dns"}.contains(c.menu);

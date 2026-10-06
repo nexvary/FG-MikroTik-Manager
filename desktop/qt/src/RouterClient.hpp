@@ -39,7 +39,7 @@ private:
  QNetworkAccessManager net; QSslSocket socket; QTimer deadline;
  QString host,username,password,protocol,message;int port=443;
  bool active=false,authenticated=false,loggingIn=false,wrote=false;
- QByteArray input; QString path,action;QJsonObject attributes;QJsonArray rows,neighbors;QString trap;Done callback;quint64 generation=0;
+ QByteArray input; QString path,action;QJsonObject attributes;QJsonArray rows,neighbors;QString trap;Done callback;quint64 generation=0,configVersion=0;bool autoMode=false,negotiated=false,selecting=false,retrying=false;int readRetries=0;
  std::function<bool()> authorization=[](){return true;};
- void sendLogin();void sendPending();void receive();void finish(RouterReply result);void fail(QString reason);
+ void sendLogin();void sendPending();void receive();void finish(RouterReply result);void fail(QString reason,bool io=false);
 };

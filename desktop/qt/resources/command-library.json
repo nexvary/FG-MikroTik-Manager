@@ -1,0 +1,1372 @@
+[
+  {
+    "ar": "موارد النظام",
+    "en": "Resources",
+    "command": "/system resource print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض موارد النظام بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads resources without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "اسم الراوتر",
+    "en": "Identity",
+    "command": "/system identity print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض اسم الراوتر بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads identity without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الساعة والتاريخ",
+    "en": "Clock",
+    "command": "/system clock print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض الساعة والتاريخ بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads clock without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "حرارة وجهد الجهاز",
+    "en": "Health",
+    "command": "/system health print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض حرارة وجهد الجهاز بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads health without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "حزم النظام",
+    "en": "Packages",
+    "command": "/system package print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض حزم النظام بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads packages without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "لوحة الجهاز",
+    "en": "Routerboard",
+    "command": "/system routerboard print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض لوحة الجهاز بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads routerboard without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الترخيص",
+    "en": "License",
+    "command": "/system license print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض الترخيص بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads license without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "سجل التغييرات",
+    "en": "Change history",
+    "command": "/system history print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض سجل التغييرات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads change history without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "المهام المجدولة",
+    "en": "Scheduler",
+    "command": "/system scheduler print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض المهام المجدولة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads scheduler without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "السكربتات",
+    "en": "Scripts",
+    "command": "/system script print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض السكربتات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads scripts without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعدادات السجل",
+    "en": "Logging",
+    "command": "/system logging print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض إعدادات السجل بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads logging without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "وجهات السجل",
+    "en": "Log destinations",
+    "command": "/system logging action print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض وجهات السجل بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads log destinations without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مراقب الجهاز",
+    "en": "Watchdog",
+    "command": "/system watchdog print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض مراقب الجهاز بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads watchdog without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عميل الوقت",
+    "en": "NTP client",
+    "command": "/system ntp client print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض عميل الوقت بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ntp client without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خوادم الوقت",
+    "en": "NTP servers",
+    "command": "/system ntp client servers print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض خوادم الوقت بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ntp servers without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خادم الوقت",
+    "en": "NTP server",
+    "command": "/system ntp server print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض خادم الوقت بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ntp server without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "كل الواجهات",
+    "en": "All interfaces",
+    "command": "/interface print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض كل الواجهات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads all interfaces without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "منافذ الإيثرنت",
+    "en": "Ethernet",
+    "command": "/interface ethernet print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض منافذ الإيثرنت بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ethernet without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الجسور",
+    "en": "Bridges",
+    "command": "/interface bridge print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض الجسور بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads bridges without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "منافذ الجسر",
+    "en": "Bridge ports",
+    "command": "/interface bridge port print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض منافذ الجسر بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads bridge ports without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أجهزة الجسر",
+    "en": "Bridge hosts",
+    "command": "/interface bridge host print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض أجهزة الجسر بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads bridge hosts without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "VLAN الجسر",
+    "en": "Bridge VLANs",
+    "command": "/interface bridge vlan print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض VLAN الجسر بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads bridge vlans without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعدادات الربط",
+    "en": "Bridge settings",
+    "command": "/interface bridge settings print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض إعدادات الربط بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads bridge settings without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "واجهات VLAN",
+    "en": "VLAN interfaces",
+    "command": "/interface vlan print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض واجهات VLAN بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads vlan interfaces without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قوائم الواجهات",
+    "en": "Interface lists",
+    "command": "/interface list print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض قوائم الواجهات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads interface lists without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أعضاء القوائم",
+    "en": "List members",
+    "command": "/interface list member print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض أعضاء القوائم بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads list members without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "تجميع الروابط",
+    "en": "Bonding",
+    "command": "/interface bonding print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض تجميع الروابط بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads bonding without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الراوتر الاحتياطي",
+    "en": "VRRP",
+    "command": "/interface vrrp print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض الراوتر الاحتياطي بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads vrrp without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "واجهات WiFi الحديثة",
+    "en": "Modern WiFi",
+    "command": "/interface wifi print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض واجهات WiFi الحديثة بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads modern wifi without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعدادات WiFi",
+    "en": "WiFi configuration",
+    "command": "/interface wifi configuration print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض إعدادات WiFi بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads wifi configuration without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أمان WiFi",
+    "en": "WiFi security",
+    "command": "/interface wifi security print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض أمان WiFi بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads wifi security without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قنوات WiFi",
+    "en": "WiFi channels",
+    "command": "/interface wifi channel print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض قنوات WiFi بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads wifi channels without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء WiFi",
+    "en": "WiFi clients",
+    "command": "/interface wifi registration-table print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض عملاء WiFi بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads wifi clients without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الواي فاي القديم",
+    "en": "Legacy wireless",
+    "command": "/interface wireless print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض الواي فاي القديم بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads legacy wireless without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أمان الواي فاي القديم",
+    "en": "Legacy security",
+    "command": "/interface wireless security-profiles print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض أمان الواي فاي القديم بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads legacy security without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء الواي فاي القديم",
+    "en": "Legacy clients",
+    "command": "/interface wireless registration-table print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض عملاء الواي فاي القديم بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads legacy clients without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قائمة السماح اللاسلكية",
+    "en": "Wireless access list",
+    "command": "/interface wireless access-list print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض قائمة السماح اللاسلكية بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads wireless access list without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعداد CAP",
+    "en": "CAP settings",
+    "command": "/interface wireless cap print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض إعداد CAP بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads cap settings without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعداد CAP الحديث",
+    "en": "Modern CAP",
+    "command": "/interface wifi cap print",
+    "categoryAr": "الواي فاي",
+    "categoryEn": "Wi-Fi",
+    "descriptionAr": "يعرض إعداد CAP الحديث بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads modern cap without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عناوين IP",
+    "en": "IP addresses",
+    "command": "/ip address print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض عناوين IP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ip addresses without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أجهزة ARP",
+    "en": "ARP devices",
+    "command": "/ip arp print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض أجهزة ARP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads arp devices without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مخازن العناوين",
+    "en": "Address pools",
+    "command": "/ip pool print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض مخازن العناوين بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads address pools without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "العناوين المستخدمة",
+    "en": "Used addresses",
+    "command": "/ip pool used print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض العناوين المستخدمة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads used addresses without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء DHCP",
+    "en": "DHCP clients",
+    "command": "/ip dhcp-client print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض عملاء DHCP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dhcp clients without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خوادم DHCP",
+    "en": "DHCP servers",
+    "command": "/ip dhcp-server print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض خوادم DHCP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dhcp servers without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "شبكات DHCP",
+    "en": "DHCP networks",
+    "command": "/ip dhcp-server network print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض شبكات DHCP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dhcp networks without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "حجوزات العملاء",
+    "en": "DHCP leases",
+    "command": "/ip dhcp-server lease print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض حجوزات العملاء بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dhcp leases without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خيارات DHCP",
+    "en": "DHCP options",
+    "command": "/ip dhcp-server option print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض خيارات DHCP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dhcp options without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "ترحيل DHCP",
+    "en": "DHCP relay",
+    "command": "/ip dhcp-relay print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض ترحيل DHCP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dhcp relay without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خوادم DNS",
+    "en": "DNS settings",
+    "command": "/ip dns print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض خوادم DNS بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dns settings without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "سجلات DNS الثابتة",
+    "en": "Static DNS",
+    "command": "/ip dns static print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض سجلات DNS الثابتة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads static dns without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "ذاكرة DNS",
+    "en": "DNS cache",
+    "command": "/ip dns cache print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض ذاكرة DNS بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dns cache without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الأجهزة المجاورة",
+    "en": "Neighbors",
+    "command": "/ip neighbor print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض الأجهزة المجاورة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads neighbors without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "اكتشاف الجيران",
+    "en": "Neighbor discovery",
+    "command": "/ip neighbor discovery-settings print",
+    "categoryAr": "العناوين وDHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض اكتشاف الجيران بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads neighbor discovery without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خوادم HotSpot",
+    "en": "HotSpot servers",
+    "command": "/ip hotspot print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض خوادم HotSpot بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads hotspot servers without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "بروفايلات الخادم",
+    "en": "Server profiles",
+    "command": "/ip hotspot profile print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض بروفايلات الخادم بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads server profiles without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الكروت والمستخدمون",
+    "en": "Voucher users",
+    "command": "/ip hotspot user print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض الكروت والمستخدمون بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads voucher users without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "باقات الكروت",
+    "en": "Voucher profiles",
+    "command": "/ip hotspot user profile print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض باقات الكروت بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads voucher profiles without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الجلسات النشطة",
+    "en": "Active sessions",
+    "command": "/ip hotspot active print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض الجلسات النشطة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads active sessions without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أجهزة العملاء",
+    "en": "Client hosts",
+    "command": "/ip hotspot host print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض أجهزة العملاء بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads client hosts without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "كوكيز الدخول",
+    "en": "Login cookies",
+    "command": "/ip hotspot cookie print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض كوكيز الدخول بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads login cookies without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "ربط أجهزة العملاء",
+    "en": "IP bindings",
+    "command": "/ip hotspot ip-binding print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض ربط أجهزة العملاء بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ip bindings without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "المواقع المسموحة",
+    "en": "Allowed websites",
+    "command": "/ip hotspot walled-garden print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض المواقع المسموحة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads allowed websites without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عناوين السماح",
+    "en": "Allowed addresses",
+    "command": "/ip hotspot walled-garden ip print",
+    "categoryAr": "الهوتسبوت والكروت",
+    "categoryEn": "HotSpot & vouchers",
+    "descriptionAr": "يعرض عناوين السماح بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads allowed addresses without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قواعد الحماية",
+    "en": "Filter rules",
+    "command": "/ip firewall filter print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض قواعد الحماية بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads filter rules without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مشاركة الإنترنت NAT",
+    "en": "NAT rules",
+    "command": "/ip firewall nat print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض مشاركة الإنترنت NAT بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads nat rules without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "تمييز الترافيك",
+    "en": "Mangle rules",
+    "command": "/ip firewall mangle print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض تمييز الترافيك بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads mangle rules without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قواعد RAW",
+    "en": "RAW rules",
+    "command": "/ip firewall raw print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض قواعد RAW بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads raw rules without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قوائم العناوين",
+    "en": "Address lists",
+    "command": "/ip firewall address-list print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض قوائم العناوين بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads address lists without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الاتصالات الحالية",
+    "en": "Connections",
+    "command": "/ip firewall connection print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض الاتصالات الحالية بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads connections without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "تتبع الاتصالات",
+    "en": "Connection tracking",
+    "command": "/ip firewall connection tracking print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض تتبع الاتصالات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads connection tracking without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مساعدات البروتوكولات",
+    "en": "Protocol helpers",
+    "command": "/ip firewall service-port print",
+    "categoryAr": "الحماية",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض مساعدات البروتوكولات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads protocol helpers without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "السرعات البسيطة",
+    "en": "Simple queues",
+    "command": "/queue simple print",
+    "categoryAr": "السرعات والطوابير",
+    "categoryEn": "Queues",
+    "descriptionAr": "يعرض السرعات البسيطة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads simple queues without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "شجرة الطوابير",
+    "en": "Queue tree",
+    "command": "/queue tree print",
+    "categoryAr": "السرعات والطوابير",
+    "categoryEn": "Queues",
+    "descriptionAr": "يعرض شجرة الطوابير بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads queue tree without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أنواع الطوابير",
+    "en": "Queue types",
+    "command": "/queue type print",
+    "categoryAr": "السرعات والطوابير",
+    "categoryEn": "Queues",
+    "descriptionAr": "يعرض أنواع الطوابير بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads queue types without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "طوابير الواجهات",
+    "en": "Interface queues",
+    "command": "/queue interface print",
+    "categoryAr": "السرعات والطوابير",
+    "categoryEn": "Queues",
+    "descriptionAr": "يعرض طوابير الواجهات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads interface queues without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "جلسات PPP",
+    "en": "PPP sessions",
+    "command": "/ppp active print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض جلسات PPP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ppp sessions without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "حسابات PPP",
+    "en": "PPP accounts",
+    "command": "/ppp secret print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض حسابات PPP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ppp accounts without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "باقات PPP",
+    "en": "PPP profiles",
+    "command": "/ppp profile print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض باقات PPP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ppp profiles without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مصادقة PPP",
+    "en": "PPP AAA",
+    "command": "/ppp aaa print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض مصادقة PPP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ppp aaa without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء PPPoE",
+    "en": "PPPoE clients",
+    "command": "/interface pppoe-client print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض عملاء PPPoE بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads pppoe clients without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خوادم PPPoE",
+    "en": "PPPoE servers",
+    "command": "/interface pppoe-server server print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض خوادم PPPoE بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads pppoe servers without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء L2TP",
+    "en": "L2TP clients",
+    "command": "/interface l2tp-client print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض عملاء L2TP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads l2tp clients without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء SSTP",
+    "en": "SSTP clients",
+    "command": "/interface sstp-client print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض عملاء SSTP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads sstp clients without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء OpenVPN",
+    "en": "OpenVPN clients",
+    "command": "/interface ovpn-client print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض عملاء OpenVPN بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads openvpn clients without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "واجهات WireGuard",
+    "en": "WireGuard",
+    "command": "/interface wireguard print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض واجهات WireGuard بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads wireguard without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أقران WireGuard",
+    "en": "WireGuard peers",
+    "command": "/interface wireguard peers print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض أقران WireGuard بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads wireguard peers without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أنفاق EoIP",
+    "en": "EoIP tunnels",
+    "command": "/interface eoip print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض أنفاق EoIP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads eoip tunnels without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أنفاق GRE",
+    "en": "GRE tunnels",
+    "command": "/interface gre print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض أنفاق GRE بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads gre tunnels without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خوادم RADIUS",
+    "en": "RADIUS servers",
+    "command": "/radius print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض خوادم RADIUS بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads radius servers without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مسارات IPv4",
+    "en": "IPv4 routes",
+    "command": "/ip route print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض مسارات IPv4 بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ipv4 routes without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "جداول التوجيه",
+    "en": "Routing tables",
+    "command": "/routing table print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض جداول التوجيه بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads routing tables without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قواعد التوجيه",
+    "en": "Routing rules",
+    "command": "/routing rule print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض قواعد التوجيه بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads routing rules without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "OSPF",
+    "en": "OSPF instances",
+    "command": "/routing ospf instance print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض OSPF بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads ospf instances without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "اتصالات BGP",
+    "en": "BGP connections",
+    "command": "/routing bgp connection print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض اتصالات BGP بدون تغيير الإعدادات. يتطلب جهازًا أو حزمة تدعم هذه الميزة.",
+    "descriptionEn": "Reads bgp connections without changing settings. Requires supporting hardware or package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عناوين IPv6",
+    "en": "IPv6 addresses",
+    "command": "/ipv6 address print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض عناوين IPv6 بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ipv6 addresses without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مسارات IPv6",
+    "en": "IPv6 routes",
+    "command": "/ipv6 route print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض مسارات IPv6 بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ipv6 routes without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعلان شبكة IPv6",
+    "en": "IPv6 ND",
+    "command": "/ipv6 nd print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض إعلان شبكة IPv6 بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ipv6 nd without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "عملاء DHCPv6",
+    "en": "DHCPv6 clients",
+    "command": "/ipv6 dhcp-client print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض عملاء DHCPv6 بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads dhcpv6 clients without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "حماية IPv6",
+    "en": "IPv6 filter",
+    "command": "/ipv6 firewall filter print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض حماية IPv6 بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ipv6 filter without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قوائم IPv6",
+    "en": "IPv6 address lists",
+    "command": "/ipv6 firewall address-list print",
+    "categoryAr": "التوجيه وIPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض قوائم IPv6 بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ipv6 address lists without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خدمات الإدارة",
+    "en": "Management services",
+    "command": "/ip service print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض خدمات الإدارة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads management services without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعدادات SSH",
+    "en": "SSH settings",
+    "command": "/ip ssh print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض إعدادات SSH بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads ssh settings without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مديرو الراوتر",
+    "en": "Router administrators",
+    "command": "/user print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض مديرو الراوتر بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads router administrators without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مجموعات الصلاحيات",
+    "en": "Permission groups",
+    "command": "/user group print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض مجموعات الصلاحيات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads permission groups without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "جلسات الإدارة",
+    "en": "Admin sessions",
+    "command": "/user active print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض جلسات الإدارة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads admin sessions without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الشهادات",
+    "en": "Certificates",
+    "command": "/certificate print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض الشهادات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads certificates without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الملفات",
+    "en": "Files",
+    "command": "/file print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض الملفات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads files without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "سجل الأحداث",
+    "en": "Event log",
+    "command": "/log print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض سجل الأحداث بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads event log without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مراقبة الأجهزة",
+    "en": "Netwatch",
+    "command": "/tool netwatch print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض مراقبة الأجهزة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads netwatch without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خادم MAC",
+    "en": "MAC server",
+    "command": "/tool mac-server print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض خادم MAC بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads mac server without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "وصول MAC Winbox",
+    "en": "MAC Winbox",
+    "command": "/tool mac-server mac-winbox print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض وصول MAC Winbox بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads mac winbox without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خادم قياس السرعة",
+    "en": "Bandwidth server",
+    "command": "/tool bandwidth-server print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض خادم قياس السرعة بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads bandwidth server without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خدمة Cloud",
+    "en": "Cloud settings",
+    "command": "/ip cloud print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض خدمة Cloud بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads cloud settings without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعداد UPnP",
+    "en": "UPnP",
+    "command": "/ip upnp print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض إعداد UPnP بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads upnp without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خادم SOCKS",
+    "en": "SOCKS",
+    "command": "/ip socks print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض خادم SOCKS بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads socks without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "خادم Proxy",
+    "en": "Proxy",
+    "command": "/ip proxy print",
+    "categoryAr": "الإدارة والأدوات",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض خادم Proxy بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads proxy without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "اسم الراوتر",
+    "en": "Router name",
+    "command": "/system identity set name={{name}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "المنطقة الزمنية",
+    "en": "Time zone",
+    "command": "/system clock set time-zone-autodetect=no time-zone-name={{zone}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "تفعيل مزامنة الوقت",
+    "en": "Enable NTP",
+    "command": "/system ntp client set enabled=yes",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "إضافة خادم وقت",
+    "en": "Add NTP server",
+    "command": "/system ntp client servers add address={{server}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "تعطيل Telnet",
+    "en": "Disable Telnet",
+    "command": "/ip service disable telnet",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تعطيل FTP",
+    "en": "Disable FTP",
+    "command": "/ip service disable ftp",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تعطيل الويب HTTP",
+    "en": "Disable HTTP admin",
+    "command": "/ip service disable www",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تفعيل SSH",
+    "en": "Enable SSH",
+    "command": "/ip service enable ssh",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تفعيل كارت",
+    "en": "Enable voucher",
+    "command": "/ip hotspot user enable {{user}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "تعطيل كارت",
+    "en": "Disable voucher",
+    "command": "/ip hotspot user disable {{user}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تغيير باقة كارت",
+    "en": "Change voucher profile",
+    "command": "/ip hotspot user set {{user}} profile={{profile}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "حد وقت الكارت",
+    "en": "Voucher time limit",
+    "command": "/ip hotspot user set {{user}} limit-uptime={{duration}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "حد بيانات الكارت",
+    "en": "Voucher data limit",
+    "command": "/ip hotspot user set {{user}} limit-bytes-total={{bytes}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "فصل جلسة عميل",
+    "en": "Disconnect client session",
+    "command": "/ip hotspot active remove {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تعطيل قاعدة حماية",
+    "en": "Disable filter rule",
+    "command": "/ip firewall filter disable {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تفعيل قاعدة حماية",
+    "en": "Enable filter rule",
+    "command": "/ip firewall filter enable {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تعطيل قاعدة NAT",
+    "en": "Disable NAT rule",
+    "command": "/ip firewall nat disable {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تعطيل حد سرعة",
+    "en": "Disable speed limit",
+    "command": "/queue simple disable {{name}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تفعيل حد سرعة",
+    "en": "Enable speed limit",
+    "command": "/queue simple enable {{name}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "إعادة تشغيل الراوتر",
+    "en": "Reboot router",
+    "command": "/system reboot",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
+    "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
+    "risk": "DANGEROUS"
+  }
+]

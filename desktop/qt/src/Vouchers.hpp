@@ -16,7 +16,7 @@ class Vouchers:public QObject{
  Q_PROPERTY(bool busy READ busy NOTIFY changed)
 public:
  explicit Vouchers(RouterClient *router,QObject *parent=nullptr);
- QVariantList cards()const{return batch["vouchers"].toArray().toVariantList();} QVariantList archive()const;QString status()const{return message;}bool busy()const{return working;}
+ QVariantList cards()const{return authorization()?batch["vouchers"].toArray().toVariantList():QVariantList{};} QVariantList archive()const;QString status()const{return message;}bool busy()const{return working;}
  void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  static QJsonObject generateBatch(QJsonObject request);
  static QString quote(QString value);
