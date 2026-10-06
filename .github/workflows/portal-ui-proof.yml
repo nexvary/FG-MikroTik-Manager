@@ -1,0 +1,29 @@
+name: FG portal visual proof
+on:
+  push:
+    branches: [verification/fg-portal-0171]
+permissions:
+  contents: read
+jobs:
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install browser driver
+        run: npm install --prefix /tmp/fg-portal playwright
+      - name: Verify login logic and responsive layout
+        env:
+          NODE_PATH: /tmp/fg-portal/node_modules
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          node scripts/test-portal-status.cjs
+          node scripts/test-portal-ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: FG-portal-0.17.1-proof
+          path: ui-proof/*
+          if-no-files-found: error
