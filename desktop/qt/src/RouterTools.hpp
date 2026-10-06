@@ -1,0 +1,48 @@
+#pragma once
+#include "RouterClient.hpp"
+#include "RouterJob.hpp"
+#include <QJsonObject>
+#include <QVariantList>
+#include <QSet>
+class RouterTools:public QObject{
+ Q_OBJECT
+ Q_PROPERTY(bool busy READ busy NOTIFY changed)
+ Q_PROPERTY(QString status READ status NOTIFY changed)
+ Q_PROPERTY(QVariantList checks READ checks NOTIFY changed)
+ Q_PROPERTY(QVariantList changes READ changes NOTIFY changed)
+ Q_PROPERTY(QVariantList interfaces READ interfaces NOTIFY changed)
+ Q_PROPERTY(QVariantList users READ users NOTIFY changed)
+ Q_PROPERTY(QVariantList profiles READ profiles NOTIFY changed)
+ Q_PROPERTY(QString portalPreview READ portalPreview NOTIFY changed)
+public:
+ RouterTools(RouterClient *client,QObject*p=nullptr);~RouterTools();
+ bool busy()const{return working;}QString status()const{return message;}QVariantList checks()const{return report.toVariantList();}QVariantList changes()const{return pending["changes"].toArray().toVariantList();}
+ QVariantList interfaces()const{return tables["interface"].toArray().toVariantList();}QVariantList users()const{return tables["ip/hotspot/user"].toArray().toVariantList();}QVariantList profiles()const{return tables["ip/hotspot/profile"].toArray().toVariantList();}QString portalPreview()const{return preview;}
+ static bool validCidr(QString cidr);static QString network(QString cidr);static bool privateSubnet(QString cidr);
+ static QJsonObject hotspotPlan(QJsonObject tables,QJsonObject request,QString management);
+ static QJsonObject portsPlan(QJsonObject tables,QString client,QString wan,QString management);
+ static QJsonObject dnsPlan(QJsonObject tables,QSet<QString> networks,QString mode);
+ static QJsonObject renderPortal(QJsonObject design);
+ Q_INVOKABLE void inspect();
+ Q_INVOKABLE void planHotspot(QJsonObject request);
+ Q_INVOKABLE void planPorts(QString client,QString wan);
+ Q_INVOKABLE void planDns(QStringList networkIds,QString mode);
+ Q_INVOKABLE void apply(QString backupPassword);
+ Q_INVOKABLE void restoreDns();
+ Q_INVOKABLE void synchronizeClock();
+ Q_INVOKABLE void backup(QString password);
+ Q_INVOKABLE void restoreBackup(QString file,QString password);
+ Q_INVOKABLE void exportConfiguration();
+ Q_INVOKABLE void reboot();
+ Q_INVOKABLE void flushDns();
+ Q_INVOKABLE void subscriber(QString operation,QString id,QJsonObject fields);
+ Q_INVOKABLE void previewPortal(QJsonObject design);
+ Q_INVOKABLE void installPortal(QString profile,QJsonObject design);
+ Q_INVOKABLE void restorePortal();
+signals:void changed();
+private:
+ RouterClient *client;bool working=false;QString message,preview;QJsonObject tables,pending,journal;QJsonArray report;QSet<QString> unavailable;std::shared_ptr<int> lifetime=std::make_shared<int>(0);RouterJob job;
+ RouterAwait call(QString menu,QString action="print",QJsonObject attrs={},bool required=true){return {client,lifetime,menu,action,attrs,{},required};}
+ void launch(QString op,QJsonObject fields={});RouterJob run(QString op,QJsonObject fields);
+ QString signature()const;QString fingerprint()const;QString journalPath()const;void persist();void loadJournal();void evaluate();
+};
