@@ -33,7 +33,7 @@ public:
  Q_INVOKABLE void exportCsv(QUrl path);
  QJsonArray snapshot();QJsonArray combine(QJsonArray remote,QString origin);
  void join(QString tenant,QString branch,QJsonArray remote);
- void merge(QJsonArray records,bool preview=false);
+ void merge(QJsonArray records,bool preview=false,QString origin={});
  QString device()const;
 signals:void changed();
 private:

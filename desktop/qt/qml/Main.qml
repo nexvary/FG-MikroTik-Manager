@@ -35,8 +35,10 @@ ApplicationWindow {
     Text {text: "FG MTM"; color: theme.blue; font.pixelSize: 18; font.bold: true}
     Text {text: root.tr("إدارة شبكتك وأعمالك","Network & business"); color: theme.muted; font.pixelSize: 13}
     Rectangle {Layout.fillWidth: true; height: 1; color: theme.silver; opacity: 0.5}
+    ScrollView {Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth
+    ColumnLayout {width:parent.width;spacing:8
     Repeater {
-     model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"commerce",ar:"الأعمال المحلية",en:"Local business",icon:1},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"tools",ar:"إدارة الشبكة",en:"Network tools",icon:3},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4}]
+     model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"commerce",ar:"الأعمال المحلية",en:"Local business",icon:1},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:3},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"tools",ar:"إدارة الشبكة",en:"Network tools",icon:3},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4}]
      delegate: FgButton {
       required property var modelData
       Layout.fillWidth: true; text: root.tr(modelData.ar,modelData.en); leftPadding: 42; rightPadding: 42
@@ -45,7 +47,7 @@ ApplicationWindow {
       NavIcon {anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; kind: parent.modelData.icon; ink: parent.accent}
      }
     }
-    Item {Layout.fillHeight: true}
+    }}
     FgButton {Layout.fillWidth: true; text: root.tr("ترمنال عائم • F4","Floating terminal • F4"); accent: theme.mint; onClicked: {terminalWindow.show();terminalWindow.raise()}}
     FgButton {Layout.fillWidth: true; text: root.arabic ? "English" : "العربية"; onClicked: root.arabic=!root.arabic}
     Text {text: "C++20 · Qt 6 · QML"; color: theme.muted; font.pixelSize: 12}
@@ -56,7 +58,7 @@ ApplicationWindow {
    RowLayout {
     Layout.fillWidth: true
     FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked: {var items=root.history.slice();root.page=items.pop();root.history=items;backend.clearView();if(root.page==="business")root.filter()}}
-    Text {text: root.tr(({home:"الرئيسية",business:"أعمال الخادم",commerce:"الأعمال المحلية",vouchers:"الكروت والأرشيف",radius:"RADIUS",router:"الراوتر والأوامر",tools:"إدارة الشبكة",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم"})[root.page],({home:"Overview",business:"Server business",commerce:"Local business",vouchers:"Vouchers & archive",radius:"RADIUS",router:"Router & commands",tools:"Network tools",diagnostics:"Server diagnostics",settings:"Server connection"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
+    Text {text: root.tr(({home:"الرئيسية",business:"أعمال الخادم",commerce:"الأعمال المحلية",vouchers:"الكروت والأرشيف",radius:"RADIUS",router:"الراوتر والأوامر",tools:"إدارة الشبكة",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم",monitor:"المراقبة والتنبيهات"})[root.page],({home:"Overview",business:"Server business",commerce:"Local business",vouchers:"Vouchers & archive",radius:"RADIUS",router:"Router & commands",tools:"Network tools",diagnostics:"Server diagnostics",settings:"Server connection",monitor:"Monitoring & alerts"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
     Rectangle {width: 10; height: 10; radius: 5; color: backend.connected ? theme.mint : theme.muted}
     Text {text: backend.connected?root.tr("متصل","Connected"):root.tr("غير متصل","Disconnected"); color: theme.silver}
    }
@@ -66,10 +68,10 @@ ApplicationWindow {
     ColumnLayout {
      anchors.fill: parent; anchors.margins: 30; spacing: 20
      Text {text: root.tr("شبكتك، تحت إدارتك","Your network, your workspace"); color: theme.white; font.pixelSize: 30; font.bold: true; Layout.fillWidth: true; wrapMode: Text.Wrap}
-     Text {text: root.tr("اقرأ بيانات الأعمال المتزامنة وجلسات RADIUS، وافحص الخادم واتصل براوتر RouterOS 7.","Read synchronized business data and RADIUS sessions, diagnose FG Server and connect to RouterOS 7."); color: theme.silver; Layout.fillWidth: true; wrapMode: Text.Wrap; font.pixelSize: 18}
+     Text {text: root.tr("أدر المشتركين والكروت والمبيعات، وجهّز HotSpot وافحص الشبكة وتابع تنبيهات الراوترات.","Manage subscribers, vouchers and sales, configure HotSpot, diagnose the network and monitor router alerts."); color: theme.silver; Layout.fillWidth: true; wrapMode: Text.Wrap; font.pixelSize: 18}
      RowLayout {
       FgButton {text: root.tr("الاتصال بخادم FG","Connect FG Server"); onClicked: root.navigate("settings")}
-      FgButton {text: root.tr("فتح الأعمال","Open business"); onClicked: root.navigate("business"); accent: theme.mint}
+      FgButton {text: root.tr("فتح الأعمال","Open business"); onClicked: root.navigate("commerce"); accent: theme.mint}
      }
      GridLayout {
       Layout.fillWidth: true; columns: 2; columnSpacing: 16; rowSpacing: 16
@@ -89,23 +91,26 @@ ApplicationWindow {
      }
      Text {text: root.tr("بيانات مالية بوحدات صحيحة؛ كلمة المرور والجلسة لا تُحفظان.","Exact financial units; passwords and sessions are not saved."); color: theme.muted; wrapMode: Text.Wrap; Layout.fillWidth: true}
      Item {Layout.fillHeight: true}
-     Text {text: root.tr("نسخة Qt قيد استكمال التطابق مع Android. الكروت والتعديلات المالية وإعداد هوت سبوت غير متاحة بعد.","Qt edition: Android parity is in progress. Vouchers, financial edits and HotSpot setup are not yet available."); color: theme.gold; Layout.fillWidth: true; wrapMode: Text.Wrap}
+     Text {text: root.tr("المراقبة والمزامنة اختيارية. راجع التغييرات قبل تطبيقها على الراوتر.","Monitoring and synchronization are optional. Review router changes before applying them."); color: theme.gold; Layout.fillWidth: true; wrapMode: Text.Wrap}
     }
    }
+   MonitorWorkspace {visible:root.page==="monitor";Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    GridLayout {
     visible: root.page==="settings"; Layout.fillWidth: true; columns: 2; columnSpacing: 16; rowSpacing: 12
     Text {text: root.tr("عنوان HTTPS","HTTPS address"); color: theme.silver}
-    FgField {id: serverUrl; Layout.fillWidth: true; placeholderText: "https://server-ip"; LayoutMirroring.enabled: false}
+    FgField {id: serverUrl; Layout.fillWidth: true; text: "https://3.65.234.184"; placeholderText: "https://server-ip"; LayoutMirroring.enabled: false}
     Text {text: root.tr("المؤسسة","Tenant"); color: theme.silver}
-    FgField {id: tenant; Layout.fillWidth: true; LayoutMirroring.enabled: false}
+    FgField {id: tenant; text:"d1d1af2d-10f7-41ab-ae96-bdc10333d781"; Layout.fillWidth: true; LayoutMirroring.enabled: false}
     Text {text: root.tr("الفرع","Branch"); color: theme.silver}
-    FgField {id: branch; Layout.fillWidth: true; LayoutMirroring.enabled: false}
+    FgField {id: branch; text:"8f2aeb05-aac9-4769-a2a4-920aa1e1859e"; Layout.fillWidth: true; LayoutMirroring.enabled: false}
     Text {text: root.tr("اسم الحساب","Username"); color: theme.silver}
     FgField {id: username; Layout.fillWidth: true; LayoutMirroring.enabled: false}
     Text {text: root.tr("كلمة المرور","Password"); color: theme.silver}
     FgField {id: password; Layout.fillWidth: true; echoMode: TextInput.Password; LayoutMirroring.enabled: false}
     FgButton {text: root.tr("دخول","Sign in"); enabled: !backend.busy; onClicked: {backend.login(serverUrl.text,tenant.text,branch.text,username.text,password.text);password.clear()}}
     FgButton {text: root.tr("خروج","Sign out"); enabled: !backend.busy; onClicked: backend.logout()}
+    CheckBox {id:joinEmpty;Layout.columnSpan:2;text:root.tr("ضم سجل Windows الفارغ لفرع الخادم، قبل إعداد المالك المحلي","Join an empty Windows store to the server branch before local owner setup")}
+    FgButton {Layout.columnSpan:2;text:root.tr("مزامنة الأعمال في الاتجاهين","Synchronize business both ways");enabled:backend.connected&&!backend.busy&&commerce.allowed("BRANCHES");onClicked:backend.syncBusiness(joinEmpty.checked)}
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: backend.scope; color: theme.mint; wrapMode: Text.Wrap}
    }
    ColumnLayout {
@@ -150,13 +155,19 @@ ApplicationWindow {
      FgButton {text: root.tr("تعطيل","Disable"); enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"disable",root.selectedRouterId,"{}")}
      FgButton {text: root.tr("حذف","Delete"); accent: theme.error; enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"remove",root.selectedRouterId,"{}")}
     }
+    RowLayout {Layout.columnSpan:2;Layout.fillWidth:true
+     FgField {id:profileName;Layout.fillWidth:true;placeholderText:root.tr("اسم الراوتر لحفظ الاتصال","Router name to save connection")}
+     FgButton {text:root.tr("حفظ الاتصال","Save connection");onClicked:backend.saveRouterProfile(profileName.text,commerce.scope,routerUrl.text,Number(routerPort.text),routerUser.text,routerProtocol.currentText)}
+     ComboBox {id:savedRouter;Layout.fillWidth:true;model:backend.profiles;textRole:"name";onActivated:{let p=backend.profiles[currentIndex];routerUrl.text=p.host;routerUser.text=p.user;routerPort.text=String(p.port);routerProtocol.currentIndex=routerProtocol.model.indexOf(p.protocol)}}
+     FgButton {text:root.tr("حذف المحفوظ","Delete saved");enabled:backend.profiles.length>0;onClicked:backend.deleteRouterProfile(backend.profiles[savedRouter.currentIndex].id)}
+    }
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
    RouterToolsWorkspace {visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    BusinessWorkspace {visible: root.page==="commerce"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    VoucherStudio {visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    Rectangle {
-    visible: root.page!=="tools"&&root.page!=="commerce"&&root.page!=="vouchers"&&root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
+    visible: root.page!=="monitor"&&root.page!=="tools"&&root.page!=="commerce"&&root.page!=="vouchers"&&root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
     Flickable {
      anchors.fill: parent; anchors.margins: 12; contentWidth: Math.max(width,backend.columns.length*190); contentHeight: height; clip: true
      ScrollBar.horizontal: ScrollBar {}

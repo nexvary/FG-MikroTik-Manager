@@ -23,6 +23,7 @@ class RouterClient : public QObject {
 public:
  using Done=std::function<void(RouterReply)>;
  explicit RouterClient(QObject *parent=nullptr);
+ ~RouterClient();
  bool busy()const{return active;} bool connected()const{return authenticated;} QString status()const{return message;}
  void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  QString identityKey()const{return host+":"+QString::number(port)+":"+username;}

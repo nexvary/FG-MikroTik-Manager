@@ -1,4 +1,5 @@
 #include "Bridge.hpp"
+#include "Business.hpp"
 #include "Protocol.hpp"
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -16,7 +17,7 @@ Bridge::Bridge(QObject *p):QObject(p),routerClient(this) {
  auto timer=new QTimer(this);timer->setInterval(1000);connect(timer,&QTimer::timeout,this,[this]{if(!token.isEmpty()&&!connected()) {reset();m_status="انتهت الجلسة • Session expired";emit changed();}});timer->start();
 }
 QStringList Bridge::menus()const{return Protocol::menus();}
-void Bridge::reset(){token.clear();m_scope.clear();records={};matching={};m_rows.clear();m_columns.clear();expires={};emit changed();}
+void Bridge::reset(){serverTenant.clear();serverBranch.clear();serverRole.clear();token.clear();m_scope.clear();records={};matching={};m_rows.clear();m_columns.clear();expires={};emit changed();}
 void Bridge::request(QString url,QByteArray method,QJsonObject body,QByteArray auth,std::function<void(QJsonValue)> done) {
  if(m_busy)return; m_busy=true;m_status="جارٍ التحميل • Loading";emit changed();
  QNetworkRequest req{QUrl(url)};req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::ManualRedirectPolicy);req.setTransferTimeout(20000);
@@ -42,7 +43,7 @@ void Bridge::login(QString url,QString tenant,QString branch,QString user,QStrin
  origin=QUrl(url).toString(QUrl::RemovePath);request(origin+"/v1/login","POST",{{"username",user},{"password",password}},{},[this,tenant,branch](QJsonValue v){
   auto o=v.toObject();int ttl=o["expires_in"].toInt();auto t=o["token"].toString();if(t.size()<20||ttl<1||ttl>900){m_status="رد دخول غير صالح • Invalid session";return;}
   token=t;expires=QDateTime::currentDateTimeUtc().addSecs(ttl);
-  api("identity","GET",{},[this,tenant,branch](QJsonValue id){auto o=id.toObject();if(o["tenant"].toString()!=tenant||o["branch"].toString()!=branch){reset();m_status="المؤسسة أو الفرع غير مطابق • Scope mismatch";return;}m_scope=tenant+" / "+branch+" • "+o["role"].toString();});
+  api("identity","GET",{},[this,tenant,branch](QJsonValue id){auto o=id.toObject();if(o["tenant"].toString()!=tenant||o["branch"].toString()!=branch){reset();m_status="المؤسسة أو الفرع غير مطابق • Scope mismatch";return;}serverTenant=tenant;serverBranch=branch;serverRole=o["role"].toString();m_scope=tenant+" / "+branch+" • "+serverRole;});
  });
 }
 void Bridge::api(QString path,QByteArray method,QJsonObject body,std::function<void(QJsonValue)> done){if(!connected()){reset();m_status="سجّل الدخول • Login required";emit changed();return;}auto session=token;request(origin+"/v1/"+path,method,body,"Bearer "+token.toUtf8(),[this,session,done](QJsonValue v){if(!connected()||token!=session){reset();m_status="انتهت الجلسة • Session expired";return;}done(v);});}
@@ -69,3 +70,18 @@ void Bridge::clearTerminal(){m_terminal.clear();emit changed();}
 void Bridge::smoke(){token="fixture-session";expires=QDateTime::currentDateTimeUtc().addSecs(900);m_scope="UI fixture • main";for(int i=1;i<=51;i++)records.append(QJsonObject{{"table","subscribers"},{"id",QString::number(i)},{"body",QJsonObject{{"name",QString("Customer %1").arg(i)},{"service","HotSpot"}}}});filter("subscribers","",0);}
 
 void Bridge::clearView(){m_rows.clear();m_columns.clear();emit changed();}
+
+void Bridge::syncBusiness(bool joinEmpty){
+ if(busy())return;if(!commerce||!commerce->allowed("BRANCHES")||serverRole!="owner"){m_status="مزامنة الأعمال تتطلب حساب المالك المحلي والخادم • Local and server owner permissions required";emit changed();return;}
+ const auto syncOrigin=origin,tenant=serverTenant,branch=serverBranch;
+ api("business/sync","GET",{},[this,joinEmpty,syncOrigin,tenant,branch](QJsonValue value){
+  try{
+   const auto remote=value.toObject();if(!remote["records"].isArray()||!remote["revision"].isDouble()||remote["revision"].toInteger(-1)<0)throw std::runtime_error("CLOUD_INVALID_RESPONSE");
+   auto remoteRecords=remote["records"].toArray();if(commerce->scope()!=tenant+" / "+branch){if(!joinEmpty)throw std::runtime_error("CLOUD_SCOPE_MISMATCH");commerce->join(tenant,branch,remoteRecords);}
+   const auto local=commerce->snapshot(),merged=commerce->combine(remoteRecords,syncOrigin);commerce->merge(merged,true,syncOrigin);
+   api("business/sync","POST",{{"revision",remote["revision"]},{"device",commerce->device()},{"records",merged}},[this,local,merged,syncOrigin](QJsonValue response){
+    try{if(response.toObject()["accepted"]!=true)throw std::runtime_error("CLOUD_NOT_CONFIRMED");if(commerce->snapshot()!=local)throw std::runtime_error("CLOUD_LOCAL_CHANGED");commerce->merge(merged,false,syncOrigin);records=merged;filter("subscribers","",0);m_status=QString("تمت مزامنة %1 سجل • Synchronized %1 records").arg(merged.size());}catch(const std::exception&e){m_status=e.what();}emit changed();
+   });
+  }catch(const std::exception&e){m_status=e.what();emit changed();}
+ });
+}

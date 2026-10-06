@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <functional>
 #include "RouterClient.hpp"
+class Business;
 class Bridge : public QObject {
  Q_OBJECT
  Q_PROPERTY(bool routerConnected READ routerConnected NOTIFY changed)
@@ -26,10 +27,12 @@ public:
  bool routerConnected()const{return routerClient.connected();} QString preview()const{return m_preview;} QVariantList profiles()const; bool connected()const{return !token.isEmpty() && QDateTime::currentDateTimeUtc()<expires;}
  QString status()const{return m_status;} QString scope()const{return m_scope;} QString terminal()const{return m_terminal;}
  QVariantList rows()const{return m_rows;} QStringList columns()const{return m_columns;} QStringList menus()const;
+ void setCommerce(Business *value){commerce=value;}
  RouterClient *routerTransport(){return &routerClient;}
  Q_INVOKABLE void login(QString url,QString tenant,QString branch,QString user,QString password);
  Q_INVOKABLE void logout();
  Q_INVOKABLE void business();
+ Q_INVOKABLE void syncBusiness(bool joinEmpty=false);
  Q_INVOKABLE void filter(QString table,QString query,int page);
  Q_INVOKABLE void radius(bool sessions);
  Q_INVOKABLE void diagnose();
@@ -48,6 +51,7 @@ public:
  Q_INVOKABLE void smoke();
 signals: void changed();
 private:
+ Business *commerce=nullptr;QString serverTenant,serverBranch,serverRole;
  RouterClient routerClient; QString m_preview,pendingCommand;
  QNetworkAccessManager net; bool m_busy=false; QString token,origin,m_status,m_scope,m_terminal,routerOrigin,routerAuth;
  QDateTime expires; QJsonArray records,matching; QVariantList m_rows; QStringList m_columns;
