@@ -43,6 +43,10 @@ public:
  void join(QString tenant,QString branch,QJsonArray remote);
  void merge(QJsonArray records,bool preview=false,QString origin={});
  QString device()const;
+ int importRouterAccounts(QJsonObject catalog,QJsonArray selected,QString currency);
+ QJsonObject networkTarget(QString invoice);
+ QJsonObject saveNetworkJob(QString invoice,QJsonObject target);
+ void networkResult(QString invoice,QString state);
 signals:void changed();
 private:
  QSqlDatabase db;QString connection,message,organization,branch;QVariantList view,importView,reportView;QString importText;QJsonArray parseSubscribers(QString text)const;QJsonObject principal;QElapsedTimer clock;qint64 expiry=0;

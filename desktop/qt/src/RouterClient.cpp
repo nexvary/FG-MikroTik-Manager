@@ -43,9 +43,9 @@ RouterClient::RouterClient(QObject*p):QObject(p){deadline.setSingleShot(true);co
  connect(&socket,&QSslSocket::disconnected,this,[this]{authenticated=false;if(active)fail("انقطع اتصال الراوتر • Router connection lost",true);emit changed();});}
 RouterClient::~RouterClient(){callback={};active=false;deadline.stop();socket.disconnect(this);socket.abort();net.disconnect(this);password.fill(QChar(0));}
 void RouterClient::configure(QString h,int p,QString u,QString pw,QString proto){close();host=h.trimmed();port=p;username=u;password=pw;autoMode=proto=="AUTO";negotiated=false;selecting=false;protocol=autoMode?"API":proto=="REST_HTTPS"?"REST":proto;port=autoMode?8728:p;message.clear();emit changed();}
-void RouterClient::close(){++configVersion;++generation;selecting=false;negotiated=false;bool running=active;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
+void RouterClient::close(){++configVersion;++generation;selecting=false;negotiated=false;bool running=active||pendingRetry;pendingRetry=false;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
 void RouterClient::read(QString menu,Done done){execute(menu,"print",{},std::move(done));}
-void RouterClient::execute(QString menu,QString operation,QJsonObject attrs,Done done){if(!authorization()){done({{},"ACCESS_DENIED"});return;}if(active){done({{},"الراوتر مشغول • Router busy"});return;}
+void RouterClient::execute(QString menu,QString operation,QJsonObject attrs,Done done){if(!authorization()){done({{},"ACCESS_DENIED"});return;}if(active||pendingRetry){done({{},"الراوتر مشغول • Router busy"});return;}
  if(autoMode&&!negotiated&&!selecting){selecting=true;const auto version=configVersion;
   read("system/identity",[this,menu,operation,attrs,done,version](RouterReply probe){
    if(version!=configVersion){done({{},"SESSION_CHANGED"});return;}
@@ -82,7 +82,7 @@ void RouterClient::receive(){input+=socket.readAll();if(input.size()>64*1024*102
  }} }
 void RouterClient::finish(RouterReply result){++generation;deadline.stop();active=false;loggingIn=false;message=result.ok()?"تم • Done":result.error;auto cb=std::move(callback);callback={};emit changed();if(cb)cb(result);}
 void RouterClient::fail(QString reason,bool io){if(!active)return;
- if(io&&action=="print"&&wrote&&readRetries==0){auto savedPath=path,savedAction=action;auto attrs=attributes;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();readRetries++;retrying=true;execute(savedPath,savedAction,attrs,std::move(cb));return;}
+ if(io&&action=="print"&&wrote&&readRetries==0){active=false;pendingRetry=true;authenticated=false;deadline.stop();++generation;auto current=generation;socket.abort();input.clear();readRetries++;QTimer::singleShot(0,this,[this,current]{if(!pendingRetry||generation!=current)return;pendingRetry=false;auto cb=std::move(callback);callback={};retrying=true;execute(path,action,attributes,std::move(cb));});return;}
 bool uncertain=wrote&&action!="print";active=false;authenticated=false;socket.abort();input.clear();finish({{},reason,uncertain});}
 void RouterClient::command(QString text,Done done){auto c=RouterCodec::parse(text);if(!c.valid()){done({{},c.error});return;}
  if(QStringList{"set","enable","disable","remove","renew","release"}.contains(c.action)){

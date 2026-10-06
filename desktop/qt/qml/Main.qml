@@ -38,7 +38,7 @@ ApplicationWindow {
     ScrollView {Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth
     ColumnLayout {width:parent.width;spacing:8
     Repeater {
-     model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"commerce",ar:"الأعمال المحلية",en:"Local business",icon:1},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:3},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"tools",ar:"إدارة الشبكة",en:"Network tools",icon:3},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4}]
+     model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"commerce",ar:"الأعمال المحلية",en:"Local business",icon:1},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:1},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:3},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"tools",ar:"إدارة الشبكة",en:"Network tools",icon:3},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4}]
      delegate: FgButton {
       required property var modelData
       Layout.fillWidth: true; text: root.tr(modelData.ar,modelData.en); leftPadding: 42; rightPadding: 42
@@ -58,7 +58,7 @@ ApplicationWindow {
    RowLayout {
     Layout.fillWidth: true
     FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked: {var items=root.history.slice();root.page=items.pop();root.history=items;backend.clearView();if(root.page==="business")root.filter()}}
-    Text {text: root.tr(({home:"الرئيسية",business:"أعمال الخادم",commerce:"الأعمال المحلية",vouchers:"الكروت والأرشيف",radius:"RADIUS",router:"الراوتر والأوامر",tools:"إدارة الشبكة",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم",monitor:"المراقبة والتنبيهات",transfer:"الاستيراد والتقارير"})[root.page],({home:"Overview",business:"Server business",commerce:"Local business",vouchers:"Vouchers & archive",radius:"RADIUS",router:"Router & commands",tools:"Network tools",diagnostics:"Server diagnostics",settings:"Server connection",monitor:"Monitoring & alerts",transfer:"Import & reports"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
+    Text {text: root.tr(({home:"الرئيسية",business:"أعمال الخادم",commerce:"الأعمال المحلية",vouchers:"الكروت والأرشيف",radius:"RADIUS",router:"الراوتر والأوامر",tools:"إدارة الشبكة",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم",monitor:"المراقبة والتنبيهات",transfer:"الاستيراد والتقارير",billing:"ربط وتجديد الشبكة"})[root.page],({home:"Overview",business:"Server business",commerce:"Local business",vouchers:"Vouchers & archive",radius:"RADIUS",router:"Router & commands",tools:"Network tools",diagnostics:"Server diagnostics",settings:"Server connection",monitor:"Monitoring & alerts",transfer:"Import & reports",billing:"Bindings & renewal"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
     Rectangle {width: 10; height: 10; radius: 5; color: backend.connected ? theme.mint : theme.muted}
     Text {text: backend.connected?root.tr("متصل","Connected"):root.tr("غير متصل","Disconnected"); color: theme.silver}
    }
@@ -94,6 +94,7 @@ ApplicationWindow {
      Text {text: root.tr("المراقبة والمزامنة اختيارية. راجع التغييرات قبل تطبيقها على الراوتر.","Monitoring and synchronization are optional. Review router changes before applying them."); color: theme.gold; Layout.fillWidth: true; wrapMode: Text.Wrap}
     }
    }
+   NetworkBillingWorkspace {visible:root.page==="billing";enabled:!routerTools.busy;Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    BusinessTransferWorkspace {visible:root.page==="transfer";Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    MonitorWorkspace {visible:root.page==="monitor";Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    GridLayout {
@@ -164,11 +165,11 @@ ApplicationWindow {
     }
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
-   RouterToolsWorkspace {visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
+   RouterToolsWorkspace {enabled:!networkBilling.busy;visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    BusinessWorkspace {visible: root.page==="commerce"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    VoucherStudio {visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    Rectangle {
-    visible: root.page!=="transfer"&&root.page!=="monitor"&&root.page!=="tools"&&root.page!=="commerce"&&root.page!=="vouchers"&&root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
+    visible: root.page!=="billing"&&root.page!=="transfer"&&root.page!=="monitor"&&root.page!=="tools"&&root.page!=="commerce"&&root.page!=="vouchers"&&root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
     Flickable {
      anchors.fill: parent; anchors.margins: 12; contentWidth: Math.max(width,backend.columns.length*190); contentHeight: height; clip: true
      ScrollBar.horizontal: ScrollBar {}
