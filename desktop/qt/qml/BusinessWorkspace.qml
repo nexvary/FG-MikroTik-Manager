@@ -19,6 +19,11 @@ ColumnLayout {
  property string op: operations[action.currentIndex]
  function tr(ar,en){return arabic?ar:en}
  function includes(values){return values.indexOf(op)>=0}
+ function amount(value){let s=String(value),negative=s[0]==='-';if(negative)s=s.substring(1);s=s.padStart(3,'0');return (negative?'-':'')+s.slice(0,-2)+'.'+s.slice(-2)}
+ function label(key){let names={name:["الاسم","Name"],phone:["الهاتف","Phone"],account:["حساب الراوتر","Router account"],service:["الخدمة","Service"],currency:["العملة","Currency"],amount_minor:["المبلغ","Amount"],paid_minor:["المحصّل","Collected"],price_minor:["السعر","Price"],balance_minor:["الرصيد","Balance"],days:["الأيام","Days"],kind:["النوع","Type"],note:["ملاحظات","Notes"],reason:["السبب","Reason"],role:["الدور","Role"],active:["الحالة","State"],method:["طريقة الدفع","Payment method"],reference:["مرجع الدفع","Payment reference"],profile:["الباقة على الراوتر","Router profile"],state:["حالة التطبيق","Applied state"],actor:["الحساب","Account"],action:["الإجراء","Action"],created_at:["التاريخ","Date"],customer:["العميل","Customer"],customer_name:["المشترك","Subscriber"],plan_name:["الباقة","Plan"],starts_day:["بداية الاشتراك","Subscription start"],ends_day:["النهاية غير شاملة","End exclusive"],username:["اسم الحساب","Username"],id:["المرجع","Reference"]};return names[key]?tr(names[key][0],names[key][1]):key.replace(/_/g," ")}
+ function tableName(key){let names={subscribers:["المشتركون","Subscribers"],plans:["الباقات","Plans"],invoices:["الفواتير","Invoices"],ledger:["السجل المالي","Ledger"],sales:["المبيعات","Sales"],expenses:["المصروفات","Expenses"],team_members:["الموظفون والموزعون","Staff & resellers"],reseller_entries:["حركة الموزعين","Reseller entries"],local_accounts:["حسابات الدخول","Sign-in accounts"]};return names[key]?tr(names[key][0],names[key][1]):key.replace(/_/g," ")}
+ function details(row){let fields=[];for(let key in row){if(["organization_id","branch_id","sequence","items_json","name","customer","customer_name","username"].indexOf(key)>=0)continue;let value=String(row[key]);if(key.endsWith("_minor"))value=amount(value)+" "+(row.currency||"");else if(key==="created_at")value=new Date(Number(value)).toLocaleString();else if(key==="starts_day"||key==="ends_day")value=new Date(Number(value)*86400000).toISOString().slice(0,10);fields.push(label(key)+": "+value)}return fields.join("   •   ")}
+ function showEditor(){workspace.subscriberChoices=commerce.choices("subscribers");workspace.planChoices=commerce.choices("plans");workspace.memberChoices=commerce.allowed("TEAM")?commerce.choices("team_members"):[];workspace.requestId="";editor.open()}
  function refresh(){commerce.browse(selectedTable,search.text,page)}
  Theme {id: theme}
  FileDialog {id: csv; fileMode: FileDialog.SaveFile; defaultSuffix: "csv"; onAccepted: commerce.exportCsv(selectedFile)}
@@ -37,7 +42,7 @@ ColumnLayout {
  Text {text: commerce.scope; color: theme.muted; wrapMode: Text.Wrap; Layout.fillWidth: true}
  Flow {
   Layout.fillWidth: true; spacing: 8
-  ComboBox {id: records; model: commerce.tables.concat(["local_accounts"]); currentIndex: 2; Layout.preferredWidth: 190; onActivated: {workspace.selectedTable=currentText;workspace.page=0;workspace.selectedId="";workspace.refresh()}}
+  ComboBox {id: records; textRole:"display";valueRole:"id";model:commerce.tables.concat(["local_accounts"]).map(function(key){return {id:key,display:workspace.tableName(key)}}); currentIndex: 2; Layout.preferredWidth: 190; onActivated: {workspace.selectedTable=currentValue;workspace.page=0;workspace.selectedId="";workspace.refresh()}}
   FgField {id: search; width: Math.max(180,workspace.width-770); placeholderText: workspace.tr("بحث","Search"); onTextEdited: {workspace.page=0;workspace.refresh()}}
   FgButton {text: workspace.tr("تحديث","Refresh"); onClicked: workspace.refresh()}
   FgButton {text: workspace.tr("CSV للصفحة","Page CSV"); enabled: commerce.allowed("EXPORT"); onClicked: csv.open()}
@@ -49,7 +54,7 @@ ColumnLayout {
  RowLayout {
   Layout.fillWidth: true
   ComboBox {id: action; model: workspace.arabic?workspace.labels:workspace.enLabels; Layout.preferredWidth: 230}
-  FgButton {text: workspace.tr("فتح العملية","Open operation"); onClicked:{workspace.subscriberChoices=commerce.choices("subscribers");workspace.planChoices=commerce.choices("plans");workspace.memberChoices=commerce.allowed("TEAM")?commerce.choices("team_members"):[];workspace.requestId="";editor.open()}; accent: theme.gold}
+  FgButton {text: workspace.tr("فتح العملية","Open operation"); onClicked:workspace.showEditor(); accent: theme.gold}
   FgButton {text: workspace.tr("السابق","Previous"); enabled: workspace.page>0; onClicked: {workspace.page--;workspace.refresh()}}
   FgButton {text: workspace.tr("التالي","Next"); enabled: commerce.rows.length===50; onClicked: {workspace.page++;workspace.refresh()}}
   FgButton {text:workspace.tr("عرض المحفظة","View wallet");enabled:commerce.role==="RESELLER"||commerce.allowed("TEAM");onClicked:{workspace.walletData=commerce.resellerWallet(commerce.role==="RESELLER"?"":workspace.selectedId);if(workspace.walletData.name)wallet.open()}}
@@ -60,8 +65,11 @@ ColumnLayout {
   Layout.fillWidth: true; Layout.fillHeight: true; clip: true
   ListView {
    model: commerce.rows; implicitWidth: workspace.width-20; spacing: 5
-   delegate: Rectangle {required property var modelData; required property int index; width: ListView.view.width; height: details.implicitHeight+24; radius: 12; color: workspace.selectedId===(modelData.id||"")?theme.raised:theme.panel; border.color: workspace.selectedId===(modelData.id||"")?theme.blue:theme.muted
-    Text {id: details; anchors.fill: parent; anchors.margins: 12; wrapMode: Text.Wrap; color: theme.white; text: {var fields=[];for(var key in modelData)fields.push(key+": "+modelData[key]);return fields.join("   •   ")}}
+   delegate: Rectangle {required property var modelData; required property int index; width: ListView.view.width; height: details.implicitHeight+rowTitle.implicitHeight+38; radius: 12; color: workspace.selectedId===(modelData.id||"")?theme.raised:theme.panel; border.color: workspace.selectedId===(modelData.id||"")?theme.blue:theme.muted
+    Column {anchors.fill:parent;anchors.margins:12;spacing:8
+     Text {id:rowTitle;width:parent.width;wrapMode:Text.Wrap;color:theme.gold;font.bold:true;font.pixelSize:17;text:modelData.name||modelData.customer||modelData.customer_name||modelData.username||workspace.tableName(workspace.selectedTable)}
+     Text {id:details;width:parent.width;wrapMode:Text.Wrap;color:theme.silver;text:workspace.details(modelData)}
+    }
     TapHandler {onTapped: workspace.selectedId=parent.modelData.id||""}
    }
   }

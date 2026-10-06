@@ -6,8 +6,11 @@ ColumnLayout {
  id: studio
  property bool arabic: true
  function tr(ar,en){return arabic?ar:en}
+ function previewFirst(){vouchers.selectCard(0);studio.previewImage=vouchers.previewCard(0);cardPreview.open()}
  property string exportFormat: "PDF"
+ property string previewImage:""
  Theme {id: theme}
+ FileDialog {id:oneCardFile;fileMode:FileDialog.SaveFile;defaultSuffix:"pdf";onAccepted:vouchers.exportFile(selectedFile,"PDF",paper.currentText,true)}
  FileDialog {id: saveFile; fileMode: FileDialog.SaveFile; defaultSuffix: studio.exportFormat.toLowerCase(); onAccepted: vouchers.exportFile(selectedFile,studio.exportFormat,paper.currentText)}
  FileDialog {id: archiveFile; fileMode: FileDialog.SaveFile; defaultSuffix: "fgbackup"; onAccepted: {vouchers.exportArchive(selectedFile,backupPassword.text);backupPassword.clear()}}
  FileDialog {id: importFile; fileMode: FileDialog.OpenFile; onAccepted: {vouchers.importArchive(selectedFile,backupPassword.text);backupPassword.clear()}}
@@ -55,8 +58,8 @@ ColumnLayout {
    FgField {id: comment; Layout.fillWidth: true; Layout.columnSpan: 3}
   }
  }
- RowLayout {
-  Layout.fillWidth: true
+ Flow {
+  Layout.fillWidth: true;spacing:8
   FgButton {text: studio.tr("إنشاء وحفظ","Generate & save"); enabled: !vouchers.busy; accent: theme.mint; onClicked: {
    var request={quantity:Number(quantity.text),usernameLength:Number(length.text),passwordLength:Number(passwordLength.text),mode:mode.currentText,profile:profile.text,server:server.text,prefix:prefix.text,suffix:suffix.text,passwordMode:passwordMode.currentText,characterSet:alphabet.currentText,durationValue:Number(duration.text),durationUnit:durationUnit.currentText,comment:comment.text,branding:{networkName:network.text,supportPhone:phone.text,priceText:price.text,portalLoginUrl:portal.text}}
    if(dataLimit.text.length)request.limitBytesTotal=String(Math.round(Number(dataLimit.text)*1048576))
@@ -71,13 +74,13 @@ ColumnLayout {
  }
  Dialog {id: activation; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 520; title: studio.tr("تفعيل دفعة الكروت","Activate voucher batch"); contentItem: ColumnLayout {Text {Layout.fillWidth: true; wrapMode: Text.Wrap; text: studio.tr("سيُنشئ كروت الدفعة على الراوتر المتصل. راجع الخدمة والباقات والصلاحية أولًا.","Creates this batch on the connected router. Review service, profile and expiry first."); color: theme.silver} FgButton {text: studio.tr("تأكيد التفعيل","Confirm activation"); onClicked: {vouchers.activate();activation.close()}}}}
  Text {text: vouchers.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
- RowLayout {
-  Layout.fillWidth: true
+ Flow {
+  Layout.fillWidth: true;spacing:8
   FgButton {text:studio.tr("السابق","Previous");enabled:vouchers.archivePage>0;onClicked:vouchers.setArchivePage(vouchers.archivePage-1)}
   FgButton {text:studio.tr("التالي","Next");enabled:(vouchers.archivePage+1)*20<vouchers.archiveCount;onClicked:vouchers.setArchivePage(vouchers.archivePage+1)}
   ComboBox {id: archive; model: vouchers.archive; textRole: "id"; Layout.preferredWidth: 260}
   FgButton {text: studio.tr("فتح دفعة","Open batch"); enabled: !vouchers.busy; onClicked: if(archive.currentIndex>=0)vouchers.openBatch(vouchers.archive[archive.currentIndex].id)}
-  FgField {id: backupPassword; echoMode: TextInput.Password; placeholderText: studio.tr("كلمة مرور النسخة المشفرة (12+)","Backup password (12+)"); Layout.fillWidth: true}
+  FgField {id: backupPassword;width:240; echoMode: TextInput.Password; placeholderText: studio.tr("كلمة مرور النسخة المشفرة (12+)","Backup password (12+)"); Layout.fillWidth: true}
   FgButton {text: studio.tr("نسخ الأرشيف","Back up archive"); enabled: backupPassword.text.length>=12&&!vouchers.busy; onClicked: archiveFile.open()}
   FgButton {text: studio.tr("استيراد","Import"); enabled: backupPassword.text.length>=12&&!vouchers.busy; onClicked: importFile.open()}
  }
@@ -85,8 +88,12 @@ ColumnLayout {
   Layout.fillWidth: true; Layout.fillHeight: true; model: vouchers.cards; clip: true; spacing: 6
   ScrollBar.vertical: ScrollBar {}
   delegate: Rectangle {required property var modelData;required property int index; width: ListView.view.width; height: 66; color: theme.panel; radius: 12
-   TapHandler {onTapped:vouchers.selectCard(index)}
+   TapHandler {onTapped:{vouchers.selectCard(index);studio.previewImage=vouchers.previewCard(index);cardPreview.open()}}
    RowLayout {anchors.fill: parent; anchors.margins: 12; Text {text: modelData.username; color: theme.white; font.bold: true; Layout.fillWidth: true} Text {text: modelData.password; color: theme.silver; Layout.fillWidth: true} Text {text: modelData.profile; color: theme.muted; Layout.fillWidth: true} FgButton {text:studio.tr("مشاركة","Share");implicitHeight:36;onClicked:backend.copyText(vouchers.shareCard(index))} Text {text: modelData.provisionState; color: modelData.provisionState==="CREATED"?theme.mint:theme.gold} ToolTip.visible: cardHover.hovered; ToolTip.text: modelData.provisionMessage||""; HoverHandler {id: cardHover}}
   }
  }
+ Dialog {id:cardPreview;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(700,parent.width-40);height:Math.min(560,parent.height-40);title:studio.tr("معاينة الكارت وQR","Voucher & QR preview")
+  contentItem:ColumnLayout {Image {Layout.fillWidth:true;Layout.fillHeight:true;source:studio.previewImage;fillMode:Image.PreserveAspectFit} Flow {Layout.fillWidth:true;spacing:8;FgButton {text:"PDF";onClicked:oneCardFile.open()} FgButton {text:studio.tr("طباعة الكارت","Print voucher");onClicked:vouchers.print(paper.currentText,true)} FgButton {text:studio.tr("رجوع","Back");onClicked:cardPreview.close()}}}
+ }
+
 }

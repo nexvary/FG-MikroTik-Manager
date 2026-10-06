@@ -22,6 +22,7 @@ public:
  int archivePage()const{return page;}int archiveCount()const{try{return authorization()?ids().size():0;}catch(...){return 0;}}
  Q_INVOKABLE void setArchivePage(int value);
  Q_INVOKABLE QString shareCard(int index);
+ Q_INVOKABLE QString previewCard(int index)const;
  Q_INVOKABLE void selectCard(int index);
  void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  static QJsonObject generateBatch(QJsonObject request);
@@ -32,8 +33,8 @@ public:
  Q_INVOKABLE void generate(QJsonObject request);
  Q_INVOKABLE void activate();
  Q_INVOKABLE void openBatch(QString id);
- Q_INVOKABLE void exportFile(QUrl path,QString format,QString paper="A4");
- Q_INVOKABLE void print(QString paper="A4");
+ Q_INVOKABLE void exportFile(QUrl path,QString format,QString paper="A4",bool selectedOnly=false);
+ Q_INVOKABLE void print(QString paper="A4",bool selectedOnly=false);
  Q_INVOKABLE void exportArchive(QUrl path,QString password);
  Q_INVOKABLE void importArchive(QUrl path,QString password);
 signals:void changed();
@@ -43,5 +44,5 @@ private:
  void save();void provision(int index,QString menu,QSet<QString> existing);
  void expire(QJsonObject voucher,QString id,std::function<void(RouterReply)> done);
  static void paintCard(QPainter &p,QRectF rect,QJsonObject card);
- void render(class QPagedPaintDevice &device,QString paper);
+ void render(class QPagedPaintDevice &device,QString paper,bool selectedOnly=false);
 };

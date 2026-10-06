@@ -27,6 +27,7 @@ jobs:
       - name: Configure
         run: cmake -S desktop/qt -B qt-build -A x64 -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
       - name: Build
+        id: build
         run: cmake --build qt-build --config Release --parallel 4
       - name: Contract tests
         shell: pwsh
@@ -53,6 +54,7 @@ jobs:
             qt-build/voucher-qr-test.*
             qt-ui-*.log
       - name: Deploy Qt
+        if: always() && steps.build.outcome == 'success'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force qt-package | Out-Null
@@ -60,11 +62,13 @@ jobs:
           & C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --release --qmldir desktop/qt/qml --compiler-runtime qt-package/fg_mtm.exe
           if ($LASTEXITCODE -ne 0) { throw 'Deployment failed' }
       - name: Test packaged UI
+        if: always() && steps.build.outcome == 'success'
         shell: pwsh
         run: |
           $app=Start-Process qt-package/fg_mtm.exe -ArgumentList '--smoke-test' -RedirectStandardError qt-ui-stderr.log -RedirectStandardOutput qt-ui-stdout.log -PassThru
           if (-not $app.WaitForExit(90000)) { $app.Kill(); throw 'UI timeout' }
           if ($app.ExitCode -ne 0) { Get-Content qt-ui-stderr.log; throw 'UI failed' }
+          if (Select-String -Path qt-ui-stderr.log -Pattern 'TypeError|ReferenceError|Unable to assign|Cannot assign|is not a type' -Quiet) { Get-Content qt-ui-stderr.log; throw 'QML runtime error' }
           if (!(Test-Path qt-proof/terminal-ar.png)) { throw 'Terminal screenshot missing' }
       - name: Build and test installer
         shell: pwsh

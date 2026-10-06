@@ -20,6 +20,9 @@ ApplicationWindow {
  property var tableAr: ["المشتركون","الباقات","الفواتير","السجل المالي","المبيعات","المصروفات","الموظفون والموزعون","حركة الموزعين","الراوترات","مهام الشبكة","تفاصيل الدفع","إلغاء الفواتير","إلغاء المبيعات","دفعات الاستيراد","التدقيق","المؤسسة","الفروع"]
  function tr(ar,en){return arabic?ar:en}
  function navigate(value){if(value!==page){history=history.concat([page]);page=value;backend.clearView();if(page==="business")filter()}}
+ function showBusinessEditor(){localBusiness.showEditor()}
+ function showVoucherPreview(){voucherStudio.previewFirst()}
+ function showRouterEditor(){adminEditor.open()}
  function showTerminal(){terminalWindow.show();terminalWindow.raise()}
  function filter(){backend.filter(tableKeys[tables.currentIndex],search.text,businessPage)}
  Theme {id: theme}
@@ -140,8 +143,8 @@ ApplicationWindow {
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
    RouterToolsWorkspace {enabled:!networkBilling.busy;visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
-   BusinessWorkspace {visible: root.page==="commerce"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
-   VoucherStudio {visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
+   BusinessWorkspace {id:localBusiness;visible: root.page==="commerce"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
+   VoucherStudio {id:voucherStudio;visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    Rectangle {
     visible: root.page!=="about"&&root.page!=="billing"&&root.page!=="transfer"&&root.page!=="monitor"&&root.page!=="tools"&&root.page!=="commerce"&&root.page!=="vouchers"&&root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
     Flickable {
