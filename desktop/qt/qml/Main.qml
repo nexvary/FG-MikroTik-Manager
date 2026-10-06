@@ -48,7 +48,7 @@ ApplicationWindow {
  RowLayout {
   anchors.fill: parent; spacing: 0
   Rectangle {
-   Layout.fillHeight: true; Layout.preferredWidth: 240; color: theme.navy
+   Layout.fillHeight: true; Layout.preferredWidth: 260; color: theme.navy
    ColumnLayout {
     anchors.fill: parent; anchors.margins: 18; spacing: 12
     Text {text: "FG MACHINES"; color: theme.silver; font.pixelSize: 23; font.bold: true}
@@ -60,8 +60,10 @@ ApplicationWindow {
     Repeater {
      model: [{key:"home",ar:"الرئيسية",en:"Main menu",icon:0},{key:"tools",ar:"الإعداد المتقدم",en:"Advanced Setup",icon:7},{key:"router:NETWORK",ar:"الشبكة والاتصال",en:"Network & connectivity",icon:10},{key:"router:SYSTEM",ar:"النظام والأمان",en:"System & security",icon:11},{key:"vouchers",ar:"إنشاء الكروت",en:"Voucher Studio",icon:6},{key:"commerce",ar:"المشتركون والحسابات",en:"Subscribers & accounts",icon:2},{key:"about",ar:"عن المطور",en:"About developer",icon:5},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:9},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:7},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:8}]
      delegate: FgButton {
+      id:sidebarButton
       required property var modelData
-      Layout.fillWidth: true; text: root.tr(modelData.ar,modelData.en); leftPadding: 42; rightPadding: 42
+      Layout.fillWidth: true;implicitHeight:54; text: root.tr(modelData.ar,modelData.en); leftPadding: 42; rightPadding: 14
+      contentItem:Text {text:sidebarButton.text;color:theme.white;font:sidebarButton.font;wrapMode:Text.Wrap;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
       accent: root.page===modelData.key.split(":")[0]&&(modelData.key.indexOf("router:")!==0||root.routerGroup===modelData.key.split(":")[1]) ? theme.blue : theme.muted
       onClicked: root.navigateTask(modelData.key)
       NavIcon {anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; kind: parent.modelData.icon; ink: parent.accent}

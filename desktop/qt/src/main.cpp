@@ -35,9 +35,10 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
    const QStringList pages{"home","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing","about"};
-   if(*index>=pages.size()*2+4){app.exit(0);return;}
-   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool ar=*index>=pages.size();auto page=terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):pages[*index%pages.size()];
+   if(*index>=pages.size()*2+6){app.exit(0);return;}
+   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool ar=*index>=pages.size();auto page=terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
    if(terminal){if(!QMetaObject::invokeMethod(w,"showTerminal")){app.exit(7);return;}}
+   else if(extra>=4){QMetaObject::invokeMethod(w,"closeReviewDialogs");if(!QMetaObject::invokeMethod(w,extra==4?"showSubscribers":"showOnline")){app.exit(18);return;}}
    else if(extra>0){QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("page",extra==1?"commerce":extra==2?"vouchers":"router");const char *method=extra==1?"showBusinessEditor":extra==2?"showVoucherPreview":"showRouterEditor";if(!QMetaObject::invokeMethod(w,method)){app.exit(11);return;}}
    else{w->setProperty("arabic",ar);w->setProperty("page",page);bridge.clearView();if(page=="business")bridge.filter("subscribers","",0);}
    QTimer::singleShot(800,&app,[&,w,index,step,page,ar,terminal]{
