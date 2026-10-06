@@ -66,6 +66,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     val state: StateFlow<RouterUiState> = _state.asStateFlow()
 
     private var repository: RouterRepository? = null
+    private var adminLoadGeneration = 0L
     val businessRouter get() = repository?.business
     val advancedManager get() = repository?.advanced
     val hotspotManager get() = repository?.hotspot
@@ -114,6 +115,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
 
     fun connect(settings: RouterConnectionSettings) {
         if (_state.value.connecting) return
+        adminLoadGeneration++
 
         viewModelScope.launch {
             _state.value = _state.value.copy(connecting = true, error = null)
@@ -165,6 +167,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectSection(section: AppSection) {
+        adminLoadGeneration++
         _state.value = _state.value.copy(
             section = section,
             adminModule = null,
@@ -181,6 +184,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openAdminModule(module: RouterAdminModule) {
         val repo = repository ?: return
+        val generation = ++adminLoadGeneration
 
         viewModelScope.launch {
             _state.value = _state.value.copy(
@@ -192,12 +196,15 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
             runCatching {
                 repo.loadAdminModule(module)
             }.onSuccess { snapshot ->
+                if (generation != adminLoadGeneration || repository !== repo) return@launch
                 _state.value = _state.value.copy(
                     adminLoading = false,
                     adminSnapshot = snapshot,
                     adminError = null
                 )
             }.onFailure { throwable ->
+                if (throwable is kotlinx.coroutines.CancellationException) throw throwable
+                if (generation != adminLoadGeneration || repository !== repo) return@launch
                 _state.value = _state.value.copy(
                     adminLoading = false,
                     adminSnapshot = null,
@@ -212,6 +219,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closeAdminModule() {
+        adminLoadGeneration++
         _state.value = _state.value.copy(
             adminModule = null,
             adminSnapshot = null,
@@ -498,6 +506,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun disconnect() {
+        adminLoadGeneration++
         repository?.close()
         repository = null
         val previous = _state.value
