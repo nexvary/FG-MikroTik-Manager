@@ -1,3 +1,6 @@
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonArray>
 #include "Protocol.hpp"
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -25,7 +28,8 @@ QJsonValue Protocol::redact(const QJsonValue &value) {
   o.insert(i.key(),redact(i.value()));
  }return o;}return value;
 }
-QStringList Protocol::menus() {return {"system/resource","interface","interface/bridge","interface/vlan","ip/address","ip/dhcp-server","ip/dns","ip/route","ip/firewall/filter","ip/firewall/nat","ip/firewall/mangle","queue/simple","interface/wifi","ip/hotspot/user","ip/hotspot/active","ppp/secret","ppp/active","interface/wireguard","file","log","system/script","system/scheduler","ip/neighbor"};}
+QJsonArray Protocol::modules(){QFile file(":/resources/router-modules.json");if(!file.open(QIODevice::ReadOnly))return {};return QJsonDocument::fromJson(file.readAll()).array();}
+QStringList Protocol::menus(){QStringList result;for(auto item:modules())result.append(item.toObject()["menu"].toString());return result;}
 QString Protocol::menuForCommand(QString command) {
  command=command.trimmed();if(!command.endsWith(" print"))return {};
  command.chop(6);if(command.startsWith('/'))command.remove(0,1);

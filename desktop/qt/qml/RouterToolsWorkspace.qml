@@ -1,14 +1,17 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import QtQuick.Dialogs
 ColumnLayout {
  id: workspace
  property bool arabic: true
  property string userId: ""
+ property string logoDataUri:routerTools.portalDesign.logoDataUri||""
  property var selectedNetworks: []
  function tr(ar,en){return arabic?ar:en}
- function design(){return {networkName:networkName.text,supportPhone:support.text,welcome:welcome.text,color:color.text,terms:terms.text,website:website.text}}
+ function design(){return {networkName:networkName.text,supportPhone:support.text,welcome:welcome.text,color:color.text,terms:terms.text,website:website.text,logoDataUri:workspace.logoDataUri}}
  Theme {id: theme}
+ FileDialog {id:logoPicker;fileMode:FileDialog.OpenFile;nameFilters:["Images (*.png *.jpg *.jpeg *.webp)"];onAccepted:{let logo=routerTools.portalLogo(selectedFile);if(logo.length)workspace.logoDataUri=logo}}
  RowLayout {Layout.fillWidth: true; FgButton {text: workspace.tr("فحص وتحديث","Inspect & refresh"); enabled: !routerTools.busy&&!backend.busy; onClicked: routerTools.inspect(); accent: theme.mint} Text {text: routerTools.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}}
  TabBar {id: tabs; Layout.fillWidth: true; FgTab {text: workspace.tr("التشخيص","Diagnostics")} FgTab {text: workspace.tr("إعداد HotSpot","HotSpot setup")} FgTab {text: workspace.tr("المشتركون","Subscribers")} FgTab {text: workspace.tr("الحماية","Protection")} FgTab {text: workspace.tr("صفحة الدخول","Login portal")} FgTab {text: workspace.tr("النسخ والساعة","Backup & clock")}}
  StackLayout {
@@ -45,15 +48,15 @@ ColumnLayout {
   }}
   ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 12
    GridLayout {columns: 2; Layout.fillWidth: true
-    Text {text: workspace.tr("اسم الشبكة","Network name"); color: theme.silver} FgField {id: networkName; text: "FG Machines WiFi"; Layout.fillWidth: true}
-    Text {text: workspace.tr("هاتف الدعم","Support phone"); color: theme.silver} FgField {id: support; Layout.fillWidth: true}
-    Text {text: workspace.tr("الترحيب","Welcome"); color: theme.silver} FgField {id: welcome; text: "أهلاً بك في شبكتنا"; Layout.fillWidth: true}
-    Text {text: workspace.tr("لون الصفحة","Page color"); color: theme.silver} FgField {id: color; text: "#159DFF"; Layout.fillWidth: true}
-    Text {text: workspace.tr("الشروط","Terms"); color: theme.silver} FgField {id: terms; Layout.fillWidth: true}
-    Text {text: workspace.tr("الموقع HTTPS","Website HTTPS"); color: theme.silver} FgField {id: website; Layout.fillWidth: true}
+    Text {text: workspace.tr("اسم الشبكة","Network name"); color: theme.silver} FgField {id: networkName; text:routerTools.portalDesign.networkName||"FG Machines WiFi"; Layout.fillWidth: true}
+    Text {text: workspace.tr("هاتف الدعم","Support phone"); color: theme.silver} FgField {id: support;text:routerTools.portalDesign.supportPhone||""; Layout.fillWidth: true}
+    Text {text: workspace.tr("الترحيب","Welcome"); color: theme.silver} FgField {id: welcome; text:routerTools.portalDesign.welcome||"أهلاً بك في شبكتنا"; Layout.fillWidth: true}
+    Text {text: workspace.tr("لون الصفحة","Page color"); color: theme.silver} FgField {id: color; text:routerTools.portalDesign.color||"#159DFF"; Layout.fillWidth: true}
+    Text {text: workspace.tr("الشروط","Terms"); color: theme.silver} FgField {id: terms;text:routerTools.portalDesign.terms||""; Layout.fillWidth: true}
+    Text {text: workspace.tr("الموقع HTTPS","Website HTTPS"); color: theme.silver} FgField {id: website;text:routerTools.portalDesign.website||""; Layout.fillWidth: true}
     Text {text: workspace.tr("بروفايل HotSpot","HotSpot profile"); color: theme.silver} ComboBox {id: serverProfile; model: routerTools.profiles; textRole: "name"; Layout.fillWidth: true}
    }
-   RowLayout {FgButton {text: workspace.tr("معاينة الصفحة","Preview portal"); onClicked: routerTools.previewPortal(workspace.design())} FgButton {text: workspace.tr("تثبيت الصفحة","Install portal"); enabled: serverProfile.currentIndex>=0&&!routerTools.busy; onClicked: portalInstall.open()} FgButton {text: workspace.tr("استعادة الصفحة السابقة","Restore previous portal"); enabled: !routerTools.busy; onClicked: routerTools.restorePortal()}}
+   Flow {Layout.fillWidth:true;spacing:8;FgButton {text:workspace.tr("اختيار شعار","Choose logo");onClicked:logoPicker.open()} FgButton {text:workspace.tr("حفظ التصميم","Save design");onClicked:routerTools.savePortalDesign(workspace.design())} FgButton {text:workspace.tr("معاينة الحالة","Status preview");onClicked:routerTools.previewPortal(workspace.design(),"status.html")} FgButton {text: workspace.tr("معاينة الصفحة","Preview portal"); onClicked: routerTools.previewPortal(workspace.design())} FgButton {text: workspace.tr("تثبيت الصفحة","Install portal"); enabled: serverProfile.currentIndex>=0&&!routerTools.busy; onClicked: portalInstall.open()} FgButton {text: workspace.tr("استعادة الصفحة السابقة","Restore previous portal"); enabled: !routerTools.busy; onClicked: routerTools.restorePortal()}}
    Text {text: workspace.tr("تُرفع الملفات إلى مجلد جديد وتُفحص قبل تحويل صفحة الدخول إليه.","Files are uploaded to a new directory and verified before switching the login portal."); color: theme.muted; Layout.fillWidth: true; wrapMode: Text.Wrap}
   }}
   ColumnLayout {

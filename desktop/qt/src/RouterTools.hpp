@@ -15,6 +15,7 @@ class RouterTools:public QObject{
  Q_PROPERTY(QVariantList dhcpNetworks READ dhcpNetworks NOTIFY changed)
  Q_PROPERTY(QVariantList users READ users NOTIFY changed)
  Q_PROPERTY(QVariantList profiles READ profiles NOTIFY changed)
+ Q_PROPERTY(QVariantMap portalDesign READ portalDesign NOTIFY changed)
  Q_PROPERTY(QString portalPreview READ portalPreview NOTIFY changed)
 public:
  RouterTools(RouterClient *client,QObject*p=nullptr);~RouterTools();
@@ -39,7 +40,10 @@ public:
  Q_INVOKABLE void reboot();
  Q_INVOKABLE void flushDns();
  Q_INVOKABLE void subscriber(QString operation,QString id,QJsonObject fields);
- Q_INVOKABLE void previewPortal(QJsonObject design);
+ Q_INVOKABLE void previewPortal(QJsonObject design,QString page="login.html");
+ Q_INVOKABLE QString portalLogo(QUrl file);
+ Q_INVOKABLE void savePortalDesign(QJsonObject design);
+ QVariantMap portalDesign()const;
  Q_INVOKABLE void installPortal(QString profile,QJsonObject design);
  Q_INVOKABLE void restorePortal();
 signals:void changed();

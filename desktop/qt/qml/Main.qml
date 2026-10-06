@@ -14,6 +14,8 @@ ApplicationWindow {
  property var history: []
  property int businessPage: 0
  property string selectedRouterId: ""
+ property var selectedRouterRow: ({})
+ property var routerModule: backend.module(menu.currentText)
  property var tableKeys: ["subscribers","plans","invoices","ledger","sales","expenses","team_members","reseller_entries","router_bindings","network_jobs","payment_details","invoice_voids","sale_voids","import_batches","audit","organizations","branches"]
  property var tableAr: ["المشتركون","الباقات","الفواتير","السجل المالي","المبيعات","المصروفات","الموظفون والموزعون","حركة الموزعين","الراوترات","مهام الشبكة","تفاصيل الدفع","إلغاء الفواتير","إلغاء المبيعات","دفعات الاستيراد","التدقيق","المؤسسة","الفروع"]
  function tr(ar,en){return arabic?ar:en}
@@ -36,7 +38,7 @@ ApplicationWindow {
     Text {text: "FG MTM"; color: theme.blue; font.pixelSize: 18; font.bold: true}
     Text {text: root.tr("إدارة شبكتك وأعمالك","Network & business"); color: theme.muted; font.pixelSize: 13}
     Rectangle {Layout.fillWidth: true; height: 1; color: theme.silver; opacity: 0.5}
-    ScrollView {Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth
+    ScrollView {Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth;ScrollBar.vertical.policy:ScrollBar.AlwaysOn
     ColumnLayout {width:parent.width;spacing:8
     Repeater {
      model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"commerce",ar:"الأعمال المحلية",en:"Local business",icon:1},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:1},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:3},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"tools",ar:"إدارة الشبكة",en:"Network tools",icon:3},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4},{key:"about",ar:"عنا",en:"About",icon:5}]
@@ -115,7 +117,7 @@ ApplicationWindow {
    GridLayout {
     visible: root.page==="router"; columns: 2; Layout.fillWidth: true
     FgField {id: routerUrl; Layout.fillWidth: true; placeholderText: root.tr("عنوان IP أو اسم الراوتر","Router IP or hostname"); LayoutMirroring.enabled: false}
-    ComboBox {id: menu; model: backend.menus; Layout.fillWidth: true}
+    ComboBox {id: menu; model: backend.menus; Layout.fillWidth: true;onActivated:{root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
     FgField {id: routerUser; Layout.fillWidth: true; placeholderText: root.tr("حساب الراوتر","Router username"); LayoutMirroring.enabled: false}
     FgField {id: routerPassword; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: root.tr("كلمة المرور","Password"); LayoutMirroring.enabled: false}
     ComboBox {id: routerProtocol; model: ["REST","API_SSL","API","AUTO","REST_HTTP"]; Layout.fillWidth: true; onActivated: routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":currentIndex===4?"80":"8728"}
@@ -124,10 +126,10 @@ ApplicationWindow {
     FgButton {text: root.tr("قراءة القسم","Read section"); enabled: !backend.busy; onClicked: backend.command("/"+menu.currentText+" print")}
     RowLayout {Layout.columnSpan: 2
      FgButton {text: root.tr("اكتشاف","Discover"); onClicked: backend.discoverRouters()}
-     FgButton {text: root.tr("إضافة / تعديل","Add / edit"); enabled: backend.routerConnected&&!backend.busy; onClicked: adminEditor.open()}
-     FgButton {text: root.tr("تفعيل","Enable"); enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"enable",root.selectedRouterId,"{}")}
-     FgButton {text: root.tr("تعطيل","Disable"); enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"disable",root.selectedRouterId,"{}")}
-     FgButton {text: root.tr("حذف","Delete"); accent: theme.error; enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"remove",root.selectedRouterId,"{}")}
+     FgButton {text: root.tr("إضافة / تعديل","Add / edit"); enabled: backend.routerConnected&&!backend.busy&&(root.routerModule.create||root.routerModule.edit); onClicked:adminEditor.open()}
+     FgButton {text: root.tr("تفعيل","Enable"); enabled: root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"enable",root.selectedRouterId,"{}")}
+     FgButton {text: root.tr("تعطيل","Disable"); enabled: root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"disable",root.selectedRouterId,"{}")}
+     FgButton {text: root.tr("حذف","Delete"); accent: theme.error; enabled: root.routerModule.delete&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"remove",root.selectedRouterId,"{}")}
     }
     RowLayout {Layout.columnSpan:2;Layout.fillWidth:true
      FgField {id:profileName;Layout.fillWidth:true;placeholderText:root.tr("اسم الراوتر لحفظ الاتصال","Router name to save connection")}
@@ -157,7 +159,7 @@ ApplicationWindow {
         required property var modelData
         required property int index
         width: ListView.view.width; height: 46; color: root.page==="router"&&root.selectedRouterId===modelData[".id"] ? theme.blue : index%2===0 ? theme.panel : theme.raised
-        TapHandler {onTapped: if(root.page==="router")root.selectedRouterId=parent.modelData[".id"]||""}
+        TapHandler {onTapped: if(root.page==="router"){root.selectedRouterId=parent.modelData[".id"]||"";root.selectedRouterRow=parent.modelData}}
         Row {Repeater {model: backend.columns; Text {required property string modelData; text: parent.parent.modelData[modelData]||""; width: 190; height: 46; padding: 8; color: theme.white; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter; ToolTip.visible: hovered.hovered; ToolTip.text: text; HoverHandler {id: hovered}}}}
        }
       }
@@ -174,14 +176,32 @@ ApplicationWindow {
  }
  Connections {target: backend; function onChanged(){if(backend.preview.length>0&&!commandPreview.visible)commandPreview.open()}}
  Dialog {
-  id: adminEditor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 680
-  title: root.tr("إضافة أو تعديل عنصر","Add or edit item")
-  contentItem: ColumnLayout {
-   Text {text: root.tr("الحقول بصيغة JSON وقيم نصية. الأسرار المحجوبة لا تُرسل تلقائيًا.","JSON fields with string values. Redacted secrets are never sent automatically."); color: theme.silver; Layout.fillWidth: true; wrapMode: Text.Wrap}
-   TextArea {id: adminFields; Layout.fillWidth: true; Layout.preferredHeight: 200; text: '{"name":""}'; color: theme.white; selectByMouse: true; background: Rectangle {color: theme.navy}}
-   RowLayout {FgButton {text: root.tr("إضافة","Add"); onClicked: {backend.admin(menu.currentText,"add","",adminFields.text);adminEditor.close()}} FgButton {text: root.tr("تعديل المحدد","Edit selected"); enabled: root.selectedRouterId.length>0; onClicked: {backend.admin(menu.currentText,"set",root.selectedRouterId,adminFields.text);adminEditor.close()}}}
+  id: adminEditor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(680,parent.width-40);height:Math.min(620,parent.height-40)
+  property var values:({})
+  function put(key,value){let next=Object.assign({},values);if(value.length)next[key]=value;else delete next[key];values=next}
+  onOpened:{values=({});advancedFields.text=""}
+  title:root.tr("إدارة العنصر","Manage item")+" • /"+menu.currentText
+  contentItem:ColumnLayout {
+   Text {Layout.fillWidth:true;color:theme.silver;wrapMode:Text.Wrap;text:root.tr("املأ الحقول التي تريد إرسالها. الحقول الفارغة لا تغير القيم الحالية، وكلمة المرور لا تُعرض.","Fill the fields you want to send. Empty fields preserve current values; passwords are never shown.")}
+   ScrollView {id:moduleScroll;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;contentWidth:availableWidth
+    ColumnLayout {width:moduleScroll.availableWidth;spacing:12
+     Repeater {model:root.routerModule.fields||[];delegate:ColumnLayout {required property var modelData;Layout.fillWidth:true
+      Text {text:root.tr(modelData.ar,modelData.en);color:theme.silver}
+      FgField {id:editorField;Layout.fillWidth:true;Connections {target:adminEditor;function onOpened(){editorField.clear()}} echoMode:modelData.key==="password"?TextInput.Password:TextInput.Normal;placeholderText:root.selectedRouterRow[modelData.key]||modelData.key;onTextEdited:adminEditor.put(modelData.key,text)}
+     }}
+     Text {text:root.tr("حقول إضافية JSON (اختياري)","Additional JSON fields (optional)");color:theme.silver}
+     TextArea {id:advancedFields;Layout.fillWidth:true;Layout.preferredHeight:100;placeholderText:'{"comment":"..."}';color:theme.white;selectByMouse:true;background:Rectangle {color:theme.navy}}
+    }
+   }
+   Flow {Layout.fillWidth:true;spacing:8
+    FgButton {text:root.tr("إضافة","Add");enabled:root.routerModule.create&&!backend.busy;onClicked:adminEditor.submit("add")}
+    FgButton {text:root.tr("تعديل المحدد","Edit selected");enabled:root.routerModule.edit&&!backend.busy&&(root.selectedRouterId.length>0||menu.currentText==="ip/dns"||menu.currentText==="system/clock"||menu.currentText==="system/identity");onClicked:adminEditor.submit("set")}
+    FgButton {text:root.tr("إلغاء","Cancel");onClicked:adminEditor.close()}
+   }
   }
+  function submit(action){let fields=Object.assign({},values);try{if(advancedFields.text.trim().length){let extra=JSON.parse(advancedFields.text);if(!extra||Array.isArray(extra)||typeof extra!=="object")throw "JSON";for(let key in extra){if(typeof extra[key]!=="string"||key===".id")throw "JSON";fields[key]=extra[key]}}backend.admin(menu.currentText,action,action==="set"?root.selectedRouterId:"",JSON.stringify(fields));close()}catch(error){advancedFields.placeholderText=root.tr("أدخل JSON بقيم نصية صحيحة","Enter valid JSON with string values")}}
  }
+
  CommandLibrary {id:commandLibrary;parent:Overlay.overlay;arabic:root.arabic;onSelected:function(command){commandInput.text=command;root.showTerminal()}}
  Window {
   id: terminalWindow

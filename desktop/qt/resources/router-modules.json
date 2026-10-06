@@ -1,0 +1,1071 @@
+[
+  {
+    "menu": "interface",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "mtu",
+        "ar": "MTU",
+        "en": "MTU",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "interface/wifi",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "ssid",
+        "ar": "اسم الشبكة SSID",
+        "en": "SSID",
+        "multiline": false
+      },
+      {
+        "key": "disabled",
+        "ar": "متوقف true/false",
+        "en": "Disabled true/false",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "interface/wireless",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "ssid",
+        "ar": "اسم الشبكة SSID",
+        "en": "SSID",
+        "multiline": false
+      },
+      {
+        "key": "disabled",
+        "ar": "متوقف true/false",
+        "en": "Disabled true/false",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "interface/bridge",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "اسم Bridge",
+        "en": "Bridge name",
+        "multiline": false
+      },
+      {
+        "key": "protocol-mode",
+        "ar": "Protocol mode",
+        "en": "Protocol mode",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "interface/vlan",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "interface",
+        "ar": "الواجهة",
+        "en": "Interface",
+        "multiline": false
+      },
+      {
+        "key": "vlan-id",
+        "ar": "VLAN ID",
+        "en": "VLAN ID",
+        "multiline": false
+      },
+      {
+        "key": "mtu",
+        "ar": "MTU",
+        "en": "MTU",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "interface/wireguard",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "listen-port",
+        "ar": "منفذ الاستماع",
+        "en": "Listen port",
+        "multiline": false
+      },
+      {
+        "key": "mtu",
+        "ar": "MTU",
+        "en": "MTU",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "zerotier/interface",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "instance",
+        "ar": "Instance",
+        "en": "Instance",
+        "multiline": false
+      },
+      {
+        "key": "network",
+        "ar": "Network ID",
+        "en": "Network ID",
+        "multiline": false
+      },
+      {
+        "key": "allow-default",
+        "ar": "Allow default true/false",
+        "en": "Allow default true/false",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/address",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "address",
+        "ar": "العنوان/CIDR",
+        "en": "Address/CIDR",
+        "multiline": false
+      },
+      {
+        "key": "interface",
+        "ar": "الواجهة",
+        "en": "Interface",
+        "multiline": false
+      },
+      {
+        "key": "network",
+        "ar": "Network",
+        "en": "Network",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/arp",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "address",
+        "ar": "IP Address",
+        "en": "IP address",
+        "multiline": false
+      },
+      {
+        "key": "mac-address",
+        "ar": "MAC",
+        "en": "MAC address",
+        "multiline": false
+      },
+      {
+        "key": "interface",
+        "ar": "الواجهة",
+        "en": "Interface",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/neighbor",
+    "group": "NETWORK",
+    "fields": [],
+    "create": false,
+    "edit": false,
+    "toggle": false,
+    "delete": false
+  },
+  {
+    "menu": "ip/dhcp-server",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "interface",
+        "ar": "الواجهة",
+        "en": "Interface",
+        "multiline": false
+      },
+      {
+        "key": "address-pool",
+        "ar": "Address pool",
+        "en": "Address pool",
+        "multiline": false
+      },
+      {
+        "key": "lease-time",
+        "ar": "مدة Lease",
+        "en": "Lease time",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/dhcp-client",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "interface",
+        "ar": "الواجهة",
+        "en": "Interface",
+        "multiline": false
+      },
+      {
+        "key": "address-pool",
+        "ar": "Address pool",
+        "en": "Address pool",
+        "multiline": false
+      },
+      {
+        "key": "lease-time",
+        "ar": "مدة Lease",
+        "en": "Lease time",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/dns",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "servers",
+        "ar": "DNS Servers",
+        "en": "DNS servers",
+        "multiline": false
+      },
+      {
+        "key": "allow-remote-requests",
+        "ar": "السماح بطلبات الشبكة",
+        "en": "Allow remote requests",
+        "multiline": false
+      },
+      {
+        "key": "cache-size",
+        "ar": "حجم Cache",
+        "en": "Cache size",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": true,
+    "toggle": true,
+    "delete": false
+  },
+  {
+    "menu": "ip/route",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "dst-address",
+        "ar": "الوجهة",
+        "en": "Destination",
+        "multiline": false
+      },
+      {
+        "key": "gateway",
+        "ar": "Gateway",
+        "en": "Gateway",
+        "multiline": false
+      },
+      {
+        "key": "distance",
+        "ar": "Distance",
+        "en": "Distance",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/hotspot/user",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "اسم المستخدم",
+        "en": "Username",
+        "multiline": false
+      },
+      {
+        "key": "password",
+        "ar": "كلمة المرور",
+        "en": "Password",
+        "multiline": false
+      },
+      {
+        "key": "profile",
+        "ar": "Profile",
+        "en": "Profile",
+        "multiline": false
+      },
+      {
+        "key": "server",
+        "ar": "Server",
+        "en": "Server",
+        "multiline": false
+      },
+      {
+        "key": "limit-uptime",
+        "ar": "مدة الاستخدام",
+        "en": "Uptime limit",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/hotspot/active",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "اسم المستخدم",
+        "en": "Username",
+        "multiline": false
+      },
+      {
+        "key": "password",
+        "ar": "كلمة المرور",
+        "en": "Password",
+        "multiline": false
+      },
+      {
+        "key": "profile",
+        "ar": "Profile",
+        "en": "Profile",
+        "multiline": false
+      },
+      {
+        "key": "server",
+        "ar": "Server",
+        "en": "Server",
+        "multiline": false
+      },
+      {
+        "key": "limit-uptime",
+        "ar": "مدة الاستخدام",
+        "en": "Uptime limit",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": false,
+    "toggle": false,
+    "delete": true
+  },
+  {
+    "menu": "ppp/secret",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "اسم المستخدم",
+        "en": "Username",
+        "multiline": false
+      },
+      {
+        "key": "password",
+        "ar": "كلمة المرور",
+        "en": "Password",
+        "multiline": false
+      },
+      {
+        "key": "service",
+        "ar": "Service",
+        "en": "Service",
+        "multiline": false
+      },
+      {
+        "key": "profile",
+        "ar": "Profile",
+        "en": "Profile",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ppp/active",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "اسم المستخدم",
+        "en": "Username",
+        "multiline": false
+      },
+      {
+        "key": "password",
+        "ar": "كلمة المرور",
+        "en": "Password",
+        "multiline": false
+      },
+      {
+        "key": "service",
+        "ar": "Service",
+        "en": "Service",
+        "multiline": false
+      },
+      {
+        "key": "profile",
+        "ar": "Profile",
+        "en": "Profile",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": false,
+    "toggle": false,
+    "delete": true
+  },
+  {
+    "menu": "queue/simple",
+    "group": "NETWORK",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "target",
+        "ar": "Target",
+        "en": "Target",
+        "multiline": false
+      },
+      {
+        "key": "max-limit",
+        "ar": "أقصى سرعة",
+        "en": "Max limit",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/firewall/filter",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "chain",
+        "ar": "Chain",
+        "en": "Chain",
+        "multiline": false
+      },
+      {
+        "key": "action",
+        "ar": "Action",
+        "en": "Action",
+        "multiline": false
+      },
+      {
+        "key": "src-address",
+        "ar": "Source",
+        "en": "Source address",
+        "multiline": false
+      },
+      {
+        "key": "dst-address",
+        "ar": "Destination",
+        "en": "Destination address",
+        "multiline": false
+      },
+      {
+        "key": "protocol",
+        "ar": "Protocol",
+        "en": "Protocol",
+        "multiline": false
+      },
+      {
+        "key": "dst-port",
+        "ar": "Destination port",
+        "en": "Destination port",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "user",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "اسم Admin",
+        "en": "Admin username",
+        "multiline": false
+      },
+      {
+        "key": "password",
+        "ar": "كلمة المرور",
+        "en": "Password",
+        "multiline": false
+      },
+      {
+        "key": "group",
+        "ar": "المجموعة full/read/write",
+        "en": "Group full/read/write",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/service",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "port",
+        "ar": "المنفذ",
+        "en": "Port",
+        "multiline": false
+      },
+      {
+        "key": "address",
+        "ar": "الشبكات المسموحة",
+        "en": "Allowed addresses",
+        "multiline": false
+      },
+      {
+        "key": "max-sessions",
+        "ar": "أقصى جلسات",
+        "en": "Max sessions",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": true,
+    "toggle": true,
+    "delete": false
+  },
+  {
+    "menu": "system/identity",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "اسم الراوتر",
+        "en": "Router identity",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": true,
+    "toggle": false,
+    "delete": false
+  },
+  {
+    "menu": "system/clock",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "time-zone-name",
+        "ar": "المنطقة الزمنية",
+        "en": "Time zone",
+        "multiline": false
+      },
+      {
+        "key": "date",
+        "ar": "التاريخ",
+        "en": "Date",
+        "multiline": false
+      },
+      {
+        "key": "time",
+        "ar": "الوقت",
+        "en": "Time",
+        "multiline": false
+      }
+    ],
+    "create": false,
+    "edit": true,
+    "toggle": false,
+    "delete": false
+  },
+  {
+    "menu": "system/scheduler",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "start-date",
+        "ar": "تاريخ البدء",
+        "en": "Start date",
+        "multiline": false
+      },
+      {
+        "key": "start-time",
+        "ar": "وقت البدء",
+        "en": "Start time",
+        "multiline": false
+      },
+      {
+        "key": "interval",
+        "ar": "التكرار",
+        "en": "Interval",
+        "multiline": false
+      },
+      {
+        "key": "on-event",
+        "ar": "الأمر",
+        "en": "On event",
+        "multiline": true
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "system/script",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "source",
+        "ar": "الكود",
+        "en": "Source",
+        "multiline": true
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "certificate",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "name",
+        "ar": "الاسم",
+        "en": "Name",
+        "multiline": false
+      },
+      {
+        "key": "common-name",
+        "ar": "Common name",
+        "en": "Common name",
+        "multiline": false
+      },
+      {
+        "key": "key-size",
+        "ar": "Key size",
+        "en": "Key size",
+        "multiline": false
+      },
+      {
+        "key": "days-valid",
+        "ar": "مدة الصلاحية بالأيام",
+        "en": "Days valid",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "system/package",
+    "group": "SYSTEM",
+    "fields": [],
+    "create": false,
+    "edit": false,
+    "toggle": false,
+    "delete": false
+  },
+  {
+    "menu": "file",
+    "group": "SYSTEM",
+    "fields": [],
+    "create": false,
+    "edit": false,
+    "toggle": false,
+    "delete": true
+  },
+  {
+    "menu": "log",
+    "group": "SYSTEM",
+    "fields": [],
+    "create": false,
+    "edit": false,
+    "toggle": false,
+    "delete": false
+  },
+  {
+    "menu": "system/resource",
+    "group": "SYSTEM",
+    "fields": [],
+    "create": false,
+    "edit": false,
+    "toggle": false,
+    "delete": false
+  },
+  {
+    "menu": "ip/firewall/nat",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "chain",
+        "ar": "Chain",
+        "en": "Chain",
+        "multiline": false
+      },
+      {
+        "key": "action",
+        "ar": "Action",
+        "en": "Action",
+        "multiline": false
+      },
+      {
+        "key": "src-address",
+        "ar": "Source",
+        "en": "Source address",
+        "multiline": false
+      },
+      {
+        "key": "dst-address",
+        "ar": "Destination",
+        "en": "Destination address",
+        "multiline": false
+      },
+      {
+        "key": "protocol",
+        "ar": "Protocol",
+        "en": "Protocol",
+        "multiline": false
+      },
+      {
+        "key": "dst-port",
+        "ar": "Destination port",
+        "en": "Destination port",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  },
+  {
+    "menu": "ip/firewall/mangle",
+    "group": "SYSTEM",
+    "fields": [
+      {
+        "key": "chain",
+        "ar": "Chain",
+        "en": "Chain",
+        "multiline": false
+      },
+      {
+        "key": "action",
+        "ar": "Action",
+        "en": "Action",
+        "multiline": false
+      },
+      {
+        "key": "src-address",
+        "ar": "Source",
+        "en": "Source address",
+        "multiline": false
+      },
+      {
+        "key": "dst-address",
+        "ar": "Destination",
+        "en": "Destination address",
+        "multiline": false
+      },
+      {
+        "key": "protocol",
+        "ar": "Protocol",
+        "en": "Protocol",
+        "multiline": false
+      },
+      {
+        "key": "dst-port",
+        "ar": "Destination port",
+        "en": "Destination port",
+        "multiline": false
+      },
+      {
+        "key": "comment",
+        "ar": "تعليق",
+        "en": "Comment",
+        "multiline": false
+      }
+    ],
+    "create": true,
+    "edit": true,
+    "toggle": true,
+    "delete": true
+  }
+]

@@ -1,6 +1,7 @@
 #pragma once
 #include "RouterClient.hpp"
 #include <coroutine>
+#include <QTimer>
 #include <exception>
 #include <memory>
 #include <stdexcept>
@@ -34,4 +35,11 @@ struct RouterAwait {
  bool await_ready()const noexcept{return false;}
  void await_suspend(std::coroutine_handle<> continuation){auto weak=lifetime;client->execute(menu,action,attributes,[this,weak,continuation](RouterReply r){if(weak.expired())return;reply=std::move(r);continuation.resume();});}
  RouterReply await_resume(){if(requireSuccess&&!reply.ok())throw std::runtime_error((reply.error+(reply.uncertain?"; VERIFY_OUTCOME_BEFORE_RETRY":"")).toStdString());return std::move(reply);}
+};
+
+struct RouterDelay {
+ QObject *context;std::weak_ptr<int> lifetime;int milliseconds;
+ bool await_ready()const noexcept{return false;}
+ void await_suspend(std::coroutine_handle<> continuation){auto weak=lifetime;QTimer::singleShot(milliseconds,context,[weak,continuation]{if(!weak.expired())continuation.resume();});}
+ void await_resume()const noexcept{}
 };

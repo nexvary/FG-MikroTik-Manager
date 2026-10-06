@@ -28,7 +28,7 @@ qt_add_resources(fg_mtm "ui" PREFIX "/" FILES
  qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml
  qml/MonitorWorkspace.qml qml/BusinessTransferWorkspace.qml qml/CommandLibrary.qml
  qml/NetworkBillingWorkspace.qml qml/AboutWorkspace.qml qml/HomeWorkspace.qml qml/FgTab.qml
- resources/business-schema.json resources/command-library.json ${portal_assets} packaging/fg-mtm.png)
+ resources/business-schema.json resources/command-library.json resources/router-modules.json ${portal_assets} packaging/fg-mtm.png)
 target_link_libraries(fg_mtm PRIVATE fg_core Qt6::Quick Qt6::QuickControls2)
 if(WIN32)
  configure_file(packaging/app.rc ${CMAKE_CURRENT_BINARY_DIR}/app.rc @ONLY)
@@ -38,6 +38,7 @@ enable_testing()
 function(add_contract name source)
  qt_add_executable(${name}_tests ${source})
  target_link_libraries(${name}_tests PRIVATE fg_core Qt6::Test)
+ qt_add_resources(${name}_tests "modules" PREFIX "/" FILES resources/router-modules.json)
  add_test(NAME ${name} COMMAND ${name}_tests -o ${name}-test.xml,junitxml)
 endfunction()
 add_contract(protocol tests/test_protocol.cpp)

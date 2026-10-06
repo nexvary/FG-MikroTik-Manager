@@ -23,12 +23,12 @@ QStringList Bridge::menus()const{return Protocol::menus();}
 void Bridge::reset(){serverTenant.clear();serverBranch.clear();serverRole.clear();token.clear();m_scope.clear();records={};matching={};m_rows.clear();m_columns.clear();expires={};emit changed();}
 void Bridge::request(QString url,QByteArray method,QJsonObject body,QByteArray auth,std::function<void(QJsonValue)> done) {
  if(m_busy)return; m_busy=true;m_status="جارٍ التحميل • Loading";emit changed();
- QNetworkRequest req{QUrl(url)};req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::ManualRedirectPolicy);req.setTransferTimeout(20000);
+ QNetworkRequest req{QUrl(url)};req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::ManualRedirectPolicy);req.setTransferTimeout(60000);
  req.setHeader(QNetworkRequest::ContentTypeHeader,"application/json");if(!auth.isEmpty())req.setRawHeader("Authorization",auth);
  auto reply=method=="GET"?net.get(req):net.sendCustomRequest(req,method,QJsonDocument(body).toJson(QJsonDocument::Compact));
  auto bytes=std::make_shared<QByteArray>();
  connect(reply,&QNetworkReply::readyRead,this,[reply,bytes]{bytes->append(reply->readAll());if(bytes->size()>32*1024*1024)reply->abort();});
- auto timer=new QTimer(reply);timer->setSingleShot(true);connect(timer,&QTimer::timeout,reply,&QNetworkReply::abort);timer->start(20000);
+ auto timer=new QTimer(reply);timer->setSingleShot(true);connect(timer,&QTimer::timeout,reply,&QNetworkReply::abort);timer->start(60000);
  connect(reply,&QNetworkReply::finished,this,[this,reply,bytes,done]{
   bytes->append(reply->readAll());m_busy=false;int code=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
   if(reply->error()!=QNetworkReply::NoError || code<200 || code>=300 || bytes->size()>32*1024*1024) {
@@ -68,11 +68,12 @@ void Bridge::discoverRouters(){routerClient.discover();}
 QVariantList Bridge::profiles()const{QSettings s;return s.value("routers/profiles").toList();}
 void Bridge::saveRouterProfile(QString name,QString branch,QString host,int port,QString user,QString protocol){if(name.trimmed().isEmpty()||host.trimmed().isEmpty()||port<1||port>65535)return;auto list=profiles();list.append(QVariantMap{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"name",name.trimmed()},{"branch",branch.trimmed()},{"host",host.trimmed()},{"port",port},{"user",user},{"protocol",protocol}});QSettings s;s.setValue("routers/profiles",list);emit changed();}
 void Bridge::deleteRouterProfile(QString id){auto list=profiles();for(int i=list.size()-1;i>=0;i--)if(list[i].toMap()["id"].toString()==id)list.removeAt(i);QSettings s;s.setValue("routers/profiles",list);emit changed();}
-void Bridge::admin(QString menu,QString action,QString id,QString json){QJsonParseError e;auto doc=QJsonDocument::fromJson(json.toUtf8(),&e);if(e.error!=QJsonParseError::NoError||!doc.isObject()){m_status="الحقول غير صالحة • Invalid fields";emit changed();return;}auto attrs=doc.object();for(auto v:attrs)if(!v.isString()){m_status="استخدم قيمًا نصية للحقول • Field values must be strings";emit changed();return;}if(!id.isEmpty())attrs[".id"]=id;QString text="/"+menu+" "+action;for(auto it=attrs.begin();it!=attrs.end();++it){auto val=it.value().toString();val.replace("\\","\\\\").replace("\"","\\\"");text+=" "+it.key()+"=\""+val+"\"";}previewCommand(text);}
+QVariantMap Bridge::module(QString menu)const{for(auto item:Protocol::modules())if(item.toObject()["menu"]==menu)return item.toObject().toVariantMap();return {};}
+void Bridge::admin(QString menu,QString action,QString id,QString json){auto info=module(menu);auto cap=action=="add"?"create":action=="set"?"edit":action=="remove"?"delete":action=="enable"||action=="disable"?"toggle":"";if(info.isEmpty()||QString(cap).isEmpty()||!info[cap].toBool()){m_status="الإجراء غير متاح لهذا القسم • Action unavailable for this module";emit changed();return;}QJsonParseError e;auto doc=QJsonDocument::fromJson(json.toUtf8(),&e);if(e.error!=QJsonParseError::NoError||!doc.isObject()){m_status="الحقول غير صالحة • Invalid fields";emit changed();return;}auto attrs=doc.object();for(auto v:attrs)if(!v.isString()){m_status="استخدم قيمًا نصية للحقول • Field values must be strings";emit changed();return;}if(!id.isEmpty())attrs[".id"]=id;QString text="/"+menu+" "+action;for(auto it=attrs.begin();it!=attrs.end();++it){auto val=it.value().toString();val.replace("\\","\\\\").replace("\"","\\\"");text+=" "+it.key()+"=\""+val+"\"";}previewCommand(text);}
 void Bridge::clearTerminal(){m_terminal.clear();emit changed();}
 void Bridge::smoke(){token="fixture-session";expires=QDateTime::currentDateTimeUtc().addSecs(900);m_scope="UI fixture • main";for(int i=1;i<=51;i++)records.append(QJsonObject{{"table","subscribers"},{"id",QString::number(i)},{"body",QJsonObject{{"name",QString("Customer %1").arg(i)},{"service","HotSpot"}}}});filter("subscribers","",0);}
 
-void Bridge::clearView(){m_rows.clear();m_columns.clear();emit changed();}
+void Bridge::clearView(){m_status.clear();m_rows.clear();m_columns.clear();emit changed();}
 
 void Bridge::syncBusiness(bool joinEmpty){
  if(busy())return;if(!commerce||!commerce->allowed("BRANCHES")||serverRole!="owner"){m_status="مزامنة الأعمال تتطلب حساب المالك المحلي والخادم • Local and server owner permissions required";emit changed();return;}
