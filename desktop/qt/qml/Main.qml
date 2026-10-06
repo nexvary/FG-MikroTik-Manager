@@ -12,6 +12,7 @@ ApplicationWindow {
  property string page: "home"
  property var history: []
  property int businessPage: 0
+ property string selectedRouterId: ""
  property var tableKeys: ["subscribers","plans","invoices","ledger","sales","expenses","team_members","reseller_entries","router_bindings","network_jobs","payment_details","invoice_voids","sale_voids","import_batches","audit","organizations","branches"]
  property var tableAr: ["المشتركون","الباقات","الفواتير","السجل المالي","المبيعات","المصروفات","الموظفون والموزعون","حركة الموزعين","الراوترات","مهام الشبكة","تفاصيل الدفع","إلغاء الفواتير","إلغاء المبيعات","دفعات الاستيراد","التدقيق","المؤسسة","الفروع"]
  function tr(ar,en){return arabic?ar:en}
@@ -134,13 +135,22 @@ ApplicationWindow {
    }
    GridLayout {
     visible: root.page==="router"; columns: 2; Layout.fillWidth: true
-    FgField {id: routerUrl; Layout.fillWidth: true; placeholderText: root.tr("عنوان الراوتر HTTPS","Router HTTPS address"); LayoutMirroring.enabled: false}
+    FgField {id: routerUrl; Layout.fillWidth: true; placeholderText: root.tr("عنوان IP أو اسم الراوتر","Router IP or hostname"); LayoutMirroring.enabled: false}
     ComboBox {id: menu; model: backend.menus; Layout.fillWidth: true}
     FgField {id: routerUser; Layout.fillWidth: true; placeholderText: root.tr("حساب الراوتر","Router username"); LayoutMirroring.enabled: false}
     FgField {id: routerPassword; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: root.tr("كلمة المرور","Password"); LayoutMirroring.enabled: false}
-    FgButton {text: root.tr("اتصال وقراءة","Connect & read"); enabled: !backend.busy; onClicked: {backend.router(routerUrl.text,routerUser.text,routerPassword.text,menu.currentText);routerPassword.clear()}}
+    ComboBox {id: routerProtocol; model: ["REST","API_SSL","API"]; Layout.fillWidth: true; onActivated: routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":"8728"}
+    FgField {id: routerPort; text: "443"; placeholderText: root.tr("المنفذ","Port")}
+    FgButton {text: root.tr("اتصال وقراءة","Connect & read"); enabled: !backend.busy; onClicked: {backend.connectRouter(routerUrl.text,Number(routerPort.text),routerUser.text,routerPassword.text,routerProtocol.currentText,menu.currentText);routerPassword.clear()}}
     FgButton {text: root.tr("قراءة القسم","Read section"); enabled: !backend.busy; onClicked: backend.command("/"+menu.currentText+" print")}
-    Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS 7 عبر REST وHTTPS بشهادة موثوقة. بيانات الأسرار محجوبة.","RouterOS 7 REST with trusted HTTPS. Secret fields are redacted."); color: theme.muted; wrapMode: Text.Wrap}
+    RowLayout {Layout.columnSpan: 2
+     FgButton {text: root.tr("اكتشاف","Discover"); onClicked: backend.discoverRouters()}
+     FgButton {text: root.tr("إضافة / تعديل","Add / edit"); enabled: backend.routerConnected&&!backend.busy; onClicked: adminEditor.open()}
+     FgButton {text: root.tr("تفعيل","Enable"); enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"enable",root.selectedRouterId,"{}")}
+     FgButton {text: root.tr("تعطيل","Disable"); enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"disable",root.selectedRouterId,"{}")}
+     FgButton {text: root.tr("حذف","Delete"); accent: theme.error; enabled: root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"remove",root.selectedRouterId,"{}")}
+    }
+    Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
    Rectangle {
     visible: root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
@@ -158,7 +168,8 @@ ApplicationWindow {
        delegate: Rectangle {
         required property var modelData
         required property int index
-        width: ListView.view.width; height: 46; color: index%2===0 ? theme.panel : theme.raised
+        width: ListView.view.width; height: 46; color: root.page==="router"&&root.selectedRouterId===modelData[".id"] ? theme.blue : index%2===0 ? theme.panel : theme.raised
+        TapHandler {onTapped: if(root.page==="router")root.selectedRouterId=parent.modelData[".id"]||""}
         Row {Repeater {model: backend.columns; Text {required property string modelData; text: parent.parent.modelData[modelData]||""; width: 190; height: 46; padding: 8; color: theme.white; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter; ToolTip.visible: hovered.hovered; ToolTip.text: text; HoverHandler {id: hovered}}}}
        }
       }
@@ -168,6 +179,21 @@ ApplicationWindow {
    Item {visible: root.page==="settings"; Layout.fillHeight: true}
   }
  }
+ Dialog {
+  id: commandPreview; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 640
+  title: root.tr("مراجعة أمر الراوتر","Review router command")
+  contentItem: ColumnLayout {Text {text: backend.preview; color: theme.white; Layout.fillWidth: true; wrapMode: Text.Wrap} FgButton {text: root.tr("تأكيد التنفيذ","Confirm execution"); enabled: !backend.busy; onClicked: {backend.executePreview();commandPreview.close()}}}
+ }
+ Connections {target: backend; function onChanged(){if(backend.preview.length>0&&!commandPreview.visible)commandPreview.open()}}
+ Dialog {
+  id: adminEditor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 680
+  title: root.tr("إضافة أو تعديل عنصر","Add or edit item")
+  contentItem: ColumnLayout {
+   Text {text: root.tr("الحقول بصيغة JSON وقيم نصية. الأسرار المحجوبة لا تُرسل تلقائيًا.","JSON fields with string values. Redacted secrets are never sent automatically."); color: theme.silver; Layout.fillWidth: true; wrapMode: Text.Wrap}
+   TextArea {id: adminFields; Layout.fillWidth: true; Layout.preferredHeight: 200; text: '{"name":""}'; color: theme.white; selectByMouse: true; background: Rectangle {color: theme.navy}}
+   RowLayout {FgButton {text: root.tr("إضافة","Add"); onClicked: {backend.admin(menu.currentText,"add","",adminFields.text);adminEditor.close()}} FgButton {text: root.tr("تعديل المحدد","Edit selected"); enabled: root.selectedRouterId.length>0; onClicked: {backend.admin(menu.currentText,"set",root.selectedRouterId,adminFields.text);adminEditor.close()}}}
+  }
+ }
  Window {
   id: terminalWindow
   title: root.tr("FG MTM — ترمنال الراوتر","FG MTM — Router terminal")
@@ -175,12 +201,12 @@ ApplicationWindow {
   transientParent: root; flags: Qt.Window
   ColumnLayout {
    anchors.fill: parent; anchors.margins: 18; spacing: 12
-   Text {text: root.tr("أوامر قراءة RouterOS • اتصال الراوتر مطلوب","RouterOS read commands • router connection required"); color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
+   Text {text: root.tr("أوامر RouterOS • راجع التغييرات قبل التنفيذ","RouterOS commands • review changes before execution"); color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
    ScrollView {Layout.fillWidth: true; Layout.fillHeight: true; TextArea {text: backend.terminal; readOnly: true; selectByMouse: true; color: theme.white; font.family: "Consolas"; font.pixelSize: 14; wrapMode: TextEdit.Wrap; background: Rectangle {color: theme.navy}}}
    RowLayout {
     Layout.fillWidth: true
     FgField {id: commandInput; Layout.fillWidth: true; placeholderText: "/system resource print"; LayoutMirroring.enabled: false; onAccepted: if(!backend.busy)backend.command(text)}
-    FgButton {text: root.tr("تنفيذ القراءة","Run read"); enabled: !backend.busy; onClicked: backend.command(commandInput.text)}
+    FgButton {text: root.tr("معاينة / تنفيذ","Preview / run"); enabled: !backend.busy; onClicked: backend.command(commandInput.text)}
     FgButton {text: root.tr("مسح","Clear"); onClicked: backend.clearTerminal()}
    }
   }
