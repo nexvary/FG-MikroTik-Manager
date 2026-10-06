@@ -1,4 +1,5 @@
-#include <QGuiApplication>
+#include <QApplication>
+#include "Vouchers.hpp"
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
@@ -7,7 +8,7 @@
 #include <QDir>
 #include <memory>
 #include "Bridge.hpp"
-int main(int argc,char **argv){QGuiApplication app(argc,argv);app.setOrganizationName("FG Machines");app.setApplicationName("FG MTM");app.setWindowIcon(QIcon("qrc:/packaging/fg-mtm.png"));Bridge bridge;QQmlApplicationEngine engine;engine.rootContext()->setContextProperty("backend",&bridge);engine.load(QUrl("qrc:/qml/Main.qml"));if(engine.rootObjects().isEmpty())return 1;
+int main(int argc,char **argv){QApplication app(argc,argv);app.setOrganizationName("FG Machines");app.setApplicationName("FG MTM");app.setWindowIcon(QIcon("qrc:/packaging/fg-mtm.png"));Bridge bridge;Vouchers vouchers(bridge.routerTransport());QQmlApplicationEngine engine;engine.rootContext()->setContextProperty("vouchers",&vouchers);engine.rootContext()->setContextProperty("backend",&bridge);engine.load(QUrl("qrc:/qml/Main.qml"));if(engine.rootObjects().isEmpty())return 1;
  if(app.arguments().contains("--smoke-test")){
   bridge.smoke();if(bridge.rows().size()!=50)return 3;bridge.filter("subscribers","Customer 51",0);if(bridge.rows().size()!=1)return 4;bridge.filter("subscribers","",1);if(bridge.rows().size()!=1)return 5;bridge.filter("subscribers","",0);auto w=qobject_cast<QQuickWindow*>(engine.rootObjects().first());
   if(!w)return 1;QDir().mkpath("qt-proof");

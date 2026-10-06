@@ -70,7 +70,7 @@ void RouterClient::receive(){input+=socket.readAll();if(input.size()>64*1024*102
   if(!trap.isEmpty()){finish({{},trap});return;}if(loggingIn){authenticated=true;rows={};sendPending();}else{if(rows.isEmpty()&&!attrs["ret"].toString().isEmpty())rows.append(QJsonObject{{".id",attrs["ret"]}});finish({rows});return;}
  }} }
 void RouterClient::finish(RouterReply result){++generation;deadline.stop();active=false;loggingIn=false;message=result.ok()?"تم • Done":result.error;auto cb=std::move(callback);callback={};emit changed();if(cb)cb(result);}
-void RouterClient::fail(QString reason){if(!active)return;bool uncertain=wrote&&action!="print";authenticated=false;finish({{},reason,uncertain});socket.abort();input.clear();}
+void RouterClient::fail(QString reason){if(!active)return;bool uncertain=wrote&&action!="print";active=false;authenticated=false;socket.abort();input.clear();finish({{},reason,uncertain});}
 void RouterClient::command(QString text,Done done){auto c=RouterCodec::parse(text);if(!c.valid()){done({{},c.error});return;}
  if(QStringList{"set","enable","disable","remove","renew","release"}.contains(c.action)){
   bool singleton=c.action=="set"&&QStringList{"system/identity","system/clock","system/ntp/client","ip/dns"}.contains(c.menu);

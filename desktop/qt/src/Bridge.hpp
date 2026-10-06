@@ -26,6 +26,7 @@ public:
  bool routerConnected()const{return routerClient.connected();} QString preview()const{return m_preview;} QVariantList profiles()const; bool connected()const{return !token.isEmpty() && QDateTime::currentDateTimeUtc()<expires;}
  QString status()const{return m_status;} QString scope()const{return m_scope;} QString terminal()const{return m_terminal;}
  QVariantList rows()const{return m_rows;} QStringList columns()const{return m_columns;} QStringList menus()const;
+ RouterClient *routerTransport(){return &routerClient;}
  Q_INVOKABLE void login(QString url,QString tenant,QString branch,QString user,QString password);
  Q_INVOKABLE void logout();
  Q_INVOKABLE void business();

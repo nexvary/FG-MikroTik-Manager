@@ -36,7 +36,7 @@ ApplicationWindow {
     Text {text: root.tr("إدارة شبكتك وأعمالك","Network & business"); color: theme.muted; font.pixelSize: 13}
     Rectangle {Layout.fillWidth: true; height: 1; color: theme.silver; opacity: 0.5}
     Repeater {
-     model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"business",ar:"الأعمال",en:"Business",icon:1},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4}]
+     model: [{key:"home",ar:"الرئيسية",en:"Overview",icon:0},{key:"business",ar:"الأعمال",en:"Business",icon:1},{key:"vouchers",ar:"الكروت والأرشيف",en:"Vouchers & archive",icon:2},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"router",ar:"الراوتر والأوامر",en:"Router & commands",icon:4},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:4}]
      delegate: FgButton {
       required property var modelData
       Layout.fillWidth: true; text: root.tr(modelData.ar,modelData.en); leftPadding: 42; rightPadding: 42
@@ -56,7 +56,7 @@ ApplicationWindow {
    RowLayout {
     Layout.fillWidth: true
     FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked: {var items=root.history.slice();root.page=items.pop();root.history=items;backend.clearView();if(root.page==="business")root.filter()}}
-    Text {text: root.tr(({home:"الرئيسية",business:"الأعمال",radius:"RADIUS",router:"الراوتر والأوامر",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم"})[root.page],({home:"Overview",business:"Business",radius:"RADIUS",router:"Router & commands",diagnostics:"Server diagnostics",settings:"Server connection"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
+    Text {text: root.tr(({home:"الرئيسية",business:"الأعمال",vouchers:"الكروت والأرشيف",radius:"RADIUS",router:"الراوتر والأوامر",diagnostics:"تشخيص الخادم",settings:"الاتصال بالخادم"})[root.page],({home:"Overview",business:"Business",vouchers:"Vouchers & archive",radius:"RADIUS",router:"Router & commands",diagnostics:"Server diagnostics",settings:"Server connection"})[root.page]); color: theme.white; font.pixelSize: 28; font.bold: true; Layout.fillWidth: true}
     Rectangle {width: 10; height: 10; radius: 5; color: backend.connected ? theme.mint : theme.muted}
     Text {text: backend.connected?root.tr("متصل","Connected"):root.tr("غير متصل","Disconnected"); color: theme.silver}
    }
@@ -152,8 +152,9 @@ ApplicationWindow {
     }
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
+   VoucherStudio {visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    Rectangle {
-    visible: root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
+    visible: root.page!=="vouchers"&&root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
     Flickable {
      anchors.fill: parent; anchors.margins: 12; contentWidth: Math.max(width,backend.columns.length*190); contentHeight: height; clip: true
      ScrollBar.horizontal: ScrollBar {}
