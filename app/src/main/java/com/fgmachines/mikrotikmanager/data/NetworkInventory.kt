@@ -32,7 +32,12 @@ object NetworkInventory {
             fun first(vararg keys: String) = keys.firstNotNullOfOrNull { row[it]?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
             val rawMac = first("active-mac-address", "mac-address").replace("-", ":").uppercase(Locale.ROOT)
             val mac = rawMac.takeIf { it.matches(Regex("(?:[0-9A-F]{2}:){5}[0-9A-F]{2}")) && it != "00:00:00:00:00:00" }.orEmpty()
-            val ip = first("active-address", "address", "ip-address")
+            val ip = first("active-address", "address", "ip-address").takeIf { address ->
+                val parts = address.split('.')
+                parts.size == 4 && parts.all { it.matches(Regex("[0-9]{1,3}")) && it.toInt() in 0..255 } &&
+                    parts[0].toInt() in 1..223 && address != "255.255.255.255"
+            }.orEmpty()
+            if (mac.isEmpty() && ip.isEmpty()) return@forEachIndexed
             // IP alone is never enough to combine records belonging to distinct MACs.
             val key = if (mac.isNotEmpty()) "mac:$mac" else "record:$source:$index"
             val device = devices.getOrPut(key) { linkedMapOf(".id" to key) }

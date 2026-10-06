@@ -603,6 +603,7 @@ private fun RouterRecordCard(
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit
 ) {
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     val disabled = row["disabled"].routerBool()
     val details = if (module == RouterAdminModule.NETWORK_DEVICES) {
         listOf("address", "mac-address", "sources", "interface", "platform", "board")
@@ -662,7 +663,10 @@ private fun RouterRecordCard(
                 details.filterNot { it.first == "disabled" || it.first == "dst-address" }.take(if (module == RouterAdminModule.NETWORK_DEVICES) 8 else 4).forEach { (key, value) ->
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            key,
+                            if (module == RouterAdminModule.NETWORK_DEVICES && arabic) when(key) {
+                                "address" -> "عنوان IP"; "mac-address" -> "عنوان MAC"; "sources" -> "مصدر الاكتشاف"
+                                "interface" -> "المنفذ"; "platform" -> "النظام"; "board" -> "الموديل"; else -> key
+                            } else key,
                             modifier = Modifier.weight(0.42f),
                             color = FgSilverMuted,
                             style = MaterialTheme.typography.labelSmall.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr)
@@ -674,6 +678,12 @@ private fun RouterRecordCard(
                             color = FgSilver
                         )
                     }
+                }
+            }
+
+            if (module == RouterAdminModule.NETWORK_DEVICES && !row["address"].isNullOrBlank()) {
+                OutlinedButton(onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(row.getValue("address"))) }) {
+                    Text(if (arabic) "نسخ عنوان IP" else "Copy IP address")
                 }
             }
 

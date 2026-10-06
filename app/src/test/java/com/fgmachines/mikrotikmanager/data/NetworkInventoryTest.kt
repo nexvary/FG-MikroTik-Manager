@@ -58,10 +58,18 @@ class NetworkInventoryTest {
     }
 
     @Test fun inventoriesNeverLeakBetweenRouterSessions() = runTest {
-        val first = NetworkInventory.load(Fake { listOf(mapOf("host-name" to "first")) })
+        val first = NetworkInventory.load(Fake { listOf(mapOf("host-name" to "first", "mac-address" to "AA:BB:CC:DD:EE:01")) })
         val second = NetworkInventory.load(Fake { emptyList() })
-        assertEquals(3, first.rows.size)
+        assertEquals(1, first.rows.size)
         assertTrue(second.rows.isEmpty())
+    }
+
+    @Test fun ignoresMissingAndInvalidIdentifiers() {
+        assertTrue(NetworkInventory.merge(listOf(
+            "ip/arp" to mapOf("address" to "999.10.1.1"),
+            "ip/arp" to mapOf("address" to "not-an-IP", "mac-address" to "00:00:00:00:00:00"),
+            "ip/neighbor" to mapOf("identity" to "No address")
+        )).isEmpty())
     }
 
     private class Fake(val reader: (String) -> List<Map<String, String>>) : RouterOsTransport {
