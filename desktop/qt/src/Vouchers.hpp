@@ -31,6 +31,7 @@ public:
  Q_INVOKABLE void selectCard(int index);
  void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  static QJsonObject generateBatch(QJsonObject request);
+ static QJsonObject portableBatch(QJsonObject batch);
  static QString quote(QString value);
  static QString script(const QJsonObject &batch);
  static QString qrPayload(const QJsonObject &voucher);

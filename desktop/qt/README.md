@@ -2,7 +2,7 @@
 
 Native C++20 and Qt 6.8.3 Quick/QuickControls2, Network, Widgets/PrintSupport and SQLite, built with CMake/MSVC 2022 and packaged with Inno Setup. This follows the applicable desktop stack in `nexvary/NEXVARY-Avionics-Lab`; the application runs locally without a browser engine.
 
-Arabic RTL and English use the Android application's black, navy, silver, blue, mint and gold palette. The Windows workspace includes the FG Machines icon, task dashboard, resizable layouts, a floating terminal (F4), 137 searchable Android command templates, and a bilingual installation introduction.
+Arabic RTL and English use the Android application's black, navy, silver, blue, mint and gold palette. The first six task cards and sidebar sections follow the connected Android menu order: Advanced Setup, Network & connectivity, System & security, Voucher Studio, Subscribers & accounts, About developer. Windows-specific workspaces follow these entries. The Windows workspace includes the FG Machines icon, task dashboard, resizable layouts, a floating terminal (F4), 137 searchable Android command templates, and a bilingual installation introduction.
 
 ## Workspaces
 
@@ -51,3 +51,13 @@ Physical router commissioning, printer-driver operation and the user's live FG S
 Save each MikroTik under a separate connection name and IP; select the target and authenticate before making changes. Up to four saved MikroTik routers can be monitored concurrently. `Network devices & access points` reads the connected router's Neighbor, DHCP lease and ARP tables, merges records by MAC, and keeps different MACs separate even when an IP conflicts. Results report their evidence source and are not a live availability test. Missing permissions produce partial results with an explanation. Selecting a discovered device fills its address; it does not automatically connect, change settings or grant RouterOS capability. Non-MikroTik AP configuration depends on the model and its supported management interface. Devices with static IPs that do not advertise discovery or appear in ARP may require manual address entry. MNDP discovery is limited to the local broadcast domain.
 
 A second router can use the same upstream internet through the appropriate upstream LAN/switch connection. Independent HotSpot networks require separate downstream address ranges and DHCP servers; a shared HotSpot extension uses bridged APs on the existing HotSpot LAN. Do not join the WAN into the HotSpot bridge. Select the intended topology before configuring either router.
+
+## 0.17.1 parity update
+
+- Subscriber cards include active-session counts, usage state, remaining time/data, and combined saved/live counters. Unknown session reads are explicitly unknown; counters remain decimal strings to avoid JavaScript precision loss. Search and Online now are available, and router changes clear stale subscriber data.
+- Voucher profiles and HotSpot servers can be loaded from the connected router for all three supported online services. Manual names remain available when needed.
+- Shared voucher text is bilingual and includes the separate password, allowance, expiry and activation status; the login QR still omits a separate password. PDF/PNG/print includes allowance, data and absolute expiry.
+- Portable archive export uses the Android DTO fields/defaults. Reimport compares this canonical payload and preserves local activation metadata. Newly imported online cards require activation reconciliation and are marked REVIEW.
+- Navigation restores the previous network/system group and subscriber tab. Standalone portal installation now saves an encrypted router backup and verifies clock/NTP before uploading, matching Android's preparation.
+
+These are software changes verified by contract and packaged-app checks. Real router/printer commissioning and two-device physical archive transfer remain separate acceptance checks.
