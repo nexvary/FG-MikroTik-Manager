@@ -1,6 +1,8 @@
 #include "Monitor.hpp"
 #include <QIcon>
 #include <QDateTime>
+#include <QMenu>
+#include <QCoreApplication>
 #include <algorithm>
 QString MonitorHealth::sample(qint64 now,int cpu,bool success){
  failures=success?0:failures+1;QString next=failures>=2?QString("UNREACHABLE"):!success?incident:cpu>=85?QString("HIGH_CPU"):QString{};
@@ -10,6 +12,7 @@ QString MonitorHealth::sample(qint64 now,int cpu,bool success){
 }
 Monitor::Monitor(QObject*p):QObject(p),tray(QIcon("qrc:/packaging/fg-mtm.png"),this){
  clock.start();timer.setInterval(1000);connect(&timer,&QTimer::timeout,this,&Monitor::tick);timer.start();
+ trayMenu=std::make_unique<QMenu>();trayMenu->addAction("فتح FG MTM / Open FG MTM",this,[this]{emit showWindow();});trayMenu->addAction("إيقاف المراقبة / Stop monitoring",this,&Monitor::stopAll);trayMenu->addAction("خروج / Quit",QCoreApplication::instance(),&QCoreApplication::quit);tray.setContextMenu(trayMenu.get());
  tray.setToolTip("FG MTM • Network monitor");connect(&tray,&QSystemTrayIcon::activated,this,[this](QSystemTrayIcon::ActivationReason r){if(r==QSystemTrayIcon::Trigger||r==QSystemTrayIcon::DoubleClick)emit showWindow();});
 }
 Monitor::~Monitor(){timer.stop();stopAll();}
@@ -23,7 +26,7 @@ void Monitor::start(QVariantMap profile,QString password){
  e->client->configure(profile["host"].toString(),profile["port"].toInt(),profile["user"].toString(),password,profile["protocol"].toString());password.fill(QChar(0));entries[id]=e;
  if(QSystemTrayIcon::isSystemTrayAvailable())tray.show();message="بدأت المراقبة • Monitoring started";emit changed();tick();
 }
-void Monitor::stop(QString id){auto it=entries.find(id);if(it==entries.end())return;auto e=it->second;entries.erase(it);e->client->close();if(entries.empty())tray.hide();emit changed();}
+void Monitor::stop(QString id){auto it=entries.find(id);if(it==entries.end())return;auto e=it->second;entries.erase(it);e->client->close();if(entries.empty()){tray.hide();emit showWindow();}emit changed();}
 void Monitor::stopAll(){while(!entries.empty())stop(entries.begin()->first);message="توقفت المراقبة • Monitoring stopped";emit changed();}
 void Monitor::tick(){if(!entries.empty()&&!authorization()){stopAll();message="انتهت صلاحية المراقبة • Monitoring authorization expired";emit changed();return;}QList<std::shared_ptr<Entry>> ready;for(auto &[id,e]:entries)if(!e->checking&&e->next<=clock.elapsed())ready.append(e);for(auto e:ready){if(running>=2)break;poll(e);}emit changed();}
 void Monitor::poll(std::shared_ptr<Entry> e){e->checking=true;e->stage=0;e->snapshot={};e->error.clear();running++;read(e);}

@@ -1,5 +1,6 @@
 #pragma once
 #include "RouterClient.hpp"
+#include "Protocol.hpp"
 #include "RouterJob.hpp"
 #include <QJsonObject>
 #include <QVariantList>
@@ -11,13 +12,15 @@ class RouterTools:public QObject{
  Q_PROPERTY(QVariantList checks READ checks NOTIFY changed)
  Q_PROPERTY(QVariantList changes READ changes NOTIFY changed)
  Q_PROPERTY(QVariantList interfaces READ interfaces NOTIFY changed)
+ Q_PROPERTY(QVariantList dhcpNetworks READ dhcpNetworks NOTIFY changed)
  Q_PROPERTY(QVariantList users READ users NOTIFY changed)
  Q_PROPERTY(QVariantList profiles READ profiles NOTIFY changed)
  Q_PROPERTY(QString portalPreview READ portalPreview NOTIFY changed)
 public:
  RouterTools(RouterClient *client,QObject*p=nullptr);~RouterTools();
  bool busy()const{return working;}QString status()const{return message;}QVariantList checks()const{return report.toVariantList();}QVariantList changes()const{return pending["changes"].toArray().toVariantList();}
- QVariantList interfaces()const{return tables["interface"].toArray().toVariantList();}QVariantList users()const{return tables["ip/hotspot/user"].toArray().toVariantList();}QVariantList profiles()const{return tables["ip/hotspot/profile"].toArray().toVariantList();}QString portalPreview()const{return preview;}
+ QVariantList interfaces()const{return tables["interface"].toArray().toVariantList();}QVariantList dhcpNetworks()const{return client->authorized()?tables["ip/dhcp-server/network"].toArray().toVariantList():QVariantList{};}
+ QVariantList users()const{return client->authorized()?Protocol::redact(tables["ip/hotspot/user"]).toArray().toVariantList():QVariantList{};}QVariantList profiles()const{return tables["ip/hotspot/profile"].toArray().toVariantList();}QString portalPreview()const{return preview;}
  static bool validCidr(QString cidr);static QString network(QString cidr);static bool privateSubnet(QString cidr);
  static QJsonObject hotspotPlan(QJsonObject tables,QJsonObject request,QString management);
  static QJsonObject portsPlan(QJsonObject tables,QString client,QString wan,QString management);

@@ -4,65 +4,53 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network Test Widgets PrintSupport Sql)
-qt_add_executable(fg_mtm WIN32 src/main.cpp src/Bridge.cpp src/Bridge.hpp src/Protocol.cpp src/Protocol.hpp src/RouterClient.cpp src/RouterClient.hpp src/Vouchers.cpp src/Vouchers.hpp src/Vault.cpp src/Vault.hpp src/Business.cpp src/Business.hpp src/BusinessCsv.cpp src/BusinessCsv.hpp src/RouterTools.cpp src/RouterTools.hpp src/RouterJob.hpp src/Monitor.cpp src/Monitor.hpp src/NetworkBilling.cpp src/NetworkBilling.hpp vendor/qrcodegen.cpp vendor/qrcodegen.hpp)
-qt_add_resources(fg_mtm "ui" PREFIX "/" FILES qml/Main.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/NavIcon.qml qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml qml/MonitorWorkspace.qml qml/BusinessTransferWorkspace.qml qml/CommandLibrary.qml qml/NetworkBillingWorkspace.qml qml/AboutWorkspace.qml qml/HomeWorkspace.qml qml/FgTab.qml resources/business-schema.json resources/command-library.json resources/hotspot/flogout.html resources/hotspot/flogin.html resources/hotspot/alogin.html resources/hotspot/md5.js resources/hotspot/status.html resources/hotspot/fstatus.html resources/hotspot/redirect.html resources/hotspot/fg.js resources/hotspot/rlogin.html resources/hotspot/logout.html resources/hotspot/rstatus.html resources/hotspot/fg.css resources/hotspot/login.html resources/hotspot/error.html packaging/fg-mtm.png)
-target_link_libraries(fg_mtm PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Network Qt6::Widgets Qt6::PrintSupport Qt6::Sql)
+add_library(fg_core STATIC
+ src/Bridge.cpp src/Bridge.hpp src/Protocol.cpp src/Protocol.hpp
+ src/RouterClient.cpp src/RouterClient.hpp src/RouterJob.hpp
+ src/Vouchers.cpp src/Vouchers.hpp src/Vault.cpp src/Vault.hpp
+ src/Business.cpp src/Business.hpp src/BusinessCsv.cpp src/BusinessCsv.hpp
+ src/RouterTools.cpp src/RouterTools.hpp src/Monitor.cpp src/Monitor.hpp
+ src/NetworkBilling.cpp src/NetworkBilling.hpp vendor/qrcodegen.cpp vendor/qrcodegen.hpp)
+target_include_directories(fg_core PUBLIC src)
+target_link_libraries(fg_core PUBLIC Qt6::Network Qt6::Widgets Qt6::PrintSupport Qt6::Sql)
+if(WIN32)
+ target_link_libraries(fg_core PUBLIC crypt32 bcrypt)
+endif()
+set(portal_assets
+ resources/hotspot/flogout.html resources/hotspot/flogin.html resources/hotspot/alogin.html
+ resources/hotspot/md5.js resources/hotspot/status.html resources/hotspot/fstatus.html
+ resources/hotspot/redirect.html resources/hotspot/fg.js resources/hotspot/rlogin.html
+ resources/hotspot/logout.html resources/hotspot/rstatus.html resources/hotspot/fg.css
+ resources/hotspot/login.html resources/hotspot/error.html)
+qt_add_executable(fg_mtm WIN32 src/main.cpp)
+qt_add_resources(fg_mtm "ui" PREFIX "/" FILES
+ qml/Main.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/NavIcon.qml
+ qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml
+ qml/MonitorWorkspace.qml qml/BusinessTransferWorkspace.qml qml/CommandLibrary.qml
+ qml/NetworkBillingWorkspace.qml qml/AboutWorkspace.qml qml/HomeWorkspace.qml qml/FgTab.qml
+ resources/business-schema.json resources/command-library.json ${portal_assets} packaging/fg-mtm.png)
+target_link_libraries(fg_mtm PRIVATE fg_core Qt6::Quick Qt6::QuickControls2)
 if(WIN32)
  configure_file(packaging/app.rc ${CMAKE_CURRENT_BINARY_DIR}/app.rc @ONLY)
  target_sources(fg_mtm PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/app.rc)
 endif()
 enable_testing()
-qt_add_executable(protocol_tests tests/test_protocol.cpp src/Protocol.cpp src/Protocol.hpp)
-target_link_libraries(protocol_tests PRIVATE Qt6::Test Qt6::Network)
-add_test(NAME protocol COMMAND protocol_tests)
-
-qt_add_executable(router_tests tests/test_router.cpp src/RouterClient.cpp src/RouterClient.hpp)
-target_link_libraries(router_tests PRIVATE Qt6::Test Qt6::Network)
-add_test(NAME router COMMAND router_tests -o router-test.xml,junitxml)
-
-if(WIN32)
- target_link_libraries(fg_mtm PRIVATE crypt32 bcrypt)
-endif()
-
-target_include_directories(router_tests PRIVATE src)
-
-qt_add_executable(voucher_tests tests/test_vouchers.cpp src/Vouchers.cpp src/Vouchers.hpp src/Vault.cpp src/Vault.hpp src/RouterClient.cpp src/RouterClient.hpp src/Protocol.cpp src/Protocol.hpp vendor/qrcodegen.cpp vendor/qrcodegen.hpp)
-target_include_directories(voucher_tests PRIVATE src)
-target_link_libraries(voucher_tests PRIVATE Qt6::Test Qt6::Network Qt6::Widgets Qt6::PrintSupport)
+function(add_contract name source)
+ qt_add_executable(${name}_tests ${source})
+ target_link_libraries(${name}_tests PRIVATE fg_core Qt6::Test)
+ add_test(NAME ${name} COMMAND ${name}_tests -o ${name}-test.xml,junitxml)
+endfunction()
+add_contract(protocol tests/test_protocol.cpp)
+add_contract(router tests/test_router.cpp)
+add_contract(voucher tests/test_vouchers.cpp)
 qt_add_resources(voucher_tests "vectors" PREFIX "/" FILES tests/backup-vector.hex)
-if(WIN32)
- target_link_libraries(voucher_tests PRIVATE crypt32 bcrypt)
-endif()
-add_test(NAME vouchers COMMAND voucher_tests -o voucher-test.xml,junitxml)
-
-qt_add_executable(business_tests tests/test_business.cpp src/Business.cpp src/Business.hpp src/BusinessCsv.cpp src/BusinessCsv.hpp src/Vault.cpp src/Vault.hpp src/Protocol.cpp src/Protocol.hpp)
-target_include_directories(business_tests PRIVATE src)
-target_link_libraries(business_tests PRIVATE Qt6::Test Qt6::Network Qt6::Sql Qt6::Widgets Qt6::PrintSupport)
+add_contract(business tests/test_business.cpp)
 qt_add_resources(business_tests "schema" PREFIX "/" FILES resources/business-schema.json)
-if(WIN32)
- target_link_libraries(business_tests PRIVATE crypt32 bcrypt)
-endif()
-add_test(NAME business COMMAND business_tests -o business-test.xml,junitxml)
-
-qt_add_executable(tool_tests tests/test_tools.cpp src/RouterTools.cpp src/RouterTools.hpp src/RouterJob.hpp src/RouterClient.cpp src/RouterClient.hpp src/Vouchers.cpp src/Vouchers.hpp src/Vault.cpp src/Vault.hpp src/Protocol.cpp src/Protocol.hpp vendor/qrcodegen.cpp vendor/qrcodegen.hpp)
-target_include_directories(tool_tests PRIVATE src)
-target_link_libraries(tool_tests PRIVATE Qt6::Test Qt6::Network Qt6::Widgets Qt6::PrintSupport)
-qt_add_resources(tool_tests "portals" PREFIX "/" FILES resources/hotspot/flogout.html resources/hotspot/flogin.html resources/hotspot/alogin.html resources/hotspot/md5.js resources/hotspot/status.html resources/hotspot/fstatus.html resources/hotspot/redirect.html resources/hotspot/fg.js resources/hotspot/rlogin.html resources/hotspot/logout.html resources/hotspot/rstatus.html resources/hotspot/fg.css resources/hotspot/login.html resources/hotspot/error.html)
-if(WIN32)
- target_link_libraries(tool_tests PRIVATE crypt32 bcrypt)
-endif()
-add_test(NAME tools COMMAND tool_tests -o tools-test.xml,junitxml)
-
-qt_add_executable(monitor_tests tests/test_monitor.cpp src/Monitor.cpp src/Monitor.hpp src/RouterClient.cpp src/RouterClient.hpp)
-target_include_directories(monitor_tests PRIVATE src)
-target_link_libraries(monitor_tests PRIVATE Qt6::Test Qt6::Network Qt6::Widgets)
-add_test(NAME monitor COMMAND monitor_tests -o monitor-test.xml,junitxml)
-
-qt_add_executable(billing_tests tests/test_billing.cpp src/NetworkBilling.cpp src/NetworkBilling.hpp src/RouterJob.hpp src/RouterClient.cpp src/RouterClient.hpp src/Business.cpp src/Business.hpp src/BusinessCsv.cpp src/BusinessCsv.hpp src/Vouchers.cpp src/Vouchers.hpp src/Vault.cpp src/Vault.hpp src/Protocol.cpp src/Protocol.hpp vendor/qrcodegen.cpp vendor/qrcodegen.hpp)
-target_include_directories(billing_tests PRIVATE src)
-target_link_libraries(billing_tests PRIVATE Qt6::Test Qt6::Network Qt6::Sql Qt6::Widgets Qt6::PrintSupport)
+add_contract(tool tests/test_tools.cpp)
+qt_add_resources(tool_tests "portals" PREFIX "/" FILES ${portal_assets})
+add_contract(monitor tests/test_monitor.cpp)
+add_contract(billing tests/test_billing.cpp)
 qt_add_resources(billing_tests "schema" PREFIX "/" FILES resources/business-schema.json)
-if(WIN32)
- target_link_libraries(billing_tests PRIVATE crypt32 bcrypt)
-endif()
-add_test(NAME billing COMMAND billing_tests -o billing-test.xml,junitxml)
+
+add_contract(cloud tests/test_cloud.cpp)
+qt_add_resources(cloud_tests "cloud" PREFIX "/" FILES resources/business-schema.json resources/command-library.json tests/tls/ca.pem tests/tls/server.pem tests/tls/server-key.pem)

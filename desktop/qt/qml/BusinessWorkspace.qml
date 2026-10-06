@@ -5,6 +5,7 @@ import QtQuick.Dialogs
 ColumnLayout {
  id: workspace
  property bool arabic: true
+ property var walletData:({})
  property string selectedId: ""
  property string selectedTable: "subscribers"
  property string requestId: ""
@@ -34,12 +35,12 @@ ColumnLayout {
   FgButton {text: workspace.tr("قفل","Lock"); onClicked: commerce.lock()}
  }
  Text {text: commerce.scope; color: theme.muted; wrapMode: Text.Wrap; Layout.fillWidth: true}
- RowLayout {
-  Layout.fillWidth: true
-  ComboBox {id: records; model: commerce.tables; currentIndex: 2; Layout.preferredWidth: 190; onActivated: {workspace.selectedTable=currentText;workspace.page=0;workspace.selectedId="";workspace.refresh()}}
-  FgField {id: search; placeholderText: workspace.tr("بحث","Search"); Layout.fillWidth: true; onTextEdited: {workspace.page=0;workspace.refresh()}}
+ Flow {
+  Layout.fillWidth: true; spacing: 8
+  ComboBox {id: records; model: commerce.tables.concat(["local_accounts"]); currentIndex: 2; Layout.preferredWidth: 190; onActivated: {workspace.selectedTable=currentText;workspace.page=0;workspace.selectedId="";workspace.refresh()}}
+  FgField {id: search; width: Math.max(180,workspace.width-770); placeholderText: workspace.tr("بحث","Search"); onTextEdited: {workspace.page=0;workspace.refresh()}}
   FgButton {text: workspace.tr("تحديث","Refresh"); onClicked: workspace.refresh()}
-  FgButton {text: "CSV"; enabled: commerce.allowed("EXPORT"); onClicked: csv.open()}
+  FgButton {text: workspace.tr("CSV للصفحة","Page CSV"); enabled: commerce.allowed("EXPORT"); onClicked: csv.open()}
   FgButton {text: workspace.tr("إيصال PDF","Receipt PDF"); enabled: workspace.selectedId.length>0&&(workspace.selectedTable==="sales"||workspace.selectedTable==="invoices"); onClicked: receipt.open()}
   FgButton {text:workspace.tr("طباعة","Print");enabled:workspace.selectedId.length>0&&(workspace.selectedTable==="sales"||workspace.selectedTable==="invoices");onClicked:commerce.printReceipt(workspace.selectedId,workspace.selectedTable==="sales",paper.currentText,workspace.arabic)}
   FgButton {text:"HTML";enabled:workspace.selectedId.length>0&&(workspace.selectedTable==="sales"||workspace.selectedTable==="invoices");onClicked:receiptHtml.open()}
@@ -51,6 +52,7 @@ ColumnLayout {
   FgButton {text: workspace.tr("فتح العملية","Open operation"); onClicked:{workspace.subscriberChoices=commerce.choices("subscribers");workspace.planChoices=commerce.choices("plans");workspace.memberChoices=commerce.allowed("TEAM")?commerce.choices("team_members"):[];workspace.requestId="";editor.open()}; accent: theme.gold}
   FgButton {text: workspace.tr("السابق","Previous"); enabled: workspace.page>0; onClicked: {workspace.page--;workspace.refresh()}}
   FgButton {text: workspace.tr("التالي","Next"); enabled: commerce.rows.length===50; onClicked: {workspace.page++;workspace.refresh()}}
+  FgButton {text:workspace.tr("عرض المحفظة","View wallet");enabled:commerce.role==="RESELLER"||commerce.allowed("TEAM");onClicked:{workspace.walletData=commerce.resellerWallet(commerce.role==="RESELLER"?"":workspace.selectedId);if(workspace.walletData.name)wallet.open()}}
   Item {Layout.fillWidth: true}
  }
  Text {text: commerce.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
@@ -86,9 +88,9 @@ ColumnLayout {
      Text {text: workspace.tr("العملة","Currency"); color: theme.silver; visible: workspace.includes(["subscriber","plan","team","expense"])}
      ComboBox {id: currency; model: ["EGP","USD","EUR","SAR","AED","TRY"]; Layout.fillWidth: true; visible: workspace.includes(["subscriber","plan","team","expense"])}
      Text {text: workspace.tr("معرف المشترك","Subscriber ID"); color: theme.silver; visible: workspace.includes(["renew","charge","payment","sale"])}
-     ComboBox {id: subscriber;property string text:currentValue||editText;editable:true;model:workspace.subscriberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["renew","charge","payment","sale"])}
+     ComboBox {id: subscriber;property string text:editText===displayText?(currentValue||""):editText;editable:true;model:workspace.subscriberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["renew","charge","payment","sale"])}
      Text {text: workspace.tr("معرف الباقة","Plan ID"); color: theme.silver; visible: workspace.op==="renew"}
-     ComboBox {id: plan;property string text:currentValue||editText;editable:true;model:workspace.planChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.op==="renew"}
+     ComboBox {id: plan;property string text:editText===displayText?(currentValue||""):editText;editable:true;model:workspace.planChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.op==="renew"}
      Text {text: workspace.tr("السعر / المبلغ","Price / amount"); color: theme.silver; visible: workspace.includes(["plan","charge","payment","expense","wallet"])}
      FgField {id: amount; Layout.fillWidth: true; placeholderText: "0.00"; visible: workspace.includes(["plan","charge","payment","expense","wallet"])}
      Text {text: workspace.tr("الأيام","Days"); color: theme.silver; visible: workspace.op==="plan"}
@@ -110,7 +112,7 @@ ColumnLayout {
      Text {text: workspace.tr("العمولة (نقطة أساس: 100 = 1%)","Commission (basis points: 100 = 1%)"); color: theme.silver; visible: workspace.op==="team"; wrapMode: Text.Wrap}
      FgField {id: commission; text: "0"; Layout.fillWidth: true; visible: workspace.op==="team"}
      Text {text: workspace.tr("معرف الموظف / الموزع","Member / reseller ID"); color: theme.silver; visible: workspace.includes(["wallet","create_account"])}
-     ComboBox {id: member;property string text:currentValue||editText;editable:true;model:workspace.memberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["wallet","create_account"])}
+     ComboBox {id: member;property string text:editText===displayText?(currentValue||""):editText;editable:true;model:workspace.memberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["wallet","create_account"])}
      Text {text: workspace.tr("حركة المحفظة","Wallet entry"); color: theme.silver; visible: workspace.op==="wallet"}
      ComboBox {id: kind; model: ["DEPOSIT","WITHDRAWAL","COMMISSION","REVERSAL"]; Layout.fillWidth: true; visible: workspace.op==="wallet"}
      Text {text: workspace.tr("معرف البيع للعمولة","Commission sale ID"); color: theme.silver; visible: workspace.op==="wallet"&&kind.currentText==="COMMISSION"}
@@ -130,11 +132,14 @@ ColumnLayout {
    }
    Text {text: commerce.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
    FgButton {text: workspace.tr("حفظ العملية","Save operation"); accent: theme.mint; onClicked: {
-    if(!workspace.requestId.length)workspace.requestId="win-"+Date.now()+"-"+Math.floor(Math.random()*2147483647);var data={id:workspace.requestId,name:name.text,phone:phone.text,service:service.currentText,account:account.text,currency:currency.currentText,subscriber_id:subscriber.text,plan_id:plan.text,price:amount.text,amount:amount.text,days:Number(days.text),paid:paid.text,method:method.currentText,reference:reference.text,category:category.text,note:note.text,reason:note.text,target_id:target.text,role:role.currentText,commission_bps:Number(commission.text),member_id:member.text,kind:kind.currentText,sale_id:sale.text,reversal_of:walletTarget.text,username:username.text,password:password.text}
+    if(!workspace.requestId.length)workspace.requestId=commerce.newRequestId();var data={id:workspace.requestId,name:name.text,phone:phone.text,service:service.currentText,account:account.text,currency:currency.currentText,subscriber_id:subscriber.text,plan_id:plan.text,price:amount.text,amount:amount.text,days:Number(days.text),paid:paid.text,method:method.currentText,reference:reference.text,category:category.text,note:note.text,reason:note.text,target_id:target.text,role:role.currentText,commission_bps:Number(commission.text),member_id:member.text,kind:kind.currentText,sale_id:sale.text,reversal_of:walletTarget.text,username:username.text,password:password.text}
     var items=[];for(var i=0;i<lines.count;i++){var l=lines.get(i);items.push({name:l.name,quantity:l.quantity,unitPrice:l.unitPrice})}data.lines=items
     var saved=commerce.perform(workspace.op,data);password.clear();if(saved.length){editor.close();workspace.refresh()}
    }}
   }
+ }
+ Dialog {id:wallet;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;width:Math.min(700,parent.width-40);height:Math.min(520,parent.height-40);title:workspace.tr("محفظة الموزع","Reseller wallet")
+  contentItem:ColumnLayout {Text {Layout.fillWidth:true;color:theme.gold;text:(workspace.walletData.name||"")+" • "+workspace.tr("الرصيد بالوحدة الصغرى: ","Balance in minor units: ")+(workspace.walletData.balance_minor||"0")+" "+(workspace.walletData.currency||"")} ListView {Layout.fillWidth:true;Layout.fillHeight:true;clip:true;model:workspace.walletData.entries||[];delegate:Text {required property var modelData;width:ListView.view.width;wrapMode:Text.Wrap;color:theme.silver;text:modelData.kind+" • "+modelData.amount_minor+" • "+modelData.note}}}
  }
  ListModel {id: lines}
  Component.onCompleted: workspace.refresh()

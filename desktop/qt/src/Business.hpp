@@ -31,6 +31,8 @@ public:
  static qint64 money(QString text);static QSet<QString> permissions(QString role);
  Q_INVOKABLE bool allowed(QString permission)const;
  Q_INVOKABLE QString perform(QString operation,QJsonObject fields);
+ Q_INVOKABLE QString newRequestId();
+ Q_INVOKABLE QVariantMap resellerWallet(QString member={});
  Q_INVOKABLE QVariantList choices(QString table);
  Q_INVOKABLE void browse(QString table,QString query="",int page=0);
  Q_INVOKABLE void enroll(QString password);

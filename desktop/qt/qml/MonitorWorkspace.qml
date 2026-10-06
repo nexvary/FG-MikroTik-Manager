@@ -16,6 +16,7 @@ Item {
    FgButton {text:pane.tr("بدء المراقبة","Start monitoring");enabled:commerce.allowed("ROUTER")&&backend.profiles.length>0;onClicked:{monitor.start(backend.profiles[profile.currentIndex],secret.text);secret.clear()}}
    FgButton {text:pane.tr("إيقاف الكل","Stop all");onClicked:monitor.stopAll()}
   }
+  CheckBox {text:pane.tr("استمرار المراقبة في الخلفية عند إغلاق النافذة","Keep monitoring in the background when the window closes");enabled:monitor.trayAvailable;checked:monitor.background;onToggled:monitor.background=checked}
   Text {Layout.fillWidth:true;color:theme.mint;wrapMode:Text.Wrap;text:monitor.status}
   ListView {
    Layout.fillWidth:true;Layout.preferredHeight:260;clip:true;spacing:10;model:monitor.routers;ScrollBar.vertical:ScrollBar{}

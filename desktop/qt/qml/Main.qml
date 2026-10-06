@@ -6,6 +6,7 @@ import QtQuick.Window
 ApplicationWindow {
  id: root
  width: 1280; height: 800; minimumWidth: 1000; minimumHeight: 650
+ onClosing:function(close){if(monitor.keepRunning){close.accepted=false;root.hide()}}
  visible: true; title: "FG MTM • FG Machines"
  color: theme.black
  property bool arabic: true

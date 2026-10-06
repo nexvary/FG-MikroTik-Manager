@@ -25,6 +25,7 @@ public:
  explicit RouterClient(QObject *parent=nullptr);
  ~RouterClient();
  bool busy()const{return active||pendingRetry;} bool connected()const{return authenticated;} QString status()const{return message;}
+ bool authorized()const{return authorization();}
  void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  QString identityKey()const{return host+":"+QString::number(port)+":"+username;}
  void configure(QString host,int port,QString user,QString password,QString protocol);

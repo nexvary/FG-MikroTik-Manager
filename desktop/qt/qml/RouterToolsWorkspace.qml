@@ -36,9 +36,9 @@ ColumnLayout {
   }
   ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 14
    Text {text: workspace.tr("فلترة DNS للشبكات الخاصة المختارة. تُحفظ الإعدادات السابقة لاستعادتها.","DNS filtering for selected private client networks. Previous settings are saved for restoration."); color: theme.silver; Layout.fillWidth: true; wrapMode: Text.Wrap}
-   FgField {id: networkIds; placeholderText: workspace.tr("معرفات شبكات DHCP مفصولة بفاصلة، مثال *1,*2","DHCP network IDs, separated by commas: *1,*2"); Layout.fillWidth: true}
+   Repeater {model:routerTools.dhcpNetworks;CheckBox {required property var modelData; text:modelData.address+" • "+workspace.tr("DNS: ","DNS: ")+(modelData["dns-server"]||"");checked:workspace.selectedNetworks.indexOf(modelData[".id"])>=0;onClicked:{let next=workspace.selectedNetworks.slice(),i=next.indexOf(modelData[".id"]);if(checked&&i<0)next.push(modelData[".id"]);else if(!checked&&i>=0)next.splice(i,1);workspace.selectedNetworks=next}}}
    ComboBox {id: dnsMode; model: ["FAMILY","ADS_TRACKERS"]; Layout.fillWidth: true}
-   FgButton {text: workspace.tr("معاينة خطة الحماية","Preview protection plan"); enabled: !routerTools.busy; onClicked: routerTools.planDns(networkIds.text.split(",").map(function(x){return x.trim()}),dnsMode.currentText)}
+   FgButton {text: workspace.tr("معاينة خطة الحماية","Preview protection plan"); enabled: !routerTools.busy; onClicked: routerTools.planDns(workspace.selectedNetworks,dnsMode.currentText)}
    Repeater {model: routerTools.changes; Text {required property var modelData; text: modelData.label+" • "+JSON.stringify(modelData.attributes); color: theme.gold; Layout.fillWidth: true; wrapMode: Text.Wrap}}
    RowLayout {FgField {id: dnsBackup; echoMode: TextInput.Password; placeholderText: workspace.tr("كلمة مرور النسخة الاحتياطية (12+)","Backup password (12+)"); Layout.fillWidth: true} FgButton {text: workspace.tr("تأكيد الحماية","Confirm protection"); enabled: dnsBackup.text.length>=12&&!routerTools.busy; onClicked: {routerTools.apply(dnsBackup.text);dnsBackup.clear()}}}
    FgButton {text: workspace.tr("استعادة DNS السابق","Restore previous DNS"); enabled: !routerTools.busy; onClicked: routerTools.restoreDns()}
