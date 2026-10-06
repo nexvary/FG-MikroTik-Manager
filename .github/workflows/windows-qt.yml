@@ -28,6 +28,10 @@ jobs:
           $env:PATH = "C:\Qt\6.8.3\msvc2022_64\bin;$env:PATH"
           ctest --test-dir qt-build -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+      - name: Decode voucher QR independently
+        run: |
+          python -m pip install zxing-cpp Pillow
+          python desktop/qt/tests/decode_qr.py qt-build
       - name: Print test evidence
         if: always()
         shell: pwsh

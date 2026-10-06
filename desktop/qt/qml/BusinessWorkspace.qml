@@ -10,6 +10,10 @@ ColumnLayout {
  property string requestId: ""
  property int page: 0
  property var operations: ["subscriber","plan","renew","charge","payment","sale","expense","reverse","void_invoice","void_sale","reverse_expense","team","team_enable","team_disable","wallet","branch","select_branch","create_account","reset_password"]
+ property var enLabels:["Add subscriber","Add plan","Renew subscription","Add charge","Collect payment","Record sale","Record expense","Reverse ledger entry","Void invoice","Void sale","Reverse expense","Add staff / reseller","Enable staff","Disable staff","Reseller wallet entry","Add branch","Select branch","Create staff account","Reset password"]
+ property var subscriberChoices:[]
+ property var planChoices:[]
+ property var memberChoices:[]
  property var labels: ["إضافة مشترك","إضافة باقة","تجديد اشتراك","إضافة مديونية","تحصيل دفعة","عملية بيع","مصروف","عكس قيد مالي","إلغاء فاتورة","إلغاء بيع","عكس مصروف","إضافة موظف / موزع","تفعيل موظف","تعطيل موظف","حركة محفظة موزع","إضافة فرع","اختيار فرع","إنشاء حساب موظف","تغيير كلمة مرور"]
  property string op: operations[action.currentIndex]
  function tr(ar,en){return arabic?ar:en}
@@ -18,6 +22,7 @@ ColumnLayout {
  Theme {id: theme}
  FileDialog {id: csv; fileMode: FileDialog.SaveFile; defaultSuffix: "csv"; onAccepted: commerce.exportCsv(selectedFile)}
  FileDialog {id: receipt; fileMode: FileDialog.SaveFile; defaultSuffix: "pdf"; onAccepted: commerce.receipt(workspace.selectedId,workspace.selectedTable==="sales",selectedFile,paper.currentText,workspace.arabic)}
+ FileDialog {id:receiptHtml;fileMode:FileDialog.SaveFile;defaultSuffix:"html";onAccepted:commerce.receiptHtmlFile(workspace.selectedId,workspace.selectedTable==="sales",selectedFile,workspace.arabic)}
  FileDialog {id: backup; fileMode: FileDialog.SaveFile; defaultSuffix: "fgbackup"; onAccepted: {commerce.exportBackup(selectedFile,backupPassword.text);backupPassword.clear()}}
  FileDialog {id: restore; fileMode: FileDialog.OpenFile; onAccepted: {commerce.restoreBackup(selectedFile,backupPassword.text);backupPassword.clear();workspace.refresh()}}
  RowLayout {
@@ -36,12 +41,14 @@ ColumnLayout {
   FgButton {text: workspace.tr("تحديث","Refresh"); onClicked: workspace.refresh()}
   FgButton {text: "CSV"; enabled: commerce.allowed("EXPORT"); onClicked: csv.open()}
   FgButton {text: workspace.tr("إيصال PDF","Receipt PDF"); enabled: workspace.selectedId.length>0&&(workspace.selectedTable==="sales"||workspace.selectedTable==="invoices"); onClicked: receipt.open()}
+  FgButton {text:workspace.tr("طباعة","Print");enabled:workspace.selectedId.length>0&&(workspace.selectedTable==="sales"||workspace.selectedTable==="invoices");onClicked:commerce.printReceipt(workspace.selectedId,workspace.selectedTable==="sales",paper.currentText,workspace.arabic)}
+  FgButton {text:"HTML";enabled:workspace.selectedId.length>0&&(workspace.selectedTable==="sales"||workspace.selectedTable==="invoices");onClicked:receiptHtml.open()}
   ComboBox {id: paper; model: ["A4","58","80"]}
  }
  RowLayout {
   Layout.fillWidth: true
-  ComboBox {id: action; model: workspace.arabic?workspace.labels:workspace.operations; Layout.preferredWidth: 230}
-  FgButton {text: workspace.tr("فتح العملية","Open operation"); onClicked: editor.open(); accent: theme.gold}
+  ComboBox {id: action; model: workspace.arabic?workspace.labels:workspace.enLabels; Layout.preferredWidth: 230}
+  FgButton {text: workspace.tr("فتح العملية","Open operation"); onClicked:{workspace.subscriberChoices=commerce.choices("subscribers");workspace.planChoices=commerce.choices("plans");workspace.memberChoices=commerce.allowed("TEAM")?commerce.choices("team_members"):[];workspace.requestId="";editor.open()}; accent: theme.gold}
   FgButton {text: workspace.tr("السابق","Previous"); enabled: workspace.page>0; onClicked: {workspace.page--;workspace.refresh()}}
   FgButton {text: workspace.tr("التالي","Next"); enabled: commerce.rows.length===50; onClicked: {workspace.page++;workspace.refresh()}}
   Item {Layout.fillWidth: true}
@@ -64,7 +71,7 @@ ColumnLayout {
   FgButton {text: workspace.tr("استعادة","Restore"); enabled: !commerce.enrolled&&backupPassword.text.length>=12; onClicked: restore.open()}
  }
  Dialog {
-  id: editor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 780; height: Math.min(660,parent.height-40); title: workspace.arabic?workspace.labels[action.currentIndex]:workspace.op
+  id: editor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(780,parent.width-40); height: Math.min(660,parent.height-40); title: workspace.arabic?workspace.labels[action.currentIndex]:workspace.enLabels[action.currentIndex]
   contentItem: ColumnLayout {
    ScrollView {Layout.fillWidth: true; Layout.fillHeight: true; clip: true
     GridLayout {width: editor.width-60; columns: 2; columnSpacing: 12; rowSpacing: 10
@@ -79,9 +86,9 @@ ColumnLayout {
      Text {text: workspace.tr("العملة","Currency"); color: theme.silver; visible: workspace.includes(["subscriber","plan","team","expense"])}
      ComboBox {id: currency; model: ["EGP","USD","EUR","SAR","AED","TRY"]; Layout.fillWidth: true; visible: workspace.includes(["subscriber","plan","team","expense"])}
      Text {text: workspace.tr("معرف المشترك","Subscriber ID"); color: theme.silver; visible: workspace.includes(["renew","charge","payment","sale"])}
-     FgField {id: subscriber; Layout.fillWidth: true; text: workspace.selectedTable==="subscribers"?workspace.selectedId:""; visible: workspace.includes(["renew","charge","payment","sale"])}
+     ComboBox {id: subscriber;property string text:currentValue||editText;editable:true;model:workspace.subscriberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["renew","charge","payment","sale"])}
      Text {text: workspace.tr("معرف الباقة","Plan ID"); color: theme.silver; visible: workspace.op==="renew"}
-     FgField {id: plan; Layout.fillWidth: true; visible: workspace.op==="renew"}
+     ComboBox {id: plan;property string text:currentValue||editText;editable:true;model:workspace.planChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.op==="renew"}
      Text {text: workspace.tr("السعر / المبلغ","Price / amount"); color: theme.silver; visible: workspace.includes(["plan","charge","payment","expense","wallet"])}
      FgField {id: amount; Layout.fillWidth: true; placeholderText: "0.00"; visible: workspace.includes(["plan","charge","payment","expense","wallet"])}
      Text {text: workspace.tr("الأيام","Days"); color: theme.silver; visible: workspace.op==="plan"}
@@ -103,7 +110,7 @@ ColumnLayout {
      Text {text: workspace.tr("العمولة (نقطة أساس: 100 = 1%)","Commission (basis points: 100 = 1%)"); color: theme.silver; visible: workspace.op==="team"; wrapMode: Text.Wrap}
      FgField {id: commission; text: "0"; Layout.fillWidth: true; visible: workspace.op==="team"}
      Text {text: workspace.tr("معرف الموظف / الموزع","Member / reseller ID"); color: theme.silver; visible: workspace.includes(["wallet","create_account"])}
-     FgField {id: member; Layout.fillWidth: true; visible: workspace.includes(["wallet","create_account"])}
+     ComboBox {id: member;property string text:currentValue||editText;editable:true;model:workspace.memberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["wallet","create_account"])}
      Text {text: workspace.tr("حركة المحفظة","Wallet entry"); color: theme.silver; visible: workspace.op==="wallet"}
      ComboBox {id: kind; model: ["DEPOSIT","WITHDRAWAL","COMMISSION","REVERSAL"]; Layout.fillWidth: true; visible: workspace.op==="wallet"}
      Text {text: workspace.tr("معرف البيع للعمولة","Commission sale ID"); color: theme.silver; visible: workspace.op==="wallet"&&kind.currentText==="COMMISSION"}
@@ -123,7 +130,7 @@ ColumnLayout {
    }
    Text {text: commerce.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
    FgButton {text: workspace.tr("حفظ العملية","Save operation"); accent: theme.mint; onClicked: {
-    var data={name:name.text,phone:phone.text,service:service.currentText,account:account.text,currency:currency.currentText,subscriber_id:subscriber.text,plan_id:plan.text,price:amount.text,amount:amount.text,days:Number(days.text),paid:paid.text,method:method.currentText,reference:reference.text,category:category.text,note:note.text,reason:note.text,target_id:target.text,role:role.currentText,commission_bps:Number(commission.text),member_id:member.text,kind:kind.currentText,sale_id:sale.text,reversal_of:walletTarget.text,username:username.text,password:password.text}
+    if(!workspace.requestId.length)workspace.requestId="win-"+Date.now()+"-"+Math.floor(Math.random()*2147483647);var data={id:workspace.requestId,name:name.text,phone:phone.text,service:service.currentText,account:account.text,currency:currency.currentText,subscriber_id:subscriber.text,plan_id:plan.text,price:amount.text,amount:amount.text,days:Number(days.text),paid:paid.text,method:method.currentText,reference:reference.text,category:category.text,note:note.text,reason:note.text,target_id:target.text,role:role.currentText,commission_bps:Number(commission.text),member_id:member.text,kind:kind.currentText,sale_id:sale.text,reversal_of:walletTarget.text,username:username.text,password:password.text}
     var items=[];for(var i=0;i<lines.count;i++){var l=lines.get(i);items.push({name:l.name,quantity:l.quantity,unitPrice:l.unitPrice})}data.lines=items
     var saved=commerce.perform(workspace.op,data);password.clear();if(saved.length){editor.close();workspace.refresh()}
    }}

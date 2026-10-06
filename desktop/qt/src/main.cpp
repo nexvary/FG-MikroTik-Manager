@@ -18,7 +18,7 @@ int main(int argc,char **argv){QApplication app(argc,argv);app.setOrganizationNa
   if(!w)return 1;QDir().mkpath("qt-proof");
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
-   const QStringList pages{"home","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing"};
+   const QStringList pages{"home","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing","about"};
    if(*index>=pages.size()*2+1){app.exit(0);return;}
    const bool terminal=*index==pages.size()*2;const bool ar=*index>=pages.size();auto page=terminal?QString("terminal"):pages[*index%pages.size()];
    if(terminal){if(!QMetaObject::invokeMethod(w,"showTerminal")){app.exit(7);return;}}

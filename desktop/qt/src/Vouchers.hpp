@@ -12,11 +12,17 @@ class Vouchers:public QObject{
  Q_OBJECT
  Q_PROPERTY(QVariantList cards READ cards NOTIFY changed)
  Q_PROPERTY(QVariantList archive READ archive NOTIFY changed)
+ Q_PROPERTY(int archivePage READ archivePage NOTIFY changed)
+ Q_PROPERTY(int archiveCount READ archiveCount NOTIFY changed)
  Q_PROPERTY(QString status READ status NOTIFY changed)
  Q_PROPERTY(bool busy READ busy NOTIFY changed)
 public:
  explicit Vouchers(RouterClient *router,QObject *parent=nullptr);
  QVariantList cards()const{return authorization()?batch["vouchers"].toArray().toVariantList():QVariantList{};} QVariantList archive()const;QString status()const{return message;}bool busy()const{return working;}
+ int archivePage()const{return page;}int archiveCount()const{try{return authorization()?ids().size():0;}catch(...){return 0;}}
+ Q_INVOKABLE void setArchivePage(int value);
+ Q_INVOKABLE QString shareCard(int index);
+ Q_INVOKABLE void selectCard(int index);
  void setAuthorization(std::function<bool()> check){authorization=std::move(check);}
  static QJsonObject generateBatch(QJsonObject request);
  static QString quote(QString value);
@@ -33,7 +39,7 @@ public:
 signals:void changed();
 private:
  std::function<bool()> authorization=[](){return true;};
- RouterClient *router;QJsonObject batch;QString batchId,message;bool working=false;QString directory;
+ RouterClient *router;QJsonObject batch;QString batchId,message;bool working=false;QString directory;int page=0,selectedCard=0;QJsonArray ids()const;void commitIds(QJsonArray ids);
  void save();void provision(int index,QString menu,QSet<QString> existing);
  void expire(QJsonObject voucher,QString id,std::function<void(RouterReply)> done);
  static void paintCard(QPainter &p,QRectF rect,QJsonObject card);

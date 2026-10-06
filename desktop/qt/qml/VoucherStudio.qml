@@ -66,13 +66,15 @@ ColumnLayout {
   FgButton {text: studio.tr("تفعيل على الراوتر","Activate on router"); enabled: !vouchers.busy&&vouchers.cards.length>0; onClicked: activation.open()}
   ComboBox {id: paper; model: ["A4","58","80"]}
   FgButton {text: studio.tr("طباعة","Print"); enabled: vouchers.cards.length>0&&!vouchers.busy; onClicked: vouchers.print(paper.currentText)}
-  ComboBox {id: format; model: ["PDF","PNG","CSV","RSC"]}
+  ComboBox {id: format; model: ["PDF","PNG","HTML","CSV","RSC"]}
   FgButton {text: studio.tr("تصدير","Export"); enabled: vouchers.cards.length>0&&!vouchers.busy; onClicked: {studio.exportFormat=format.currentText;saveFile.open()}}
  }
  Dialog {id: activation; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 520; title: studio.tr("تفعيل دفعة الكروت","Activate voucher batch"); contentItem: ColumnLayout {Text {Layout.fillWidth: true; wrapMode: Text.Wrap; text: studio.tr("سيُنشئ كروت الدفعة على الراوتر المتصل. راجع الخدمة والباقات والصلاحية أولًا.","Creates this batch on the connected router. Review service, profile and expiry first."); color: theme.silver} FgButton {text: studio.tr("تأكيد التفعيل","Confirm activation"); onClicked: {vouchers.activate();activation.close()}}}}
  Text {text: vouchers.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
  RowLayout {
   Layout.fillWidth: true
+  FgButton {text:studio.tr("السابق","Previous");enabled:vouchers.archivePage>0;onClicked:vouchers.setArchivePage(vouchers.archivePage-1)}
+  FgButton {text:studio.tr("التالي","Next");enabled:(vouchers.archivePage+1)*20<vouchers.archiveCount;onClicked:vouchers.setArchivePage(vouchers.archivePage+1)}
   ComboBox {id: archive; model: vouchers.archive; textRole: "id"; Layout.preferredWidth: 260}
   FgButton {text: studio.tr("فتح دفعة","Open batch"); enabled: !vouchers.busy; onClicked: if(archive.currentIndex>=0)vouchers.openBatch(vouchers.archive[archive.currentIndex].id)}
   FgField {id: backupPassword; echoMode: TextInput.Password; placeholderText: studio.tr("كلمة مرور النسخة المشفرة (12+)","Backup password (12+)"); Layout.fillWidth: true}
@@ -82,8 +84,9 @@ ColumnLayout {
  ListView {
   Layout.fillWidth: true; Layout.fillHeight: true; model: vouchers.cards; clip: true; spacing: 6
   ScrollBar.vertical: ScrollBar {}
-  delegate: Rectangle {required property var modelData; width: ListView.view.width; height: 66; color: theme.panel; radius: 12
-   RowLayout {anchors.fill: parent; anchors.margins: 12; Text {text: modelData.username; color: theme.white; font.bold: true; Layout.fillWidth: true} Text {text: modelData.password; color: theme.silver; Layout.fillWidth: true} Text {text: modelData.profile; color: theme.muted; Layout.fillWidth: true} Text {text: modelData.provisionState; color: modelData.provisionState==="CREATED"?theme.mint:theme.gold} ToolTip.visible: cardHover.hovered; ToolTip.text: modelData.provisionMessage||""; HoverHandler {id: cardHover}}
+  delegate: Rectangle {required property var modelData;required property int index; width: ListView.view.width; height: 66; color: theme.panel; radius: 12
+   TapHandler {onTapped:vouchers.selectCard(index)}
+   RowLayout {anchors.fill: parent; anchors.margins: 12; Text {text: modelData.username; color: theme.white; font.bold: true; Layout.fillWidth: true} Text {text: modelData.password; color: theme.silver; Layout.fillWidth: true} Text {text: modelData.profile; color: theme.muted; Layout.fillWidth: true} FgButton {text:studio.tr("مشاركة","Share");implicitHeight:36;onClicked:backend.copyText(vouchers.shareCard(index))} Text {text: modelData.provisionState; color: modelData.provisionState==="CREATED"?theme.mint:theme.gold} ToolTip.visible: cardHover.hovered; ToolTip.text: modelData.provisionMessage||""; HoverHandler {id: cardHover}}
   }
  }
 }
