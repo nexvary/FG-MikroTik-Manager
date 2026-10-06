@@ -24,6 +24,11 @@ jobs:
       - name: Install Qt
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 -O C:\Qt
+      - uses: actions/cache/save@v4
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        with:
+          path: C:\Qt
+          key: qt-6.8.3-msvc2022-64-v1
       - name: Configure
         run: cmake -S desktop/qt -B qt-build -A x64 -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
       - name: Build
@@ -93,4 +98,11 @@ jobs:
         with:
           name: Windows-Qt-UI-diagnostics
           path: qt-ui-*.log
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-Qt-UI-proof
+          path: qt-proof/*.png
           if-no-files-found: ignore

@@ -17,7 +17,7 @@ class Vouchers:public QObject{
  Q_PROPERTY(QString status READ status NOTIFY changed)
  Q_PROPERTY(bool busy READ busy NOTIFY changed)
 public:
- explicit Vouchers(RouterClient *router,QObject *parent=nullptr);
+ explicit Vouchers(RouterClient *router,QObject *parent=nullptr,QString archiveDirectory={});
  QVariantList cards()const{return authorization()?batch["vouchers"].toArray().toVariantList():QVariantList{};} QVariantList archive()const;QString status()const{return message;}bool busy()const{return working;}
  int archivePage()const{return page;}int archiveCount()const{try{return authorization()?ids().size():0;}catch(...){return 0;}}
  Q_INVOKABLE void setArchivePage(int value);
