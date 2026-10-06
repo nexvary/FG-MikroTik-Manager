@@ -364,6 +364,19 @@ private fun RouterModuleDetails(
             }
         }
 
+        if (module == RouterAdminModule.NETWORK_DEVICES) {
+            Text(
+                if (arabic) "أجهزة يراها الميكروتيك المتصل حاليًا؛ ظهور الأكسس لا يثبت أنه متصل الآن أو يدعم التحكم عبر RouterOS. التحديث يعيد الفحص."
+                else "Devices seen by the currently connected MikroTik. An AP listing does not prove live connectivity or RouterOS control support. Refresh to scan again.",
+                modifier = Modifier.padding(12.dp), color = FgSilver,
+                style = MaterialTheme.typography.bodySmall
+            )
+            snapshot?.warnings?.forEach { warning ->
+                Text((if (arabic) "نتائج جزئية — تعذر الفحص: " else "Partial results — scan failed: ") + warning,
+                    modifier = Modifier.padding(horizontal = 12.dp), color = FgAmber,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
         if (module == RouterAdminModule.USERS) {
             Button(onClick = { editorRow = null; editorOpen = true }, enabled = !actionRunning, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                 Icon(Icons.Outlined.PersonAdd, contentDescription = null)
@@ -591,7 +604,10 @@ private fun RouterRecordCard(
     onDelete: () -> Unit
 ) {
     val disabled = row["disabled"].routerBool()
-    val details = preferredDetails(row)
+    val details = if (module == RouterAdminModule.NETWORK_DEVICES) {
+        listOf("address", "mac-address", "sources", "interface", "platform", "board")
+            .mapNotNull { key -> row[key]?.takeIf(String::isNotBlank)?.let { key to it } }
+    } else preferredDetails(row)
 
     Card(
         modifier = Modifier
@@ -643,7 +659,7 @@ private fun RouterRecordCard(
 
             if (details.isNotEmpty()) {
                 HorizontalDivider(color = accent.copy(alpha = 0.22f))
-                details.filterNot { it.first == "disabled" || it.first == "dst-address" }.take(4).forEach { (key, value) ->
+                details.filterNot { it.first == "disabled" || it.first == "dst-address" }.take(if (module == RouterAdminModule.NETWORK_DEVICES) 8 else 4).forEach { (key, value) ->
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             key,
@@ -975,7 +991,7 @@ private fun fieldSpecs(module: RouterAdminModule): List<FieldSpec> =
             FieldSpec("interface", "الواجهة", "Interface"),
             FieldSpec("comment", "تعليق", "Comment")
         )
-        RouterAdminModule.NEIGHBORS -> emptyList()
+        RouterAdminModule.NEIGHBORS, RouterAdminModule.NETWORK_DEVICES -> emptyList()
         RouterAdminModule.DHCP -> listOf(
             FieldSpec("name", "الاسم", "Name"),
             FieldSpec("interface", "الواجهة", "Interface"),
@@ -1082,7 +1098,7 @@ private fun moduleVisual(module: RouterAdminModule): ModuleVisual =
         RouterAdminModule.ZEROTIER -> ModuleVisual(Icons.Outlined.Public, FgCyan)
         RouterAdminModule.IP_ADDRESSES -> ModuleVisual(Icons.Outlined.Language, FgBlue)
         RouterAdminModule.ARP -> ModuleVisual(Icons.Outlined.NetworkCheck, FgAmber)
-        RouterAdminModule.NEIGHBORS -> ModuleVisual(Icons.Outlined.Router, FgSilver)
+        RouterAdminModule.NEIGHBORS, RouterAdminModule.NETWORK_DEVICES -> ModuleVisual(Icons.Outlined.Router, FgSilver)
         RouterAdminModule.DHCP -> ModuleVisual(Icons.Outlined.Dns, FgMint)
         RouterAdminModule.DNS -> ModuleVisual(Icons.Outlined.Public, FgCyan)
         RouterAdminModule.ROUTES -> ModuleVisual(Icons.Outlined.AccountTree, FgPurple)
@@ -1112,6 +1128,7 @@ private fun moduleTitle(module: RouterAdminModule, arabic: Boolean): String =
         RouterAdminModule.ZEROTIER -> "ZeroTier"
         RouterAdminModule.IP_ADDRESSES -> if (arabic) "عناوين IP" else "IP Addresses"
         RouterAdminModule.ARP -> "ARP"
+        RouterAdminModule.NETWORK_DEVICES -> if (arabic) "أجهزة الشبكة والأكسسات" else "Network devices & APs"
         RouterAdminModule.NEIGHBORS -> if (arabic) "الأجهزة المجاورة" else "Neighbors"
         RouterAdminModule.DHCP -> "DHCP"
         RouterAdminModule.DNS -> "DNS"
@@ -1150,6 +1167,8 @@ private fun moduleSubtitle(module: RouterAdminModule, arabic: Boolean): String =
             if (arabic) "العناوين والشبكات" else "Addresses and networks"
         RouterAdminModule.ARP ->
             if (arabic) "IP وMAC داخل جدول ARP" else "IP and MAC ARP table"
+        RouterAdminModule.NETWORK_DEVICES ->
+            if (arabic) "دمج الجيران وDHCP وARP للراوتر الحالي" else "Merge Neighbor, DHCP and ARP on the current router"
         RouterAdminModule.NEIGHBORS ->
             if (arabic) "اكتشاف أجهزة الشبكة للقراءة" else "Read-only neighbor discovery"
         RouterAdminModule.DHCP ->

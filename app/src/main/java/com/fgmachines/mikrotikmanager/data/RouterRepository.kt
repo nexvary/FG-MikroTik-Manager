@@ -57,6 +57,10 @@ class RouterRepository private constructor(
         transport.read("interface").map { it.toRouterInterface() }
 
     suspend fun loadAdminModule(module: RouterAdminModule): RouterMenuSnapshot {
+        if (module == RouterAdminModule.NETWORK_DEVICES) {
+            val inventory = NetworkInventory.load(transport)
+            return RouterMenuSnapshot(module, "network-devices", inventory.rows, inventory.warnings)
+        }
         var lastError: Throwable? = null
         var emptyWifi: RouterMenuSnapshot? = null
         for (menu in module.menuCandidates) {

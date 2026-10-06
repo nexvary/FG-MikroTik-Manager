@@ -37,6 +37,11 @@ enum class RouterAdminModule(
         canToggle = false,
         canDelete = false
     ),
+    NETWORK_DEVICES(
+        listOf("ip/neighbor", "ip/dhcp-server/lease", "ip/arp"),
+        RouterAdminGroup.NETWORK,
+        canCreate = false, canEdit = false, canToggle = false, canDelete = false
+    ),
     DHCP(listOf("ip/dhcp-server", "ip/dhcp-client"), RouterAdminGroup.NETWORK),
     DNS(
         listOf("ip/dns"),
@@ -102,7 +107,8 @@ enum class RouterAdminModule(
 data class RouterMenuSnapshot(
     val module: RouterAdminModule,
     val menuPath: String,
-    val rows: List<Map<String, String>>
+    val rows: List<Map<String, String>>,
+    val warnings: List<String> = emptyList()
 )
 
 data class RouterAdminActionResult(
