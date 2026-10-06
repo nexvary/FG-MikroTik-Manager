@@ -31,6 +31,7 @@ public:
  Q_INVOKABLE void router(QString url,QString user,QString password,QString menu);
  Q_INVOKABLE void command(QString value);
  Q_INVOKABLE void clearTerminal();
+ Q_INVOKABLE void clearView();
  Q_INVOKABLE void smoke();
 signals: void changed();
 private:
