@@ -5,6 +5,7 @@ import QtQuick.Dialogs
 ColumnLayout {
  id: workspace
  property bool arabic: true
+ property string inspectedInterface:""
  property alias currentTab:tabs.currentIndex
  property alias onlineOnly:subscribers.onlineOnly
  property string userId: ""
@@ -15,15 +16,15 @@ ColumnLayout {
  function design(){return {networkName:networkName.text,supportPhone:support.text,welcome:welcome.text,color:color.text,terms:terms.text,website:website.text,logoDataUri:workspace.logoDataUri}}
  Theme {id: theme}
  FileDialog {id:logoPicker;fileMode:FileDialog.OpenFile;nameFilters:["Images (*.png *.jpg *.jpeg *.webp)"];onAccepted:{let logo=routerTools.portalLogo(selectedFile);if(logo.length)workspace.logoDataUri=logo}}
- RowLayout {Layout.fillWidth: true; FgButton {text: workspace.tr("فحص وتحديث","Inspect & refresh"); enabled: !routerTools.busy&&!backend.busy; onClicked: routerTools.inspect(); accent: theme.mint} Text {text: routerTools.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}}
+ RowLayout {Layout.fillWidth: true; FgButton {text: workspace.tr("فحص وتحديث","Inspect & refresh"); enabled: !routerTools.busy&&!backend.busy; onClicked: routerTools.inspect(workspace.inspectedInterface); accent: theme.mint} Text {text: routerTools.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}}
  TabBar {id: tabs; Layout.fillWidth: true; FgTab {text: workspace.tr("التشخيص","Diagnostics")} FgTab {text: workspace.tr("إعداد HotSpot","HotSpot setup")} FgTab {text: workspace.tr("المشتركون","Subscribers")} FgTab {text: workspace.tr("الحماية","Protection")} FgTab {text: workspace.tr("صفحة الدخول","Login portal")} FgTab {text: workspace.tr("النسخ والساعة","Backup & clock")}}
  StackLayout {
   currentIndex: tabs.currentIndex; Layout.fillWidth: true; Layout.fillHeight: true
-  ColumnLayout {Text {visible:routerTools.checks.length===0;Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:workspace.tr("اتصل بالراوتر من قسم الراوترات، ثم اضغط فحص وتحديث لعرض جاهزية الشبكة.","Connect in the Routers section, then select Inspect & refresh to see network readiness.")} ScrollView {Layout.fillWidth:true;Layout.fillHeight:true;clip: true; ListView {model: routerTools.checks; implicitWidth: workspace.width-24; spacing: 6; delegate: Rectangle {required property var modelData; width: ListView.view.width; height: 62; radius: 12; color: theme.panel; RowLayout {anchors.fill: parent; anchors.margins: 14; Text {text: modelData.check; color: theme.white; Layout.fillWidth: true} Text {text: modelData.detail; color: theme.muted; Layout.fillWidth: true; elide: Text.ElideRight} Text {text: modelData.state; color: modelData.state==="READY"?theme.mint:theme.gold}}}}}}
+  ColumnLayout {Text {visible:routerTools.checks.length===0;Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:workspace.tr("اتصل بالراوتر من قسم الراوترات، ثم اضغط فحص وتحديث لعرض جاهزية الشبكة.","Connect in the Routers section, then select Inspect & refresh to see network readiness.")} ScrollView {Layout.fillWidth:true;Layout.fillHeight:true;clip: true; ListView {model: routerTools.checks; implicitWidth: workspace.width-24; spacing: 6; delegate: Rectangle {required property var modelData; width: ListView.view.width; height: 82; radius: 12; color: theme.panel; RowLayout {anchors.fill: parent; anchors.margins: 14; Text {text: workspace.tr(modelData.ar||modelData.check,modelData.en||modelData.check); color: theme.white; Layout.fillWidth: true;wrapMode:Text.Wrap} Text {text: (modelData.detail||"").includes(" • ")?(modelData.detail||"").split(" • ")[workspace.arabic?0:1]:modelData.detail; color: theme.muted; Layout.fillWidth: true; elide: Text.ElideRight} Text {text: modelData.state; color: modelData.state==="READY"?theme.mint:theme.gold}}}}}}
   ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 12
    Text {text: workspace.tr("اختر شبكة العملاء. الخطة تستبعد واجهة الإنترنت وتحافظ على البوابة الحالية.","Select the client network. The plan excludes WAN and preserves the current gateway."); color: theme.silver; wrapMode: Text.Wrap; Layout.fillWidth: true}
    GridLayout {columns: 2; Layout.fillWidth: true
-    Text {text: workspace.tr("واجهة العملاء","Client interface"); color: theme.silver} ComboBox {id: client; model: routerTools.interfaces; textRole: "name"; Layout.fillWidth: true}
+    Text {text: workspace.tr("واجهة العملاء","Client interface"); color: theme.silver} ComboBox {id: client; model: routerTools.interfaces; textRole: "name"; Layout.fillWidth: true;onActivated:workspace.inspectedInterface=currentText}
     Text {text: workspace.tr("عنوان البوابة","Gateway CIDR"); color: theme.silver} FgField {id: gateway; text: "192.168.10.1/24"; Layout.fillWidth: true}
     Text {text: workspace.tr("شبكة العملاء","Client subnet"); color: theme.silver} FgField {id: subnet; text: "192.168.10.0/24"; Layout.fillWidth: true}
     Text {text: workspace.tr("مدى العناوين","Address pool"); color: theme.silver} FgField {id: pool; text: "192.168.10.10-192.168.10.250"; Layout.fillWidth: true}

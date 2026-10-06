@@ -27,6 +27,7 @@ public:
  QVariantList users()const;
  QVariantList activeSessions()const{return client->authorized()&&client->connected()?Protocol::redact(tables["ip/hotspot/active"]).toArray().toVariantList():QVariantList{};}
  bool sessionsKnown()const{return client->authorized()&&client->connected()&&tables.contains("ip/hotspot/active")&&!unavailable.contains("ip/hotspot/active");}
+ static QJsonArray readinessChecks(QJsonObject tables,QSet<QString> unavailable={},QString clientInterface={});
  static QJsonObject subscriberUsage(QJsonObject user,QJsonArray sessions,bool sessionsKnown=true);QVariantList profiles()const{return tables["ip/hotspot/profile"].toArray().toVariantList();}QString portalPreview()const{return preview;}
  static bool validCidr(QString cidr);static QString network(QString cidr);static bool privateSubnet(QString cidr);
  static QJsonObject hotspotPlan(QJsonObject tables,QJsonObject request,QString management);
@@ -34,7 +35,7 @@ public:
  static QJsonObject dnsPlan(QJsonObject tables,QSet<QString> networks,QString mode);
  static QJsonObject pingEvidence(QJsonArray rows);
  static QJsonObject renderPortal(QJsonObject design);
- Q_INVOKABLE void inspect();
+ Q_INVOKABLE void inspect(QString clientInterface={});
  Q_INVOKABLE void refreshSubscribers();
  Q_INVOKABLE void planHotspot(QJsonObject request);
  Q_INVOKABLE void planPorts(QString client,QString wan);
@@ -63,5 +64,5 @@ private:
  RouterClient *client;bool working=false;QString message,preview;QJsonObject tables,pending,journal;QJsonArray report;QSet<QString> unavailable;std::shared_ptr<int> lifetime=std::make_shared<int>(0);RouterJob job;
  RouterAwait call(QString menu,QString action="print",QJsonObject attrs={},bool required=true){return {client,lifetime,menu,action,attrs,{},required};}
  void launch(QString op,QJsonObject fields={});RouterJob run(QString op,QJsonObject fields);
- QString signature()const;QString fingerprint()const;QString journalPath()const;void persist();void loadJournal();void evaluate();
+ QString signature()const;QString fingerprint()const;QString journalPath()const;void persist();void loadJournal();void evaluate(QString clientInterface={});
 };
