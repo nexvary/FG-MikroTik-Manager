@@ -1,4 +1,4 @@
-# FG MTM for Windows 0.17.3
+# FG MTM for Windows 0.17.4
 
 Native C++20 and Qt 6.8.3 Quick/QuickControls2, Network, Widgets/PrintSupport and SQLite, built with CMake/MSVC 2022 and packaged with Inno Setup. This follows the applicable desktop stack in `nexvary/NEXVARY-Avionics-Lab`; the application runs locally without a browser engine.
 
@@ -8,7 +8,7 @@ Arabic RTL and English use the Android application's black, navy, silver, blue, 
 
 | Android functionality | Windows entry point |
 | --- | --- |
-| Router profiles, MNDP discovery, API/API_SSL, HTTPS REST, explicit HTTP REST and AUTO | Routers |
+| Router profiles, 38-second MNDP discovery, all-adapter broadcast, Gateway/ARP/subnet fallback, WinBox/API port probing, API/API_SSL, HTTPS REST, explicit HTTP REST and AUTO | Routers |
 | Network/system administration, 33 menu paths, named field forms, previews and confirmations | Routers; floating terminal |
 | Readiness, Internet packet loss/latency, interface and HotSpot checks | Network tools → Diagnostics |
 | HotSpot preparation, DHCP/pool/NAT, client bridge planning, protected WAN and rollback | Network tools → HotSpot setup |
@@ -33,7 +33,7 @@ Connection passwords and server sessions stay in memory. Router backup passwords
 
 ## First use
 
-1. Install `FG-MTM-Windows-0.17.3-Setup.exe` on Windows x64.
+1. Install `FG-MTM-Windows-0.17.4-Setup.exe` on Windows x64.
 2. For an existing server branch, sign in under Server synchronization and join the empty local store before setting up the local owner. Otherwise, create the owner in Local business first.
 3. Connect to a MikroTik router in Routers using its actual transport and enabled port. Save a named connection if monitoring is needed. Stored profiles exclude passwords.
 4. Server synchronization is optional. The supplied server origin is `https://3.65.234.184`, tenant `d1d1af2d-10f7-41ab-ae96-bdc10333d781`, branch `8f2aeb05-aac9-4769-a2a4-920aa1e1859e`. Use an independently created Windows server account to keep single-session server authentication from revoking another device's token.
@@ -66,6 +66,6 @@ These are software changes verified by contract and packaged-app checks. Real ro
 
 Denser task cards, true router/server connection tiles, colored workspace headings, larger two-tone icon badges, and explicit row layouts for RTL navigation. Disconnected diagnostics and subscriber pages now explain the next action without invented metrics. Network tools include a direct route to the router connection screen. Android files remain unchanged.
 
-## 0.17.3 icon system
+## 0.17.4 icon system
 
 Original scalable SVG artwork replaces the Canvas line icons: physical routers with antennas and ports, subscriber groups, perforated QR vouchers, receipts and coins, shield locks, network topology, online sessions, server racks and renewal clocks. Distinct task mappings, larger sidebar/workspace sizes and Qt SVG deployment are included.
