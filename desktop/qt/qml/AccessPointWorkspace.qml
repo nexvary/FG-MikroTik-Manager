@@ -68,13 +68,14 @@ ScrollView {
    Repeater{model:accessPoints.summary
     Rectangle{required property var modelData;Layout.fillWidth:true;implicitHeight:reportColumn.implicitHeight+32;radius:14;color:theme.panel;border.color:theme.blue
      ColumnLayout{id:reportColumn;anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:16;spacing:8
-      Label{text:modelData.shop||modelData.name;color:theme.mint;font.pixelSize:20;Layout.fillWidth:true;wrapMode:Text.Wrap}
-      Label{text:pane.tr("عملاء مرصودون: ","Observed clients: ")+modelData.observedClients+pane.tr(" • حسابات: "," • Accounts: ")+modelData.observedAccounts;color:theme.silver;Layout.fillWidth:true;wrapMode:Text.Wrap}
-      Label{text:pane.tr("الكروت والمبيعات والترافيك للفترة: غير متاح","Period cards, sales and traffic: N/A");color:theme.gold;Layout.fillWidth:true;wrapMode:Text.Wrap}
+      Label{text:"#"+modelData.rankByObservedAccounts+"  "+(modelData.shop||modelData.name);color:theme.mint;font.pixelSize:20;Layout.fillWidth:true;wrapMode:Text.Wrap}
+      Label{text:pane.tr("عملاء مرصودون: ","Observed clients: ")+modelData.observedClients+pane.tr(" • حسابات/مستخدمون: "," • Accounts/users: ")+modelData.observedAccounts+pane.tr(" • جلسات: "," • Sessions: ")+modelData.observedSessions;color:theme.silver;Layout.fillWidth:true;wrapMode:Text.Wrap}
+      Label{text:pane.tr("ترافيك مرصود: ","Observed traffic: ")+modelData.totalTrafficBytes+pane.tr(" بايت • متوسط الجلسة: "," bytes • Avg session: ")+modelData.averageSessionSeconds+pane.tr(" ث • الذروة: "," s • Peak: ")+(modelData.peakObservedHour||"N/A");color:theme.gold;Layout.fillWidth:true;wrapMode:Text.Wrap}
+      Label{text:pane.tr("أكثر باقة مرصودة: ","Top observed plan: ")+(modelData.topObservedPlan||"N/A")+pane.tr(" • المبيعات/الإيراد: غير منسوبة لعدم وجود دليل ربط."," • Sales/revenue: not attributed without evidence.");color:theme.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
      }
     }
    }
-   Label{text:pane.tr("هذه عينات وقت تشغيل الصفحة وليست سجل جلسات كاملًا. عدد الحسابات لا يعني عدد الكروت المباعة. لا تُنسب مبيعات إلى نقطة وصول بلا دليل.","These are screen-time samples, not a complete session ledger. Accounts are not sold vouchers. Sales are not attributed without evidence.");color:theme.muted;wrapMode:Text.Wrap;Layout.fillWidth:true}
+   Label{text:pane.tr("الأرقام مستنتجة من عينات HotSpot، مع استخدام أقصى بايتات ومدة مرصودة لكل Session لتقليل التكرار. الحسابات لا تعني كروتًا مباعة، ولا ننسب مبيعات أو Revenue لأي AP بلا علاقة موثقة.","Metrics are inferred from sampled HotSpot sessions, using each session's maximum observed bytes/duration to reduce double counting. Accounts are not confirmed sold vouchers, and sales/revenue are never attributed without verified evidence.");color:theme.muted;wrapMode:Text.Wrap;Layout.fillWidth:true}
   }
  }
 }

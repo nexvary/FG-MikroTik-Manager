@@ -7,6 +7,7 @@ namespace AccessPointEngine {
  QString mac(QString value);
  QJsonArray discover(const QMap<QString,QJsonArray>& data,const QJsonObject& mappings={});
  QJsonArray correlate(const QMap<QString,QJsonArray>& data,const QJsonArray& devices);
+ QJsonArray summary(const QJsonArray& records,const QJsonArray& devices);
  QStringList menus();
  QByteArray csv(const QJsonArray& rows);
 }
