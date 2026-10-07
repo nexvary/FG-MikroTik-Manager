@@ -14,4 +14,13 @@ for file in network-devices-en.png network-devices-ar.png dns-protection-en.png 
   test -s "ui-proof/$file"
 done
 adb logcat -d -s AndroidRuntime:E > ui-proof/business-runtime.log
-if grep -q 'FATAL EXCEPTION' ui-proof/business-runtime.log; then exit 1; fi
+python3 - <<'PYCRASH'
+from pathlib import Path
+log=Path('ui-proof/business-runtime.log').read_text(errors='replace')
+blocks=log.split('FATAL EXCEPTION')
+app_crashes=[b for b in blocks[1:] if 'Process: com.fgmachines.mikrotikmanager' in b[:2500]]
+if app_crashes:
+    print('FG MTM application crash detected during device tests')
+    print('FATAL EXCEPTION'+app_crashes[-1])
+    raise SystemExit(1)
+PYCRASH
