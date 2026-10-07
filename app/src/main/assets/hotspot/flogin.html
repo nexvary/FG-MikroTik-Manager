@@ -1,20 +1,140 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>@@NETWORK@@</title><link rel="stylesheet" href="fg.css"><script src="md5.js"></script></head><body class="login-page"><main class="login-card">
-<header class="portal-header"><span class="brand-name">FG <span>Machines</span></span><button class="lang" type="button" onclick="toggleLanguage()" aria-label="العربية / English">AR / EN</button></header>
-<div class="brand-emblem" aria-hidden="true"><span>FG</span><svg viewBox="0 0 48 30" fill="none"><path d="M5 9c11-10 27-10 38 0M12 17c7-6 17-6 24 0M19 24c3-3 7-3 10 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></div>
-<img class="logo" src="@@LOGO@@" alt="">
-<div class="portal-intro"><span class="eyebrow" data-ar="بوابتك إلى الإنترنت" data-en="Your gateway to the internet">بوابتك إلى الإنترنت</span><h1>@@NETWORK@@</h1><p class="welcome">@@WELCOME@@</p></div>
-<div class="login-guide"><span class="step">1</span><span data-ar="أدخل كود الكارت" data-en="Enter your voucher code">أدخل كود الكارت</span><span class="guide-line"></span><span class="step">2</span><span data-ar="ابدأ الاتصال" data-en="Connect and enjoy">ابدأ الاتصال</span></div>
-$(if error)<p class="error" role="alert" id="error" data-error="$(error-esc)">تعذر تسجيل الدخول. راجع الكود وكلمة المرور أو تواصل مع الدعم.</p>$(endif)
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#08111b">
+<title>@@NETWORK@@</title>
+<link rel="stylesheet" href="fg.css">
+<script src="md5.js"></script>
+</head>
+<body class="login-page">
+<main class="login-card">
+<header class="portal-header">
+  <div class="brand-lockup" aria-label="FG Machines"><strong>FG</strong><span>Machines</span></div>
+  <button class="lang" type="button" onclick="toggleLanguage()" aria-label="العربية / English">AR / EN</button>
+</header>
+
+<section class="portal-hero">
+  <div class="portal-orbit" aria-hidden="true">
+    <span class="orbit-dot orbit-blue"></span><span class="orbit-dot orbit-green"></span><span class="orbit-dot orbit-gold"></span>
+    <svg class="portal-mark" viewBox="0 0 120 120" fill="none">
+      <defs>
+        <linearGradient id="routerMetal" x1="20" y1="70" x2="100" y2="104"><stop stop-color="#edf6fd"/><stop offset=".45" stop-color="#a8bfd2"/><stop offset="1" stop-color="#5d7d98"/></linearGradient>
+        <linearGradient id="signalBlue" x1="28" y1="22" x2="92" y2="68"><stop stop-color="#7ce4ff"/><stop offset=".55" stop-color="#1ba5ff"/><stop offset="1" stop-color="#275fd7"/></linearGradient>
+      </defs>
+      <path d="M30 51C47 34 73 34 90 51" stroke="url(#signalBlue)" stroke-width="7" stroke-linecap="round"/>
+      <path d="M42 62C52 52 68 52 78 62" stroke="#42e6a4" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="60" cy="72" r="5" fill="#a7ff67"/>
+      <path d="M25 78H95L103 88V102H17V88L25 78Z" fill="url(#routerMetal)" stroke="#f5fbff" stroke-width="2"/>
+      <rect x="24" y="89" width="72" height="7" rx="3.5" fill="#17344a"/>
+      <circle cx="33" cy="92.5" r="2.6" fill="#42e6a4"/><circle cx="43" cy="92.5" r="2.6" fill="#5edcff"/><circle cx="53" cy="92.5" r="2.6" fill="#ffc34c"/>
+      <path d="M67 89.5H88" stroke="#9db8ce" stroke-width="3.5" stroke-linecap="round"/>
+    </svg>
+    <span class="fg-badge">FG</span>
+  </div>
+  <img class="logo" src="@@LOGO@@" alt="">
+  <div class="secure-pill"><span class="secure-dot"></span><span data-ar="بوابة Wi-Fi آمنة" data-en="Secure Wi-Fi access">بوابة Wi-Fi آمنة</span></div>
+  <h1>@@NETWORK@@</h1>
+  <p class="welcome">@@WELCOME@@</p>
+</section>
+
+<div class="login-guide" aria-label="Login steps">
+  <div class="guide-item"><span class="step">1</span><span data-ar="أدخل الكود" data-en="Enter code">أدخل الكود</span></div>
+  <span class="guide-line"></span>
+  <div class="guide-item"><span class="step">2</span><span data-ar="اتصل بالإنترنت" data-en="Go online">اتصل بالإنترنت</span></div>
+</div>
+
+$(if error)<p class="error server-error" role="alert" id="error" data-error="$(error-esc)">تعذر تسجيل الدخول. راجع الكود وكلمة المرور أو تواصل مع الدعم.</p>$(endif)
+
 <form id="login" action="$(link-login-only)" method="post" onsubmit="return loginVoucher()" autocomplete="off">
-<label for="code" data-ar="كود الكارت / اسم المستخدم" data-en="Voucher code / username">كود الكارت / اسم المستخدم</label><div class="input-wrap"><svg class="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h5"/></svg><input id="code" aria-describedby="codeHint" placeholder="مثال: 12345678" data-placeholder-ar="مثال: 12345678" data-placeholder-en="Example: 12345678" name="username" maxlength="128" required autocapitalize="none" spellcheck="false" value="$(username)"></div><small id="codeHint" class="field-hint" data-ar="اكتب الكود كما هو مطبوع على الكارت." data-en="Use the code printed on your voucher.">اكتب الكود كما هو مطبوع على الكارت.</small>
-<label class="checkLabel"><input class="check" id="same" type="checkbox" checked onchange="showPassword()"><span data-ar="الكود هو كلمة المرور" data-en="Code and password are the same">الكود هو كلمة المرور</span></label>
-<div id="passwordBox" class="hide"><label for="password" data-ar="كلمة المرور" data-en="Password">كلمة المرور</label><input id="password" type="password" maxlength="128" autocomplete="off"></div>
-<input id="submittedPassword" type="hidden" name="password"><input type="hidden" name="dst" value="$(link-status)"><input type="hidden" name="popup" value="false">
-<button class="connect-button" type="submit"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v8M6.3 5.8a8 8 0 1 0 11.4 0"/></svg><span data-ar="اتصال بالإنترنت" data-en="Connect to internet">اتصال بالإنترنت</span></button></form>
-<p class="error" id="localError" role="alert" aria-live="polite"></p><div class="terms">@@TERMS@@</div><footer><span class="support-label" data-ar="للمساعدة والتواصل" data-en="Help & support">للمساعدة والتواصل</span><span class="support-phone">@@PHONE@@</span><a href="@@WEBSITE@@" rel="noreferrer" id="website">Website / Facebook</a><p class="powered">Powered by <strong>FG Machines</strong></p></footer>
-</main><script>
+  <section class="credentials">
+    <div class="field-heading">
+      <label for="code" data-ar="كود الكارت / اسم المستخدم" data-en="Voucher code / username">كود الكارت / اسم المستخدم</label>
+      <span class="field-chip" data-ar="مطلوب" data-en="Required">مطلوب</span>
+    </div>
+    <div class="input-wrap">
+      <svg class="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h5"/></svg>
+      <input id="code" aria-describedby="codeHint" placeholder="مثال: 12345678" data-placeholder-ar="مثال: 12345678" data-placeholder-en="Example: 12345678" name="username" maxlength="128" required autocapitalize="none" spellcheck="false" value="$(username)">
+    </div>
+    <small id="codeHint" class="field-hint" data-ar="اكتب الكود كما هو مطبوع على الكارت." data-en="Enter the code exactly as printed on the voucher.">اكتب الكود كما هو مطبوع على الكارت.</small>
+
+    <label class="same-password-row" for="same">
+      <span class="toggle-shell"><input class="check" id="same" type="checkbox" checked onchange="showPassword()"><span class="toggle-ui"></span></span>
+      <span><strong data-ar="استخدام الكود ككلمة مرور" data-en="Use code as password">استخدام الكود ككلمة مرور</strong><small data-ar="الخيار المعتاد للكروت السريعة" data-en="Recommended for standard vouchers">الخيار المعتاد للكروت السريعة</small></span>
+    </label>
+
+    <div id="passwordBox" class="password-box hide">
+      <label for="password" data-ar="كلمة المرور" data-en="Password">كلمة المرور</label>
+      <div class="input-wrap password-wrap">
+        <svg class="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <input id="password" type="password" maxlength="128" autocomplete="off">
+      </div>
+    </div>
+  </section>
+
+  <input id="submittedPassword" type="hidden" name="password">
+  <input type="hidden" name="dst" value="$(link-status)">
+  <input type="hidden" name="popup" value="false">
+
+  <button class="connect-button" id="connectButton" type="submit">
+    <span class="button-signal" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span id="connectLabel" data-ar="اتصال بالإنترنت" data-en="Connect to internet">اتصال بالإنترنت</span>
+    <span class="button-arrow" aria-hidden="true">←</span>
+  </button>
+</form>
+
+<p class="error" id="localError" role="alert" aria-live="polite"></p>
+<div class="terms">@@TERMS@@</div>
+
+<footer>
+  <div class="support-block"><span class="support-label" data-ar="تحتاج مساعدة؟" data-en="Need help?">تحتاج مساعدة؟</span><span class="support-phone">@@PHONE@@</span></div>
+  <a href="@@WEBSITE@@" rel="noreferrer" id="website">Website / Facebook</a>
+  <p class="powered">Powered by <strong>FG Machines</strong></p>
+</footer>
+</main>
+
+<script>
 var chapId='$(chap-id)',chapChallenge='$(chap-challenge)',secureLogin='$(ssl-login)',plainAllowed='$(plain-passwd)';
-function showPassword(){var same=document.getElementById('same').checked;document.getElementById('passwordBox').classList.toggle('hide',same);document.getElementById('password').required=!same;document.getElementById('localError').textContent=''}
-function loginVoucher(){var u=document.getElementById('code').value,p=document.getElementById('same').checked?u:document.getElementById('password').value;if(!p){document.getElementById('localError').textContent='أدخل كلمة المرور / Enter password';return false}if(chapId){document.getElementById('submittedPassword').value=hexMD5(chapId+p+chapChallenge)}else if(secureLogin==='yes'||location.protocol==='https:'){document.getElementById('submittedPassword').value=p}else{document.getElementById('localError').textContent='هذا الاتصال لا يدعم CHAP أو HTTPS. اطلب من صاحب الشبكة تفعيل الدخول الآمن. / CHAP or HTTPS is required.';return false}return true}
-(function(){var params=new URLSearchParams(location.hash.substring(1));if(location.hash)history.replaceState(null,'',location.pathname+location.search);var code=params.get('u');if(code){document.getElementById('code').value=code;document.getElementById('same').checked=params.get('same')==='1';showPassword();try{sessionStorage.setItem('fgVoucher',JSON.stringify({u:code,profile:params.get('profile')||'',expiry:params.get('expiry')||'',limit:params.get('limit')||''}))}catch(e){}}})();
-</script><script src="fg.js"></script></body></html>
+function showPassword(){
+  var same=document.getElementById('same').checked;
+  document.getElementById('passwordBox').classList.toggle('hide',same);
+  document.getElementById('password').required=!same;
+  document.getElementById('localError').textContent='';
+}
+function loginVoucher(){
+  var u=document.getElementById('code').value.trim();
+  var same=document.getElementById('same').checked;
+  var p=same?u:document.getElementById('password').value;
+  var local=document.getElementById('localError');
+  if(!u){local.textContent='أدخل كود الكارت / Enter voucher code';return false}
+  if(!p){local.textContent='أدخل كلمة المرور / Enter password';return false}
+  if(chapId){
+    document.getElementById('submittedPassword').value=hexMD5(chapId+p+chapChallenge);
+  }else if(secureLogin==='yes'||location.protocol==='https:'){
+    document.getElementById('submittedPassword').value=p;
+  }else{
+    local.textContent='هذا الاتصال لا يدعم CHAP أو HTTPS. اطلب من صاحب الشبكة تفعيل الدخول الآمن. / CHAP or HTTPS is required.';
+    return false;
+  }
+  var button=document.getElementById('connectButton'),label=document.getElementById('connectLabel');
+  button.classList.add('is-loading');button.disabled=true;
+  label.textContent=document.documentElement.lang==='en'?'Connecting…':'جارٍ الاتصال…';
+  return true;
+}
+(function(){
+  var params=new URLSearchParams(location.hash.substring(1));
+  if(location.hash)history.replaceState(null,'',location.pathname+location.search);
+  var code=params.get('u');
+  if(code){
+    document.getElementById('code').value=code;
+    document.getElementById('same').checked=params.get('same')==='1';
+    showPassword();
+    try{sessionStorage.setItem('fgVoucher',JSON.stringify({u:code,profile:params.get('profile')||'',expiry:params.get('expiry')||'',limit:params.get('limit')||''}))}catch(e){}
+  }
+})();
+</script>
+<script src="fg.js"></script>
+</body>
+</html>
