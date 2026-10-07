@@ -46,7 +46,7 @@ object AccessPointEngine {
             val candidates=if(paths.size==1) aps.filter{it["port"]==paths.single()} else emptyList()
             val ap=candidates.singleOrNull()?.takeIf{it["mode"]!="NAT" && it["mac"]!=client}
             // Same upstream port can contain a switch: this is always inferred, never confirmed.
-            mapOf("id" to session[".id"].orEmpty(),"account" to session["user"].orEmpty(),"client" to client,"ap" to ap?.get("mac").orEmpty(),"confidence" to if(ap==null) "Unknown" else "Inferred","upload" to session["bytes-in"].orEmpty(),"download" to session["bytes-out"].orEmpty(),"uptime" to session["uptime"].orEmpty(),"server" to session["server"].orEmpty())
+            mapOf("id" to session[".id"].orEmpty(),"account" to session["user"].orEmpty(),"client" to client,"ap" to ap?.get("mac").orEmpty(),"confidence" to if(ap==null) "Unknown" else "Inferred","upload" to session["bytes-in"].orEmpty(),"download" to session["bytes-out"].orEmpty(),"uptime" to session["uptime"].orEmpty(),"server" to session["server"].orEmpty(),"profile" to session["profile"].orEmpty())
         }
     }
 }

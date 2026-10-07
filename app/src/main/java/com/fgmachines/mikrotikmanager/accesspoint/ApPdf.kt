@@ -20,8 +20,8 @@ object ApPdf {
         try {
             paint.textSize=23f;line("FG MTM · FG Machines");paint.textSize=16f;line(if(arabic)"تقرير رصد نقاط الوصول" else "Access Point Observations");paint.textSize=13f;line(period);line(java.time.ZonedDateTime.now().toString())
             line(if(arabic)"عينات محلية وليست سجل جلسات كاملًا. ربط العملاء استنتاجي." else "Local samples, not a complete session ledger. Client association is inferred.")
-            for(row in summary){line(row["shop"].orEmpty().ifBlank{row["name"].orEmpty()});line(row["mac"].orEmpty()+" · "+row["ip"].orEmpty());line((if(arabic)"عملاء مرصودون: " else "Observed clients: ")+row["observedClients"]+" | "+(if(arabic)"حسابات: " else "Accounts: ")+row["observedAccounts"])}
-            line(if(arabic)"الكروت والمبيعات والترافيك للفترة: غير متاح — لا يوجد ربط موثق." else "Period cards, sales and traffic: N/A — no verified attribution.")
+            for(row in summary){line("#"+row["rankByObservedAccounts"]+" · "+row["shop"].orEmpty().ifBlank{row["name"].orEmpty()});line(row["mac"].orEmpty()+" · "+row["ip"].orEmpty());line((if(arabic)"عملاء: " else "Clients: ")+row["observedClients"]+" | "+(if(arabic)"حسابات: " else "Accounts: ")+row["observedAccounts"]+" | "+(if(arabic)"جلسات: " else "Sessions: ")+row["observedSessions"]);line((if(arabic)"ترافيك: " else "Traffic: ")+row["totalTrafficBytes"]+" bytes | "+(if(arabic)"ذروة: " else "Peak: ")+row["peakObservedHour"])}
+            line(if(arabic)"الحسابات ليست كروتًا مباعة مؤكدة. المبيعات والإيراد غير منسوبة لعدم وجود علاقة موثقة." else "Accounts are not confirmed sold vouchers. Sales and revenue are not attributed without verified evidence.")
             doc.finishPage(page);doc.writeTo(output)
         } finally {doc.close()}
     }

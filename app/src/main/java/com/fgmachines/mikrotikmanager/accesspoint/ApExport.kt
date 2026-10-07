@@ -4,7 +4,10 @@ object ApExport {
     fun xlsx(summary:List<ApRow>,observations:List<ApRow>,output:java.io.OutputStream) {
         fun xml(s:String)=s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;")
         fun note(reason:String)=listOf(mapOf("availability" to "N/A","reason" to reason))
-        val sheets=linkedMapOf("Summary" to summary,"Access Points" to observations.filter{it["kind"]=="device"},"Sessions" to observations.filter{it["kind"]=="session"},"Cards" to note("No verified voucher usage correlation"),"Sales" to note("No verified sales attribution"),"Traffic" to observations.filter{it["kind"]=="session"},"Peak Hours" to note("Polling observations are not a complete usage history"))
+        val cardEvidence=summary.map{mapOf("shop" to it["shop"].orEmpty(),"accessPoint" to it["name"].orEmpty(),"observedAccounts" to it["observedAccounts"].orEmpty(),"evidence" to "Observed HotSpot account IDs; not confirmed sold vouchers")}
+        val traffic=summary.map{mapOf("shop" to it["shop"].orEmpty(),"accessPoint" to it["name"].orEmpty(),"uploadBytes" to it["uploadBytes"].orEmpty(),"downloadBytes" to it["downloadBytes"].orEmpty(),"totalTrafficBytes" to it["totalTrafficBytes"].orEmpty(),"averageTrafficPerClientBytes" to it["averageTrafficPerClientBytes"].orEmpty(),"averageSessionSeconds" to it["averageSessionSeconds"].orEmpty(),"quality" to it["quality"].orEmpty())}
+        val peaks=summary.map{mapOf("shop" to it["shop"].orEmpty(),"accessPoint" to it["name"].orEmpty(),"peakObservedHour" to it["peakObservedHour"].orEmpty(),"peakObservedDay" to it["peakObservedDay"].orEmpty(),"topObservedPlan" to it["topObservedPlan"].orEmpty(),"quality" to "Sampled observations, not a continuous traffic ledger")}
+        val sheets=linkedMapOf("Summary" to summary,"Access Points" to observations.filter{it["kind"]=="device"},"Sessions" to observations.filter{it["kind"]=="session"},"Cards" to cardEvidence,"Sales" to note("No verified sales attribution"),"Traffic" to traffic,"Peak Hours" to peaks)
         java.util.zip.ZipOutputStream(output).use{zip->
             fun entry(name:String,body:String){zip.putNextEntry(java.util.zip.ZipEntry(name));zip.write(body.toByteArray(Charsets.UTF_8));zip.closeEntry()}
             val root="http://schemas.openxmlformats.org/"

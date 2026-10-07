@@ -18,5 +18,14 @@ class AccessPointEngineTest {
     @Test fun sharedIpDoesNotMergeDistinctDevices(){assertEquals(2,AccessPointEngine.discover(mapOf("ip/arp" to listOf(mapOf("mac-address" to a,"address" to "192.168.1.2"),mapOf("mac-address" to b,"address" to "192.168.1.2")))).size)}
     @Test fun correlationIsInferredAndNatUnknown(){val data=fixture()+mapOf("interface/bridge/host" to listOf(mapOf("mac-address" to b,"on-interface" to "ether2")),"ip/hotspot/active" to listOf(mapOf("mac-address" to b,"user" to "card1",".id" to "*1")));val devices=AccessPointEngine.discover(data);assertEquals("Inferred",AccessPointEngine.correlate(data,devices).single()["confidence"]);assertEquals("Unknown",AccessPointEngine.correlate(data,devices.map{it+mapOf("mode" to "NAT")}).single()["confidence"])}
     @Test fun twoApsOnPortAreAmbiguous(){val data=fixture(2).toMutableMap();data["ip/neighbor"]=data.getValue("ip/neighbor").map{it+mapOf("interface" to "ether2")};data["interface/bridge/host"]=listOf(mapOf("mac-address" to "02:11:22:33:44:03","on-interface" to "ether2"));data["ip/hotspot/active"]=listOf(mapOf("mac-address" to "02:11:22:33:44:03"));assertEquals("Unknown",AccessPointEngine.correlate(data,AccessPointEngine.discover(data)).single()["confidence"])}
+    @Test fun sampledAnalyticsAvoidDoubleCounting(){
+        val device=mapOf("mac" to a,"classification" to "Confirmed AP","name" to "AP1","shop" to "Main")
+        val records=listOf(
+            mapOf("kind" to "session","ap" to a,"id" to "*1","account" to "card1","client" to b,"upload" to "100","download" to "500","uptime" to "10m","profile" to "1h","at" to "1735689600000"),
+            mapOf("kind" to "session","ap" to a,"id" to "*1","account" to "card1","client" to b,"upload" to "150","download" to "700","uptime" to "20m","profile" to "1h","at" to "1735693200000"),
+            mapOf("kind" to "session","ap" to a,"id" to "*2","account" to "card2","client" to "02:11:22:33:44:03","upload" to "50","download" to "100","uptime" to "5m","profile" to "2h","at" to "1735693200000"))
+        val row=AccessPointStore.summary(records,listOf(device)).single()
+        assertEquals("2",row["observedAccounts"]);assertEquals("2",row["observedSessions"]);assertEquals("200",row["uploadBytes"]);assertEquals("800",row["downloadBytes"]);assertEquals("1000",row["totalTrafficBytes"]);assertEquals("750",row["averageSessionSeconds"]);assertEquals("1",row["rankByObservedAccounts"])
+    }
     @Test fun csvNeutralizesFormulasAndEscapesQuotes(){val csv=ApExport.csv(listOf(mapOf("shop" to "=1+1","name" to "a\"b")));assertTrue(csv.contains("'=1+1"));assertTrue(csv.contains("a\"\"b"));assertTrue(csv.startsWith("\uFEFF"))}
 }

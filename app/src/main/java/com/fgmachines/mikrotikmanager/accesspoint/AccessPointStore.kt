@@ -50,11 +50,57 @@ class AccessPointStore(context:Context,private val routerKey:String):SQLiteOpenH
     }
     companion object {
         fun decode(value:String):ApRow=JSONObject(value).let{json->json.keys().asSequence().associateWith{json.getString(it)}}
-        fun summary(records:List<ApRow>,devices:List<ApRow>):List<ApRow> = devices.filter{it["classification"] in listOf("Confirmed AP","Likely AP")}.map{device->
-            val samples=records.filter{it["kind"]=="session" && it["ap"]==device["mac"]}
-            val clients=samples.mapNotNull{it["client"]?.takeIf(String::isNotBlank)}.toSet()
-            val accounts=samples.mapNotNull{it["account"]?.takeIf(String::isNotBlank)}.toSet()
-            device+mapOf("observedClients" to clients.size.toString(),"observedAccounts" to accounts.size.toString(),"sessionSamples" to samples.size.toString(),"sales" to "N/A","cards" to "N/A","traffic" to "N/A","quality" to "Inferred • sampled")
+        private fun uptimeSeconds(value:String):Long {
+            val source=value.trim().lowercase()
+            val matches=Regex("(\\d+)([wdhms])").findAll(source).toList()
+            if(matches.isEmpty() || matches.sumOf{it.value.length}!=source.length)return 0
+            return matches.fold(0L){total,m->
+                val n=m.groupValues[1].toLongOrNull()?:return 0
+                val factor=when(m.groupValues[2]){"w"->604800L;"d"->86400L;"h"->3600L;"m"->60L;else->1L}
+                if(n>Long.MAX_VALUE/factor || total>Long.MAX_VALUE-n*factor)return 0
+                total+n*factor
+            }
+        }
+        fun summary(records:List<ApRow>,devices:List<ApRow>):List<ApRow> {
+            val zone=java.time.ZoneId.systemDefault()
+            val rows=devices.filter{it["classification"] in listOf("Confirmed AP","Likely AP")}.map{device->
+                val samples=records.filter{it["kind"]=="session" && it["ap"]==device["mac"]}
+                val clients=samples.mapNotNull{it["client"]?.takeIf(String::isNotBlank)}.toSet()
+                val accounts=samples.mapNotNull{it["account"]?.takeIf(String::isNotBlank)}.toSet()
+                val sessions=samples.groupBy{it["id"].orEmpty().ifBlank{listOf(it["account"],it["client"],it["server"]).joinToString("|")}}
+                var upload=java.math.BigInteger.ZERO
+                var download=java.math.BigInteger.ZERO
+                var duration=0L
+                val plans=mutableMapOf<String,Int>()
+                sessions.values.forEach{group->
+                    upload+=group.mapNotNull{it["upload"]?.toBigIntegerOrNull()}.maxOrNull()?:java.math.BigInteger.ZERO
+                    download+=group.mapNotNull{it["download"]?.toBigIntegerOrNull()}.maxOrNull()?:java.math.BigInteger.ZERO
+                    val maxDuration=group.maxOfOrNull{uptimeSeconds(it["uptime"].orEmpty())}?:0L
+                    if(duration<=Long.MAX_VALUE-maxDuration)duration+=maxDuration
+                    group.lastOrNull{!it["profile"].isNullOrBlank()}?.get("profile")?.let{plans[it]=(plans[it]?:0)+1}
+                }
+                val hours=mutableMapOf<String,Int>()
+                val days=mutableMapOf<String,Int>()
+                samples.forEach{sample->sample["at"]?.toLongOrNull()?.let{at->
+                    val dt=java.time.Instant.ofEpochMilli(at).atZone(zone)
+                    val hour="%02d:00".format(java.util.Locale.ROOT,dt.hour)
+                    hours[hour]=(hours[hour]?:0)+1
+                    val day=dt.toLocalDate().toString()
+                    days[day]=(days[day]?:0)+1
+                }}
+                fun peak(values:Map<String,Int>)=values.maxByOrNull{it.value}?.key.orEmpty()
+                val total=upload+download
+                device+mapOf(
+                    "observedClients" to clients.size.toString(),"observedAccounts" to accounts.size.toString(),"sessionSamples" to samples.size.toString(),"observedSessions" to sessions.size.toString(),
+                    "uploadBytes" to upload.toString(),"downloadBytes" to download.toString(),"totalTrafficBytes" to total.toString(),
+                    "averageTrafficPerClientBytes" to if(clients.isEmpty())"N/A" else (total/java.math.BigInteger.valueOf(clients.size.toLong())).toString(),
+                    "averageSessionSeconds" to if(sessions.isEmpty())"N/A" else (duration/sessions.size).toString(),
+                    "peakObservedHour" to peak(hours),"peakObservedDay" to peak(days),"topObservedPlan" to peak(plans).ifBlank{"N/A"},
+                    "sales" to "N/A","revenue" to "N/A","cards" to "N/A",
+                    "accountEvidence" to "Observed HotSpot account IDs; not confirmed sold vouchers",
+                    "salesReason" to "No verified sales-to-session attribution","quality" to "Inferred • sampled")
+            }.sortedWith(compareByDescending<ApRow>{it["observedAccounts"]?.toIntOrNull()?:0}.thenByDescending{it["observedClients"]?.toIntOrNull()?:0})
+            return rows.mapIndexed{i,row->row+("rankByObservedAccounts" to (i+1).toString())}
         }
     }
 }
