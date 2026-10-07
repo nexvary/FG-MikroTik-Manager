@@ -36,3 +36,55 @@ Filename: "{app}\fg_mtm.exe"; Description: "Launch FG MTM"; Flags: nowait postin
 [UninstallRun]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""FG MTM MNDP Discovery"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""FG MTM MNDP Discovery Out"""; Flags: runhidden
+
+[Code]
+var
+  FeaturePage: TWizardPage;
+
+procedure FeatureCard(Top: Integer; Heading, Detail: String; Accent: TColor);
+var
+  Panel: TPanel;
+  Title, Body: TNewStaticText;
+begin
+  Panel := TPanel.Create(FeaturePage);
+  Panel.Parent := FeaturePage.Surface;
+  Panel.SetBounds(0, ScaleY(Top), FeaturePage.SurfaceWidth, ScaleY(60));
+  Panel.Color := $291C10;
+  Panel.BevelOuter := bvNone;
+  Title := TNewStaticText.Create(FeaturePage);
+  Title.Parent := Panel;
+  Title.SetBounds(ScaleX(12), ScaleY(7), Panel.Width - ScaleX(24), ScaleY(20));
+  Title.Font.Color := Accent;
+  Title.Font.Style := [fsBold];
+  Title.Font.Size := 10;
+  Title.Caption := Heading;
+  Body := TNewStaticText.Create(FeaturePage);
+  Body.Parent := Panel;
+  Body.SetBounds(ScaleX(12), ScaleY(29), Panel.Width - ScaleX(24), ScaleY(27));
+  Body.Font.Color := $E5DED1;
+  Body.WordWrap := True;
+  Body.Caption := Detail;
+end;
+
+procedure InitializeWizard();
+begin
+  WizardForm.WelcomeLabel1.Caption := 'FG MTM 0.17.4';
+  WizardForm.WelcomeLabel2.Caption := 'FG Machines' + #13#10 + #13#10 +
+    'Your network, subscribers and business in one workspace.' + #13#10 + #13#10 +
+    'Developer: Alaa Mohamed' + #13#10 +
+    'Arabic / English interface. Independent software, not a MikroTik product.';
+  FeaturePage := CreateCustomPage(wpWelcome, 'What does FG MTM offer?',
+    'Available tools in this version - FG Machines');
+  FeatureCard(0, 'NETWORK & HOTSPOT',
+    'Router discovery, saved connections, HotSpot accounts, vouchers and QR codes.', $D2C166);
+  FeatureCard(67, 'SUBSCRIBERS & BUSINESS',
+    'Subscribers, plans, sales, payments, expenses, receipts and business reports.', $A5D98A);
+  FeatureCard(134, 'ACCESS POINT OBSERVATIONS',
+    'Multi-source discovery, shop names, sampled client comparison and PDF / XLSX / CSV.', $D2C166);
+  FeatureCard(201, 'PROFESSIONAL TOOLS',
+    'Floating terminal, command library, diagnostics, router monitoring and backups.', $83BEDD);
+  WizardForm.FinishedLabel.Caption := 'FG MTM is ready.' + #13#10 + #13#10 +
+    'Start by discovering your MikroTik and connecting to it.' + #13#10 +
+    'Access point reports use local observations; unavailable metrics are marked N/A.' + #13#10 + #13#10 +
+    'Uninstalling the application preserves your business database and saved profiles.';
+end;

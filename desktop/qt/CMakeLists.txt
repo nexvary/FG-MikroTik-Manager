@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network Test Widgets PrintSupport Sql Svg)
 add_library(fg_core STATIC
+ src/ApReport.cpp src/ApReport.hpp
+ src/AccessPoints.cpp src/AccessPoints.hpp
  src/Bridge.cpp src/Bridge.hpp src/Protocol.cpp src/Protocol.hpp
  src/RouterClient.cpp src/RouterClient.hpp src/RouterJob.hpp
  src/Vouchers.cpp src/Vouchers.hpp src/Vault.cpp src/Vault.hpp
@@ -44,7 +46,7 @@ set(icon_assets
  qml/icons/voucher.svg
 )
 qt_add_resources(fg_mtm "ui" PREFIX "/" FILES
- qml/Main.qml qml/FgDialog.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/FgCombo.qml qml/NavIcon.qml
+ qml/AccessPointWorkspace.qml qml/Main.qml qml/FgDialog.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/FgCombo.qml qml/NavIcon.qml
  qml/SubscriberWorkspace.qml qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml
  qml/MonitorWorkspace.qml qml/BusinessTransferWorkspace.qml qml/CommandLibrary.qml
  qml/NetworkBillingWorkspace.qml qml/AboutWorkspace.qml qml/HomeWorkspace.qml qml/FgTab.qml
@@ -75,3 +77,5 @@ qt_add_resources(billing_tests "billing_schema" PREFIX "/" FILES resources/busin
 
 add_contract(cloud tests/test_cloud.cpp)
 qt_add_resources(cloud_tests "cloud" PREFIX "/" FILES resources/business-schema.json resources/command-library.json tests/tls/ca.pem tests/tls/server.pem tests/tls/server-key.pem)
+
+add_contract(accesspoints tests/test_accesspoints.cpp)

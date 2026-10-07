@@ -137,6 +137,7 @@ fun RouterApp(viewModel: RouterViewModel = viewModel()) {
                 state.connected -> RouterShell(
                     state = state,
                     hotspotManager = viewModel.hotspotManager,
+                    accessPointManager = viewModel.accessPointManager,
                     advancedManager = viewModel.advancedManager,
                     arabic = arabic,
                     onLanguageToggle = { toggleLanguage() },
@@ -625,6 +626,7 @@ internal fun RouterShell(
     state: RouterUiState,
     advancedManager: com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager? = null,
     hotspotManager: com.fgmachines.mikrotikmanager.hotspot.HotspotManager? = null,
+    accessPointManager: com.fgmachines.mikrotikmanager.accesspoint.AccessPointManager? = null,
     arabic: Boolean,
     onLanguageToggle: () -> Unit,
     onRefresh: () -> Unit,
@@ -782,6 +784,7 @@ internal fun RouterShell(
         contentState.SaveableStateProvider(state.section.name) {
         RouterContent(
             state = state,
+            accessPointManager = accessPointManager,
             hotspotManager = hotspotManager,
             advancedManager = advancedManager,
             initialAdvancedPanel = initialAdvancedPanel, advancedDemo = advancedDemo,
@@ -829,6 +832,7 @@ private fun RouterContent(
     state: RouterUiState,
     advancedManager: com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager? = null,
     hotspotManager: com.fgmachines.mikrotikmanager.hotspot.HotspotManager?,
+    accessPointManager: com.fgmachines.mikrotikmanager.accesspoint.AccessPointManager? = null,
     arabic: Boolean,
     onRefresh: () -> Unit,
     onOpenAdminModule: (com.fgmachines.mikrotikmanager.data.RouterAdminModule) -> Unit,
@@ -859,6 +863,8 @@ private fun RouterContent(
             onDisconnect = onDisconnect,
             modifier = modifier
         )
+
+        AppSection.ACCESS_POINTS -> AccessPointScreen(accessPointManager, arabic, modifier)
 
         AppSection.ADVANCED -> AdvancedSetupScreen(
             arabic = arabic, snapshot = state.dashboard, manager = advancedManager,
@@ -931,6 +937,7 @@ private fun MainMenuScreen(
     modifier: Modifier = Modifier
 ) {
     val items = listOf(
+        MenuEntry(AppSection.ACCESS_POINTS, if(arabic) "نقاط الوصول المتصلة" else "Connected Access Points", if(arabic) "الأجهزة • المحلات • التقارير" else "Devices • shops • reports", "network", FgCyan),
         MenuEntry(
             AppSection.ADVANCED,
             if (arabic) "الإعداد المتقدم" else "Advanced Setup",
@@ -1329,6 +1336,7 @@ private fun CompactAppHeader(
 
 private fun sectionLabel(section: AppSection, arabic: Boolean): String =
     when (section) {
+        AppSection.ACCESS_POINTS -> if(arabic) "نقاط الوصول المتصلة" else "Connected Access Points"
         AppSection.MENU -> if (arabic) "القائمة الرئيسية" else "Main menu"
         AppSection.ADVANCED -> if (arabic) "الإعداد المتقدم" else "Advanced Setup"
         AppSection.NETWORK -> if (arabic) "الشبكة والاتصال" else "Network & connectivity"
@@ -1340,6 +1348,7 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
 
 private fun sectionIconName(section: AppSection): String =
     when (section) {
+        AppSection.ACCESS_POINTS -> "network"
         AppSection.MENU -> "dashboard"
         AppSection.ADVANCED -> "diagnostics"
         AppSection.NETWORK -> "network"
@@ -1374,6 +1383,7 @@ private fun WindowsColorIcon(name: String, modifier: Modifier = Modifier) {
 
 private fun sectionAccent(section: AppSection): Color =
     when (section) {
+        AppSection.ACCESS_POINTS -> FgCyan
         AppSection.MENU -> FgSilver
         AppSection.ADVANCED -> FgBlue
         AppSection.NETWORK -> FgMint

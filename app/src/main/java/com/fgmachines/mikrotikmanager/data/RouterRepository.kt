@@ -27,6 +27,7 @@ class RouterRepository private constructor(
     routerKey: String = "test-router"
 ) : AutoCloseable {
 
+    val accessPoints = com.fgmachines.mikrotikmanager.accesspoint.AccessPointManager(transport, routerKey)
     val business = com.fgmachines.mikrotikmanager.business.BusinessRouter(transport)
     val advanced = com.fgmachines.mikrotikmanager.advanced.AdvancedRouterManager(transport, routerKey)
     val hotspot = com.fgmachines.mikrotikmanager.hotspot.HotspotManager(transport)

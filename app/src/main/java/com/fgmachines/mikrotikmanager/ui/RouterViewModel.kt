@@ -28,6 +28,7 @@ enum class AppSection(val title: String) {
     MENU("Menu"),
     ADVANCED("Advanced Setup"),
     NETWORK("Network"),
+    ACCESS_POINTS("Access Points"),
     SYSTEM("System"),
     VOUCHERS("Vouchers"),
     BUSINESS("Business"),
@@ -67,6 +68,7 @@ class RouterViewModel(application: Application) : AndroidViewModel(application) 
 
     private var repository: RouterRepository? = null
     private var adminLoadGeneration = 0L
+    val accessPointManager get() = repository?.accessPoints
     val businessRouter get() = repository?.business
     val advancedManager get() = repository?.advanced
     val hotspotManager get() = repository?.hotspot
