@@ -77,7 +77,7 @@ ApplicationWindow {
     }}
     FgButton {Layout.fillWidth: true; text: root.tr("ترمنال عائم • F4","Floating terminal • F4"); accent: theme.mint; onClicked: {terminalWindow.show();terminalWindow.raise()}}
     FgButton {Layout.fillWidth: true; text: root.arabic ? "English" : "العربية"; onClicked: root.arabic=!root.arabic}
-    Text {text: "FG Machines · 0.17.3"; color: theme.muted; font.pixelSize: 12}
+    Text {text: "FG Machines · 0.17.4"; color: theme.muted; font.pixelSize: 12}
    }
   }
   ColumnLayout {
