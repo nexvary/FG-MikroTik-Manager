@@ -34,7 +34,9 @@ class ConnectionUiTest {
             var submitted: RouterConnectionSettings? = null
             compose.runOnUiThread { compose.activity.setContent {
                 FgMikroTikTheme { CompositionLocalProvider(LocalLayoutDirection provides if (arabic) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-                    ConnectionScreen(false, false, routers, null, arabic, {}, {}, {}, { submitted = it }, {})
+                    androidx.compose.runtime.key(arabic) {
+                        ConnectionScreen(false, false, routers, null, arabic, {}, {}, {}, { submitted = it }, {})
+                    }
                 } }
             } }
             compose.onNodeWithTag("connectRouterButton").assertIsDisplayed().assertIsNotEnabled()
