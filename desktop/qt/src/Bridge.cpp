@@ -2,6 +2,7 @@
 #include "Business.hpp"
 #include "Protocol.hpp"
 #include "NetworkInventory.hpp"
+#include "Vault.hpp"
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
@@ -82,9 +83,28 @@ void Bridge::discoverNetworkDevices(){
  });
 }
 
-QVariantList Bridge::profiles()const{QSettings s;return s.value("routers/profiles").toList();}
-void Bridge::saveRouterProfile(QString name,QString branch,QString host,int port,QString user,QString protocol){if(name.trimmed().isEmpty()||host.trimmed().isEmpty()||port<1||port>65535)return;auto list=profiles();list.append(QVariantMap{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"name",name.trimmed()},{"branch",branch.trimmed()},{"host",host.trimmed()},{"port",port},{"user",user},{"protocol",protocol}});QSettings s;s.setValue("routers/profiles",list);emit changed();}
-void Bridge::deleteRouterProfile(QString id){auto list=profiles();for(int i=list.size()-1;i>=0;i--)if(list[i].toMap()["id"].toString()==id)list.removeAt(i);QSettings s;s.setValue("routers/profiles",list);emit changed();}
+QVariantList Bridge::profiles()const{
+ QSettings s;auto list=s.value("routers/profiles").toList();QVariantList safe;
+ for(auto value:list){auto p=value.toMap();bool hasPassword=p.contains("password_dpapi")&&!p["password_dpapi"].toString().isEmpty();p.remove("password_dpapi");p["hasPassword"]=hasPassword;safe.append(p);}
+ return safe;
+}
+void Bridge::saveRouterProfile(QString name,QString branch,QString host,int port,QString user,QString protocol,QString password,bool rememberPassword){
+ name=name.trimmed();host=host.trimmed();user=user.trimmed();protocol=protocol.trimmed();
+ if(name.isEmpty()||host.isEmpty()||port<1||port>65535){m_status="أكمل اسم الراوتر والعنوان والمنفذ • Complete router name, host and port";emit changed();return;}
+ QSettings s;auto list=s.value("routers/profiles").toList();QVariantMap item{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"name",name},{"branch",branch.trimmed()},{"host",host},{"port",port},{"user",user},{"protocol",protocol}};
+ if(rememberPassword&&!password.isEmpty()){
+  try{auto clear=password.toUtf8();auto cipher=Vault::protect(clear);clear.fill('\0');item["password_dpapi"]=QString::fromLatin1(cipher.toBase64());cipher.fill('\0');}
+  catch(const std::exception&e){m_status=QString("تعذر حفظ كلمة المرور بأمان • Secure password save failed: ")+QString::fromUtf8(e.what());emit changed();return;}
+ }
+ list.append(item);s.setValue("routers/profiles",list);m_status=rememberPassword&&item.contains("password_dpapi")?"تم حفظ الاتصال وكلمة المرور بأمان • Connection and protected password saved":"تم حفظ الاتصال بدون كلمة المرور • Connection saved without password";emit changed();
+}
+QString Bridge::routerProfilePassword(QString id)const{
+ QSettings s;for(auto value:s.value("routers/profiles").toList()){auto p=value.toMap();if(p["id"].toString()!=id)continue;auto encoded=p["password_dpapi"].toString();if(encoded.isEmpty())return {};
+  try{auto cipher=QByteArray::fromBase64(encoded.toLatin1());auto clear=Vault::unprotect(cipher);cipher.fill('\0');auto result=QString::fromUtf8(clear);clear.fill('\0');return result;}catch(...){return {};}
+ }
+ return {};
+}
+void Bridge::deleteRouterProfile(QString id){QSettings s;auto list=s.value("routers/profiles").toList();for(int i=list.size()-1;i>=0;i--)if(list[i].toMap()["id"].toString()==id)list.removeAt(i);s.setValue("routers/profiles",list);emit changed();}
 QVariantMap Bridge::module(QString menu)const{for(auto item:Protocol::modules())if(item.toObject()["menu"]==menu)return item.toObject().toVariantMap();return {};}
 void Bridge::admin(QString menu,QString action,QString id,QString json){auto info=module(menu);auto cap=action=="add"?"create":action=="set"?"edit":action=="remove"?"delete":action=="enable"||action=="disable"?"toggle":"";if(info.isEmpty()||QString(cap).isEmpty()||!info[cap].toBool()){m_status="الإجراء غير متاح لهذا القسم • Action unavailable for this module";emit changed();return;}QJsonParseError e;auto doc=QJsonDocument::fromJson(json.toUtf8(),&e);if(e.error!=QJsonParseError::NoError||!doc.isObject()){m_status="الحقول غير صالحة • Invalid fields";emit changed();return;}auto attrs=doc.object();for(auto v:attrs)if(!v.isString()){m_status="استخدم قيمًا نصية للحقول • Field values must be strings";emit changed();return;}if(!id.isEmpty())attrs[".id"]=id;QString text="/"+menu+" "+action;for(auto it=attrs.begin();it!=attrs.end();++it){auto val=it.value().toString();val.replace("\\","\\\\").replace("\"","\\\"");text+=" "+it.key()+"=\""+val+"\"";}previewCommand(text);}
 void Bridge::clearTerminal(){m_terminal.clear();emit changed();}
