@@ -85,57 +85,57 @@ ColumnLayout {
   FgButton {text: workspace.tr("استعادة","Restore"); enabled: !commerce.enrolled&&backupPassword.text.length>=12; onClicked: restore.open()}
  }
  FgDialog {
-  id: editor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(780,parent.width-40); height: Math.min(660,parent.height-40); title: workspace.arabic?workspace.labels[action.currentIndex]:workspace.enLabels[action.currentIndex]
+  id: editor; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: Math.min(780,parent.width-40); height: Math.min(Math.max(340,editorFields.implicitHeight+150),parent.height-40); title: workspace.arabic?workspace.labels[action.currentIndex]:workspace.enLabels[action.currentIndex]
   contentItem: ColumnLayout {
    ScrollView {Layout.fillWidth: true; Layout.fillHeight: true; clip: true
-    GridLayout {width: editor.width-60; columns: 2; columnSpacing: 12; rowSpacing: 10
-     Text {text: workspace.tr("الاسم","Name"); color: theme.silver; visible: workspace.includes(["subscriber","plan","team","branch"])}
+    GridLayout {id:editorFields;width: editor.width-60; columns: 2; columnSpacing: 12; rowSpacing: 10
+     Text {text: workspace.tr("الاسم","Name"); color: theme.gold; font.bold:true; visible: workspace.includes(["subscriber","plan","team","branch"])}
      FgField {id: name; Layout.fillWidth: true; visible: workspace.includes(["subscriber","plan","team","branch"])}
-     Text {text: workspace.tr("الهاتف","Phone"); color: theme.silver; visible: workspace.includes(["subscriber","team"])}
+     Text {text: workspace.tr("الهاتف","Phone"); color: theme.gold; font.bold:true; visible: workspace.includes(["subscriber","team"])}
      FgField {id: phone; Layout.fillWidth: true; visible: workspace.includes(["subscriber","team"])}
-     Text {text: workspace.tr("نوع الخدمة","Service"); color: theme.silver; visible: workspace.includes(["subscriber","plan"])}
+     Text {text: workspace.tr("نوع الخدمة","Service"); color: theme.gold; font.bold:true; visible: workspace.includes(["subscriber","plan"])}
      FgCombo {id: service; model: ["HOTSPOT","PPPOE","OTHER"]; Layout.fillWidth: true; visible: workspace.includes(["subscriber","plan"])}
-     Text {text: workspace.tr("حساب الراوتر","Router account"); color: theme.silver; visible: workspace.op==="subscriber"}
+     Text {text: workspace.tr("حساب الراوتر","Router account"); color: theme.gold; font.bold:true; visible: workspace.op==="subscriber"}
      FgField {id: account; Layout.fillWidth: true; visible: workspace.op==="subscriber"}
-     Text {text: workspace.tr("العملة","Currency"); color: theme.silver; visible: workspace.includes(["subscriber","plan","team","expense"])}
+     Text {text: workspace.tr("العملة","Currency"); color: theme.gold; font.bold:true; visible: workspace.includes(["subscriber","plan","team","expense"])}
      FgCombo {id: currency; model: ["EGP","USD","EUR","SAR","AED","TRY"]; Layout.fillWidth: true; visible: workspace.includes(["subscriber","plan","team","expense"])}
-     Text {text: workspace.tr("معرف المشترك","Subscriber ID"); color: theme.silver; visible: workspace.includes(["renew","charge","payment","sale"])}
+     Text {text: workspace.tr("معرف المشترك","Subscriber ID"); color: theme.gold; font.bold:true; visible: workspace.includes(["renew","charge","payment","sale"])}
      FgCombo {id: subscriber;property string text:editText===displayText?(currentValue||""):editText;editable:true;model:workspace.subscriberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["renew","charge","payment","sale"])}
-     Text {text: workspace.tr("معرف الباقة","Plan ID"); color: theme.silver; visible: workspace.op==="renew"}
+     Text {text: workspace.tr("معرف الباقة","Plan ID"); color: theme.gold; font.bold:true; visible: workspace.op==="renew"}
      FgCombo {id: plan;property string text:editText===displayText?(currentValue||""):editText;editable:true;model:workspace.planChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.op==="renew"}
-     Text {text: workspace.tr("السعر / المبلغ","Price / amount"); color: theme.silver; visible: workspace.includes(["plan","charge","payment","expense","wallet"])}
+     Text {text: workspace.tr("السعر / المبلغ","Price / amount"); color: theme.gold; font.bold:true; visible: workspace.includes(["plan","charge","payment","expense","wallet"])}
      FgField {id: amount; Layout.fillWidth: true; placeholderText: "0.00"; visible: workspace.includes(["plan","charge","payment","expense","wallet"])}
-     Text {text: workspace.tr("الأيام","Days"); color: theme.silver; visible: workspace.op==="plan"}
+     Text {text: workspace.tr("الأيام","Days"); color: theme.gold; font.bold:true; visible: workspace.op==="plan"}
      FgField {id: days; text: "30"; Layout.fillWidth: true; visible: workspace.op==="plan"}
-     Text {text: workspace.tr("المدفوع الآن","Paid now"); color: theme.silver; visible: workspace.includes(["renew","sale"])}
+     Text {text: workspace.tr("المدفوع الآن","Paid now"); color: theme.gold; font.bold:true; visible: workspace.includes(["renew","sale"])}
      FgField {id: paid; text: "0"; Layout.fillWidth: true; visible: workspace.includes(["renew","sale"])}
-     Text {text: workspace.tr("طريقة الدفع","Payment method"); color: theme.silver; visible: workspace.includes(["renew","sale","payment"])}
+     Text {text: workspace.tr("طريقة الدفع","Payment method"); color: theme.gold; font.bold:true; visible: workspace.includes(["renew","sale","payment"])}
      FgCombo {id: method; model: ["CASH","VODAFONE_CASH","INSTAPAY","BANK","OTHER"]; Layout.fillWidth: true; visible: workspace.includes(["renew","sale","payment"])}
-     Text {text: workspace.tr("مرجع التحويل","Payment reference"); color: theme.silver; visible: workspace.includes(["renew","sale","payment"])}
+     Text {text: workspace.tr("مرجع التحويل","Payment reference"); color: theme.gold; font.bold:true; visible: workspace.includes(["renew","sale","payment"])}
      FgField {id: reference; Layout.fillWidth: true; visible: workspace.includes(["renew","sale","payment"])}
-     Text {text: workspace.tr("تصنيف المصروف","Expense category"); color: theme.silver; visible: workspace.op==="expense"}
+     Text {text: workspace.tr("تصنيف المصروف","Expense category"); color: theme.gold; font.bold:true; visible: workspace.op==="expense"}
      FgField {id: category; Layout.fillWidth: true; visible: workspace.op==="expense"}
      Text {text: workspace.tr("الملاحظة / سبب العكس","Note / reversal reason"); color: theme.silver}
      FgField {id: note; Layout.fillWidth: true}
-     Text {text: workspace.tr("معرف العنصر المحدد","Selected item ID"); color: theme.silver; visible: workspace.includes(["reverse","void_invoice","void_sale","reverse_expense","team_enable","team_disable","select_branch","reset_password"])}
+     Text {text: workspace.tr("معرف العنصر المحدد","Selected item ID"); color: theme.gold; font.bold:true; visible: workspace.includes(["reverse","void_invoice","void_sale","reverse_expense","team_enable","team_disable","select_branch","reset_password"])}
      FgField {id: target; text: workspace.selectedId; Layout.fillWidth: true; visible: workspace.includes(["reverse","void_invoice","void_sale","reverse_expense","team_enable","team_disable","select_branch","reset_password"])}
-     Text {text: workspace.tr("الدور","Role"); color: theme.silver; visible: workspace.op==="team"}
+     Text {text: workspace.tr("الدور","Role"); color: theme.gold; font.bold:true; visible: workspace.op==="team"}
      FgCombo {id: role; model: ["ADMIN","MANAGER","TECHNICIAN","CASHIER","RESELLER","READ_ONLY"]; Layout.fillWidth: true; visible: workspace.op==="team"}
-     Text {text: workspace.tr("العمولة (نقطة أساس: 100 = 1%)","Commission (basis points: 100 = 1%)"); color: theme.silver; visible: workspace.op==="team"; wrapMode: Text.Wrap}
+     Text {text: workspace.tr("العمولة (نقطة أساس: 100 = 1%)","Commission (basis points: 100 = 1%)"); color: theme.gold; font.bold:true; visible: workspace.op==="team"; wrapMode: Text.Wrap}
      FgField {id: commission; text: "0"; Layout.fillWidth: true; visible: workspace.op==="team"}
-     Text {text: workspace.tr("معرف الموظف / الموزع","Member / reseller ID"); color: theme.silver; visible: workspace.includes(["wallet","create_account"])}
+     Text {text: workspace.tr("معرف الموظف / الموزع","Member / reseller ID"); color: theme.gold; font.bold:true; visible: workspace.includes(["wallet","create_account"])}
      FgCombo {id: member;property string text:editText===displayText?(currentValue||""):editText;editable:true;model:workspace.memberChoices;textRole:"display";valueRole:"id"; Layout.fillWidth: true; visible: workspace.includes(["wallet","create_account"])}
-     Text {text: workspace.tr("حركة المحفظة","Wallet entry"); color: theme.silver; visible: workspace.op==="wallet"}
+     Text {text: workspace.tr("حركة المحفظة","Wallet entry"); color: theme.gold; font.bold:true; visible: workspace.op==="wallet"}
      FgCombo {id: kind; model: ["DEPOSIT","WITHDRAWAL","COMMISSION","REVERSAL"]; Layout.fillWidth: true; visible: workspace.op==="wallet"}
-     Text {text: workspace.tr("معرف البيع للعمولة","Commission sale ID"); color: theme.silver; visible: workspace.op==="wallet"&&kind.currentText==="COMMISSION"}
+     Text {text: workspace.tr("معرف البيع للعمولة","Commission sale ID"); color: theme.gold; font.bold:true; visible: workspace.op==="wallet"&&kind.currentText==="COMMISSION"}
      FgField {id: sale; Layout.fillWidth: true; visible: workspace.op==="wallet"&&kind.currentText==="COMMISSION"}
-     Text {text: workspace.tr("معرف الحركة المراد عكسها","Wallet reversal entry ID"); color: theme.silver; visible: workspace.op==="wallet"&&kind.currentText==="REVERSAL"}
+     Text {text: workspace.tr("معرف الحركة المراد عكسها","Wallet reversal entry ID"); color: theme.gold; font.bold:true; visible: workspace.op==="wallet"&&kind.currentText==="REVERSAL"}
      FgField {id: walletTarget; Layout.fillWidth: true; visible: workspace.op==="wallet"&&kind.currentText==="REVERSAL"}
-     Text {text: workspace.tr("اسم الحساب","Account username"); color: theme.silver; visible: workspace.op==="create_account"}
+     Text {text: workspace.tr("اسم الحساب","Account username"); color: theme.gold; font.bold:true; visible: workspace.op==="create_account"}
      FgField {id: username; Layout.fillWidth: true; visible: workspace.op==="create_account"}
-     Text {text: workspace.tr("كلمة المرور (12–128)","Password (12–128)"); color: theme.silver; visible: workspace.includes(["create_account","reset_password"])}
+     Text {text: workspace.tr("كلمة المرور (12–128)","Password (12–128)"); color: theme.gold; font.bold:true; visible: workspace.includes(["create_account","reset_password"])}
      FgField {id: password; echoMode: TextInput.Password; Layout.fillWidth: true; visible: workspace.includes(["create_account","reset_password"])}
-     Text {text: workspace.tr("بنود البيع","Sale items"); color: theme.silver; visible: workspace.op==="sale"}
+     Text {text: workspace.tr("بنود البيع","Sale items"); color: theme.gold; font.bold:true; visible: workspace.op==="sale"}
      ColumnLayout {visible: workspace.op==="sale"; Layout.fillWidth: true
       RowLayout {FgField {id: itemName; placeholderText: workspace.tr("الصنف","Item"); Layout.fillWidth: true} FgField {id: itemQuantity; text: "1"; Layout.preferredWidth: 70} FgField {id: itemPrice; placeholderText: "0.00"; Layout.preferredWidth: 100} FgButton {text: "+"; onClicked: lines.append({name:itemName.text,quantity:Number(itemQuantity.text),unitPrice:itemPrice.text})}}
       Repeater {model: lines; RowLayout {required property string name; required property int quantity; required property string unitPrice; required property int index; Text {text: name+" × "+quantity+" • "+unitPrice; color: theme.silver; Layout.fillWidth: true} FgButton {text: "×"; onClicked: lines.remove(index)}}}

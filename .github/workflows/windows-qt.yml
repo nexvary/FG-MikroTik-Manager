@@ -34,6 +34,13 @@ jobs:
       - name: Build
         id: build
         run: cmake --build qt-build --config Release --parallel 4
+      - name: QML control interactions
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $env:QT_QUICK_BACKEND = "software"
+          & C:\Qt\6.8.3\msvc2022_64\bin\qmltestrunner.exe -input desktop/qt/tests/qml -o qt-build/qml-controls-test.xml,junitxml
+          if ($LASTEXITCODE -ne 0) { throw 'QML control interaction tests failed' }
       - name: Contract tests
         shell: pwsh
         run: |

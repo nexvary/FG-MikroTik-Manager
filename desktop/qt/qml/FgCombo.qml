@@ -5,7 +5,7 @@ ComboBox {
  implicitHeight:44
  leftPadding:12;rightPadding:30
  font.pixelSize:14
- contentItem:Text {text:control.displayText;color:control.enabled?"#7ED9F5":"#8195A5";font:control.font;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight}
+ contentItem:TextInput {text:control.editable?control.editText:control.displayText;enabled:control.editable;readOnly:!control.editable;selectByMouse:true;autoScroll:true;validator:control.validator;inputMethodHints:control.inputMethodHints;onTextEdited:control.editText=text;color:control.enabled?"#7ED9F5":"#8195A5";font:control.font;verticalAlignment:Text.AlignVCenter}
  background:Rectangle {radius:11;color:control.hovered?"#18384A":"#102331";border.color:control.activeFocus?"#159DFF":"#61798B"}
  indicator:Text {text:"⌄";color:"#FFBE43";font.pixelSize:22;x:control.width-width-10;y:(control.height-height)/2}
  delegate:ItemDelegate {width:Math.max(control.width,260);implicitHeight:44
