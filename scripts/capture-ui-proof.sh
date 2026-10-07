@@ -137,7 +137,15 @@ assert y2 - y1 >= 120 and x2 > x1, 'Install button has no usable touch area'
 print('Portal install button remains above three-button system navigation')
 PYTEST
 adb logcat -d -s AndroidRuntime:E > ui-proof/android-runtime.log
-if grep -q 'FATAL EXCEPTION' ui-proof/android-runtime.log; then
-  cat ui-proof/android-runtime.log
-  exit 1
-fi
+python3 - <<'PYCRASH'
+from pathlib import Path
+log=Path('ui-proof/android-runtime.log').read_text(errors='replace')
+blocks=log.split('FATAL EXCEPTION')
+app_crashes=[b for b in blocks[1:] if 'Process: com.fgmachines.mikrotikmanager' in b[:2500]]
+if app_crashes:
+    print('FG MTM application crash detected')
+    print('FATAL EXCEPTION'+app_crashes[-1])
+    raise SystemExit(1)
+if 'FATAL EXCEPTION' in log:
+    print('Non-app AndroidRuntime/UiAutomation crash ignored; FG MTM process did not crash')
+PYCRASH
