@@ -5,6 +5,7 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,13 +77,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import android.graphics.drawable.PictureDrawable
+import android.widget.ImageView
+import com.caverock.androidsvg.SVG
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fgmachines.mikrotikmanager.command.ParsedRouterCommand
@@ -437,12 +441,7 @@ private fun ConnectionScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                Icons.Outlined.Wifi,
-                                contentDescription = null,
-                                tint = if (host == router.ipAddress) FgMint else FgBlue,
-                                modifier = Modifier.size(30.dp)
-                            )
+                            WindowsColorIcon("router", Modifier.size(42.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     router.identity.ifBlank { "MikroTik" },
@@ -723,7 +722,7 @@ internal fun RouterShell(
                         .align(Alignment.BottomEnd)
                         .padding(20.dp)
                 ) {
-                    Icon(Icons.Outlined.Terminal, contentDescription = "Command Center")
+                    WindowsColorIcon("terminal", Modifier.size(32.dp))
                 }
             }
         }
@@ -752,7 +751,7 @@ internal fun RouterShell(
                     containerColor = FgMint,
                     contentColor = FgBlack
                 ) {
-                    Icon(Icons.Outlined.Terminal, contentDescription = "Command Center")
+                    WindowsColorIcon("terminal", Modifier.size(32.dp))
                 }
             }
         },
@@ -924,42 +923,42 @@ private fun MainMenuScreen(
             AppSection.ADVANCED,
             if (arabic) "الإعداد المتقدم" else "Advanced Setup",
             if (arabic) "حالة الراوتر • إعداد HotSpot • تشخيص الشبكة • إصلاح المشاكل" else "Router status • HotSpot • Diagnostics • Repairs",
-            Icons.Outlined.Tune,
+            "diagnostics",
             FgBlue
         ),
         MenuEntry(
             AppSection.NETWORK,
             if (arabic) "الشبكة والاتصال" else "Network & connectivity",
             if (arabic) "Wi-Fi، Interfaces، IP، DHCP، DNS، Routes، HotSpot وPPP" else "Wi-Fi, interfaces, IP, DHCP, DNS, routes, HotSpot and PPP",
-            Icons.Outlined.Wifi,
+            "network",
             FgMint
         ),
         MenuEntry(
             AppSection.SYSTEM,
             if (arabic) "النظام والأمان" else "System & security",
             if (arabic) "Firewall، Admin، Services، Files، Logs وCommand Center" else "Firewall, admins, services, files, logs and Command Center",
-            Icons.Outlined.Security,
+            "security",
             FgAmber
         ),
         MenuEntry(
             AppSection.VOUCHERS,
             if (arabic) "إنشاء الكروت" else "Voucher Studio",
             if (arabic) "كروت احترافية مع المدة والسعر والانتهاء والتفعيل المباشر" else "Professional vouchers with duration, price, expiry and direct activation",
-            Icons.Outlined.ConfirmationNumber,
+            "voucher",
             FgPurple
         ),
         MenuEntry(
             AppSection.BUSINESS,
             if (arabic) "المشتركون والحسابات" else "Subscribers & accounts",
             if (arabic) "سجل المشتركين • المستحقات • المدفوعات • كشف الحساب" else "Subscribers • Charges • Payments • Account ledger",
-            Icons.Outlined.People,
+            "subscribers",
             FgMint
         ),
         MenuEntry(
             AppSection.ABOUT,
             if (arabic) "عن المطور" else "About developer",
             if (arabic) "FG Machines ومعلومات المطور والروابط" else "FG Machines, developer information and links",
-            Icons.Outlined.Info,
+            "developer",
             FgCyan
         )
     ).filter { it.section != AppSection.VOUCHERS || com.fgmachines.mikrotikmanager.business.BusinessPermission.VOUCHERS in LocalBusinessPermissions.current }
@@ -1003,7 +1002,7 @@ private data class MenuEntry(
     val section: AppSection,
     val title: String,
     val subtitle: String,
-    val icon: ImageVector,
+    val iconName: String,
     val accent: Color
 )
 
@@ -1033,11 +1032,9 @@ private fun MainMenuRow(
                     .background(entry.accent.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    entry.icon,
-                    contentDescription = null,
-                    tint = entry.accent,
-                    modifier = Modifier.size(29.dp)
+                WindowsColorIcon(
+                    name = entry.iconName,
+                    modifier = Modifier.size(42.dp)
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -1110,7 +1107,7 @@ private fun PersistentMainMenu(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(sectionIcon(section), contentDescription = null, tint = accent)
+                    WindowsColorIcon(sectionIconName(section), Modifier.size(34.dp))
                     Text(sectionLabel(section, arabic), color = FgWhite, fontWeight = FontWeight.Bold)
                 }
             }
@@ -1329,16 +1326,39 @@ private fun sectionLabel(section: AppSection, arabic: Boolean): String =
         AppSection.ABOUT -> if (arabic) "عن المطور" else "About developer"
     }
 
-private fun sectionIcon(section: AppSection): ImageVector =
+private fun sectionIconName(section: AppSection): String =
     when (section) {
-        AppSection.MENU -> Icons.Outlined.Settings
-        AppSection.ADVANCED -> Icons.Outlined.Tune
-        AppSection.NETWORK -> Icons.Outlined.Wifi
-        AppSection.SYSTEM -> Icons.Outlined.Security
-        AppSection.VOUCHERS -> Icons.Outlined.ConfirmationNumber
-        AppSection.BUSINESS -> Icons.Outlined.People
-        AppSection.ABOUT -> Icons.Outlined.Info
+        AppSection.MENU -> "dashboard"
+        AppSection.ADVANCED -> "diagnostics"
+        AppSection.NETWORK -> "network"
+        AppSection.SYSTEM -> "security"
+        AppSection.VOUCHERS -> "voucher"
+        AppSection.BUSINESS -> "subscribers"
+        AppSection.ABOUT -> "developer"
     }
+
+@Composable
+private fun WindowsColorIcon(name: String, modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            ImageView(context).apply {
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+                importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
+        },
+        update = { image ->
+            if (image.tag != name) {
+                image.tag = name
+                val drawable = runCatching {
+                    PictureDrawable(SVG.getFromAsset(image.context.assets, "$name.svg").renderToPicture())
+                }.getOrNull()
+                image.setImageDrawable(drawable)
+            }
+        }
+    )
+}
 
 private fun sectionAccent(section: AppSection): Color =
     when (section) {
