@@ -22,9 +22,10 @@ SolidCompression=yes
 [Files]
 Source: "../../../qt-package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
-Name: "{group}\FG MTM"; Filename: "{app}\fg_mtm.exe"
+Name: "{group}\FG MTM"; Filename: "{app}\fg_mtm.exe"; Tasks: startmenuicon
 Name: "{userdesktop}\FG MTM"; Filename: "{app}\fg_mtm.exe"; Tasks: desktopicon
 [Tasks]
+Name: startmenuicon; Description: "Create a Start Menu shortcut"; Flags: checkedonce
 Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 Name: firewall; Description: "Allow MikroTik discovery on Private/Domain networks"
 [Run]
@@ -40,6 +41,7 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 [Code]
 var
   FeaturePage: TWizardPage;
+  DeleteUserDataOnUninstall: Boolean;
 
 procedure FeatureCard(Top: Integer; Heading, Detail: String; Accent: TColor);
 var
@@ -48,7 +50,7 @@ var
 begin
   Panel := TPanel.Create(FeaturePage);
   Panel.Parent := FeaturePage.Surface;
-  Panel.SetBounds(0, ScaleY(Top), FeaturePage.SurfaceWidth, ScaleY(60));
+  Panel.SetBounds(0, ScaleY(Top), FeaturePage.SurfaceWidth, ScaleY(52));
   Panel.Color := $291C10;
   Panel.BevelOuter := bvNone;
   Title := TNewStaticText.Create(FeaturePage);
@@ -60,8 +62,9 @@ begin
   Title.Caption := Heading;
   Body := TNewStaticText.Create(FeaturePage);
   Body.Parent := Panel;
-  Body.SetBounds(ScaleX(12), ScaleY(29), Panel.Width - ScaleX(24), ScaleY(27));
+  Body.SetBounds(ScaleX(12), ScaleY(27), Panel.Width - ScaleX(24), ScaleY(22));
   Body.Font.Color := $E5DED1;
+  Body.Font.Size := 8;
   Body.WordWrap := True;
   Body.Caption := Detail;
 end;
@@ -75,16 +78,65 @@ begin
     'Arabic / English interface. Independent software, not a MikroTik product.';
   FeaturePage := CreateCustomPage(wpWelcome, 'What does FG MTM offer?',
     'Available tools in this version - FG Machines');
-  FeatureCard(0, 'NETWORK & HOTSPOT',
-    'Router discovery, saved connections, HotSpot accounts, vouchers and QR codes.', $D2C166);
-  FeatureCard(67, 'SUBSCRIBERS & BUSINESS',
-    'Subscribers, plans, sales, payments, expenses, receipts and business reports.', $A5D98A);
-  FeatureCard(134, 'ACCESS POINT OBSERVATIONS',
-    'Multi-source discovery, shop names, sampled client comparison and PDF / XLSX / CSV.', $D2C166);
-  FeatureCard(201, 'PROFESSIONAL TOOLS',
-    'Floating terminal, command library, diagnostics, router monitoring and backups.', $83BEDD);
+  FeatureCard(0, 'NETWORK MANAGEMENT',
+    'Router discovery, saved and multi-router connections, interfaces, network devices, diagnostics and monitoring.', $83BEDD);
+  FeatureCard(56, 'HOTSPOT & VOUCHERS',
+    'Guided HotSpot setup, profiles, bulk vouchers, QR, Voucher Studio, encrypted archive, portal, A4 / 58 / 80 printing.', $D2C166);
+  FeatureCard(112, 'SUBSCRIBERS & BUSINESS',
+    'Subscribers, plans and renewals, sales, payments, expenses, invoices, staff, resellers, imports and reports.', $A5D98A);
+  FeatureCard(168, 'ACCESS POINT ANALYTICS & EXPORT',
+    'Connected AP evidence, shop mapping, clients, sessions, voucher use, revenue, traffic, peak periods, PDF / XLSX / CSV.', $D2C166);
+  FeatureCard(224, 'PROFESSIONAL TOOLS & SECURITY',
+    'Floating terminal, command library, backup / restore, roles, permissions, audit log, protected router passwords and DNS protection.', $83BEDD);
   WizardForm.FinishedLabel.Caption := 'FG MTM is ready.' + #13#10 + #13#10 +
     'Start by discovering your MikroTik and connecting to it.' + #13#10 +
     'Access point reports use local observations; unavailable metrics are marked N/A.' + #13#10 + #13#10 +
     'Uninstalling the application preserves your business database and saved profiles.';
+end;
+
+
+procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
+var
+  Percent: Integer;
+begin
+  if MaxProgress <= 0 then
+    exit;
+  Percent := (CurProgress * 100) div MaxProgress;
+  if Percent < 25 then
+    WizardForm.StatusLabel.Caption := 'Installing FG MTM...'
+  else if Percent < 50 then
+    WizardForm.StatusLabel.Caption := 'Installing network management components...'
+  else if Percent < 72 then
+    WizardForm.StatusLabel.Caption := 'Installing UI and icon resources...'
+  else if Percent < 90 then
+    WizardForm.StatusLabel.Caption := 'Installing reporting and export resources...'
+  else
+    WizardForm.StatusLabel.Caption := 'Creating shortcuts and finalizing FG MTM...';
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  DeleteUserDataOnUninstall := False;
+  if MsgBox(
+    'Keep your FG MTM data after uninstall?' + #13#10 + #13#10 +
+    'Yes keeps router profiles, business database, voucher archives, reports and settings.' + #13#10 +
+    'No lets you choose whether to remove them permanently.',
+    mbConfirmation, MB_YESNO) = IDNO then
+  begin
+    DeleteUserDataOnUninstall :=
+      MsgBox(
+        'Permanently delete FG MTM user data?' + #13#10 + #13#10 +
+        'This removes local business data, voucher archives, saved router profiles and settings. This cannot be undone.',
+        mbError, MB_YESNO) = IDYES;
+  end;
+  Result := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and DeleteUserDataOnUninstall then
+  begin
+    DelTree(ExpandConstant('{localappdata}\FG Machines\FG MTM'), True, True, True);
+    RegDeleteKeyIncludingSubkeys(HKCU, 'Software\FG Machines\FG MTM');
+  end;
 end;
