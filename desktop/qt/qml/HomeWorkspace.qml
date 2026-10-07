@@ -23,13 +23,13 @@ ScrollView {
    }
   }
   GridLayout {Layout.fillWidth:true;columns:3;columnSpacing:10
-   Repeater {model:[{ar:"اتصال الراوتر",en:"Router connection",value:pane.routerConnected?pane.tr("متصل","Connected"):pane.tr("غير متصل","Disconnected"),tint:pane.routerConnected?theme.mint:theme.gold,icon:10,key:"router"},{ar:"مزامنة الأعمال",en:"Business synchronization",value:pane.serverConnected?pane.tr("الخادم متصل","Server connected"):pane.tr("الخادم غير متصل","Server disconnected"),tint:theme.blue,icon:8,key:"settings"},{ar:"الكروت المحلية",en:"Local vouchers",value:pane.tr("إنشاء وحفظ دون اتصال","Create & save offline"),tint:theme.mint,icon:6,key:"vouchers"}]
-    delegate:Rectangle {required property var modelData;Layout.fillWidth:true;implicitHeight:76;radius:13;color:theme.raised;border.color:"#294152"
+   Repeater {model:[{ar:"اتصال الراوتر",en:"Router connection",tint:theme.gold,icon:10,key:"router"},{ar:"مزامنة الأعمال",en:"Business synchronization",tint:theme.blue,icon:8,key:"settings"},{ar:"الكروت المحلية",en:"Local vouchers",tint:theme.mint,icon:6,key:"vouchers"}]
+    delegate:Rectangle {id:statusTile;required property var modelData;property color statusAccent:modelData.key==="router"?(pane.routerConnected?theme.mint:theme.gold):modelData.tint;Layout.fillWidth:true;implicitHeight:76;radius:13;color:theme.raised;border.color:"#294152"
      RowLayout {anchors.fill:parent;anchors.margins:12;spacing:10
-      NavIcon {kind:modelData.icon;ink:modelData.tint;Layout.preferredWidth:36;Layout.preferredHeight:36}
+      NavIcon {kind:modelData.icon;ink:statusTile.statusAccent;Layout.preferredWidth:36;Layout.preferredHeight:36}
       ColumnLayout {Layout.fillWidth:true;spacing:4
        Text {Layout.fillWidth:true;text:pane.tr(modelData.ar,modelData.en);color:theme.muted;font.pixelSize:12;wrapMode:Text.Wrap}
-       Text {Layout.fillWidth:true;text:modelData.value;color:modelData.tint;font.pixelSize:13;font.bold:true;wrapMode:Text.Wrap}
+       Text {Layout.fillWidth:true;text:modelData.key==="router"?(pane.routerConnected?pane.tr("متصل","Connected"):pane.tr("غير متصل","Disconnected")):modelData.key==="settings"?(pane.serverConnected?pane.tr("الخادم متصل","Server connected"):pane.tr("الخادم غير متصل","Server disconnected")):pane.tr("إنشاء وحفظ دون اتصال","Create & save offline");color:statusTile.statusAccent;font.pixelSize:13;font.bold:true;wrapMode:Text.Wrap}
       }
      }
      TapHandler {onTapped:pane.openPage(modelData.key)}
