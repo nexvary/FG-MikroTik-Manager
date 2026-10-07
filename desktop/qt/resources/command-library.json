@@ -1368,5 +1368,395 @@
     "descriptionAr": "راجع الهدف والقيم؛ قد يتأثر اتصال العميل أو الإدارة. معرّف العنصر يبدأ بـ * ويؤخذ من نتيجة عرض البيانات، وليس رقم السطر.",
     "descriptionEn": "Review the target and values; client or management access may be affected. Use the item ID starting with *, not a displayed row number.",
     "risk": "DANGEROUS"
+  },
+  {
+    "ar": "ملاحظة النظام",
+    "en": "System note",
+    "command": "/system note print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "وضع الجهاز",
+    "en": "Device mode",
+    "command": "/system device-mode print",
+    "categoryAr": "النظام",
+    "categoryEn": "System",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات. قد لا يتوفر في إصدارات RouterOS القديمة.",
+    "descriptionEn": "Reads information without changing settings. May be unavailable on older RouterOS versions.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعدادات IP العامة",
+    "en": "IP settings",
+    "command": "/ip settings print",
+    "categoryAr": "IP و DHCP",
+    "categoryEn": "IP & DHCP",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "اكتشاف الإنترنت",
+    "en": "Detect internet",
+    "command": "/interface detect-internet print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "واجهات LTE",
+    "en": "LTE interfaces",
+    "command": "/interface lte print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات. يتطلب جهاز LTE.",
+    "descriptionEn": "Reads information without changing settings. Requires LTE hardware.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "ملفات LTE APN",
+    "en": "LTE APN profiles",
+    "command": "/interface lte apn print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات. يتطلب جهاز LTE.",
+    "descriptionEn": "Reads information without changing settings. Requires LTE hardware.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "واجهات VETH",
+    "en": "VETH interfaces",
+    "command": "/interface veth print",
+    "categoryAr": "المنافذ والربط",
+    "categoryEn": "Interfaces & bridge",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات. يتطلب RouterOS يدعم Containers/VETH.",
+    "descriptionEn": "Reads information without changing settings. Requires RouterOS with Containers/VETH support.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الحاويات",
+    "en": "Containers",
+    "command": "/container print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات. يتطلب حزمة Container.",
+    "descriptionEn": "Reads information without changing settings. Requires the Container package.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الأقراص",
+    "en": "Disks",
+    "command": "/disk print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات. يتطلب جهازًا يدعم التخزين المناسب.",
+    "descriptionEn": "Reads information without changing settings. Requires supported storage hardware.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "الأقسام",
+    "en": "Partitions",
+    "command": "/partition print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات. قد لا يتوفر على كل الأجهزة.",
+    "descriptionEn": "Reads information without changing settings. May be unavailable on some devices.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "Layer7 protocols",
+    "en": "Layer7 protocols",
+    "command": "/ip firewall layer7-protocol print",
+    "categoryAr": "الجدار الناري",
+    "categoryEn": "Firewall",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أقران IPsec",
+    "en": "IPsec peers",
+    "command": "/ip ipsec peer print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "هويات IPsec",
+    "en": "IPsec identities",
+    "command": "/ip ipsec identity print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "سياسات IPsec",
+    "en": "IPsec policies",
+    "command": "/ip ipsec policy print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "مقترحات IPsec",
+    "en": "IPsec proposals",
+    "command": "/ip ipsec proposal print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أقران IPsec النشطون",
+    "en": "Active IPsec peers",
+    "command": "/ip ipsec active-peers print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "IPsec SAs المثبتة",
+    "en": "Installed IPsec SAs",
+    "command": "/ip ipsec installed-sa print",
+    "categoryAr": "PPP والأنفاق",
+    "categoryEn": "PPP & tunnels",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "جيران OSPF",
+    "en": "OSPF neighbors",
+    "command": "/routing ospf neighbor print",
+    "categoryAr": "التوجيه و IPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قوالب واجهات OSPF",
+    "en": "OSPF interface templates",
+    "command": "/routing ospf interface-template print",
+    "categoryAr": "التوجيه و IPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "جلسات BGP",
+    "en": "BGP sessions",
+    "command": "/routing bgp session print",
+    "categoryAr": "التوجيه و IPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "قوالب BGP",
+    "en": "BGP templates",
+    "command": "/routing bgp template print",
+    "categoryAr": "التوجيه و IPv6",
+    "categoryEn": "Routing & IPv6",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "SNMP",
+    "en": "SNMP",
+    "command": "/snmp print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "RoMON",
+    "en": "RoMON",
+    "command": "/tool romon print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "Graphing",
+    "en": "Graphing",
+    "command": "/tool graphing print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "إعدادات البريد",
+    "en": "E-mail settings",
+    "command": "/tool e-mail print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "Traffic Flow",
+    "en": "Traffic Flow",
+    "command": "/ip traffic-flow print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أهداف Traffic Flow",
+    "en": "Traffic Flow targets",
+    "command": "/ip traffic-flow target print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "Kid Control",
+    "en": "Kid Control",
+    "command": "/ip kid-control print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "أجهزة Kid Control",
+    "en": "Kid Control devices",
+    "command": "/ip kid-control device print",
+    "categoryAr": "أدوات الإدارة",
+    "categoryEn": "Management & tools",
+    "descriptionAr": "يعرض المعلومات بدون تغيير الإعدادات.",
+    "descriptionEn": "Reads information without changing settings.",
+    "risk": "SAFE"
+  },
+  {
+    "ar": "تفعيل واجهة",
+    "en": "Enable interface",
+    "command": "/interface enable {{interface}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "تعطيل واجهة",
+    "en": "Disable interface",
+    "command": "/interface disable {{interface}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تفعيل حساب PPP",
+    "en": "Enable PPP account",
+    "command": "/ppp secret enable {{user}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "تعطيل حساب PPP",
+    "en": "Disable PPP account",
+    "command": "/ppp secret disable {{user}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "تجديد DHCP Client",
+    "en": "Renew DHCP client",
+    "command": "/ip dhcp-client renew {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "تحرير DHCP Client",
+    "en": "Release DHCP client",
+    "command": "/ip dhcp-client release {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "إضافة عنوان إلى Address List",
+    "en": "Add firewall address-list entry",
+    "command": "/ip firewall address-list add list={{list}} address={{address}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "حذف عنوان من Address List",
+    "en": "Remove firewall address-list entry",
+    "command": "/ip firewall address-list remove {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "DANGEROUS"
+  },
+  {
+    "ar": "حذف HotSpot Cookie",
+    "en": "Remove HotSpot cookie",
+    "command": "/ip hotspot cookie remove {{id}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "CHANGE"
+  },
+  {
+    "ar": "إنشاء Backup للراوتر",
+    "en": "Create router backup",
+    "command": "/system backup save name={{name}}",
+    "categoryAr": "تغييرات شائعة",
+    "categoryEn": "Common changes",
+    "descriptionAr": "أمر إداري شائع. راجع الهدف والقيم قبل التنفيذ؛ سيظهر تأكيد قبل الأوامر التي تغيّر الإعدادات.",
+    "descriptionEn": "Common administrative command. Review the target and values before execution; changing commands are confirmed before they run.",
+    "risk": "CHANGE"
   }
 ]
