@@ -140,16 +140,30 @@ ApplicationWindow {
    }
    GridLayout {
     visible: root.page==="router"; columns: 2; Layout.fillWidth: true
+    FgButton {
+     Layout.columnSpan:2;Layout.fillWidth:true;implicitHeight:54
+     text:root.tr("اكتشاف الراوترات و MikroTik على الشبكة","Discover routers & MikroTik on the network")
+     filled:true;accent:theme.mint;enabled:!backend.busy
+     onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.discoverRouters()}
+    }
     FgField {id: routerUrl; Layout.fillWidth: true; placeholderText: root.tr("عنوان IP أو اسم الراوتر","Router IP or hostname"); LayoutMirroring.enabled: false}
     FgCombo {id: menu; model: backend.menus.filter(function(key){return root.routerGroup==="ALL"||backend.module(key).group===root.routerGroup}); Layout.fillWidth: true;onActivated:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
     FgField {id: routerUser; Layout.fillWidth: true; placeholderText: root.tr("حساب الراوتر","Router username"); LayoutMirroring.enabled: false}
     FgField {id: routerPassword; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: root.tr("كلمة المرور","Password"); LayoutMirroring.enabled: false}
+    CheckBox {
+     id:rememberRouterPassword;Layout.columnSpan:2
+     text:root.tr("حفظ كلمة المرور بأمان على هذا الكمبيوتر","Save password securely on this PC")
+     palette.windowText:theme.silver
+    }
+    Text {
+     Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;font.pixelSize:12;wrapMode:Text.Wrap
+     text:root.tr("عند التفعيل تُشفّر كلمة المرور بواسطة Windows DPAPI وتُربط بحساب Windows الحالي، ولا تُحفظ كنص مكشوف.","When enabled, the password is protected by Windows DPAPI for the current Windows account and is never stored as plain text.")
+    }
     FgCombo {id: routerProtocol; model: ["REST","API_SSL","API","AUTO","REST_HTTP"]; Layout.fillWidth: true; onActivated: routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":currentIndex===4?"80":"8728"}
     FgField {id: routerPort; text: "443"; placeholderText: root.tr("المنفذ","Port")}
-    FgButton {text: root.tr("اتصال وقراءة","Connect & read"); enabled: !backend.busy; onClicked: {root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.connectRouter(routerUrl.text,Number(routerPort.text),routerUser.text,routerPassword.text,routerProtocol.currentText,menu.currentText);routerPassword.clear()}}
+    FgButton {text: root.tr("اتصال وقراءة","Connect & read");filled:true;accent:theme.blue;enabled: !backend.busy; onClicked: {root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.connectRouter(routerUrl.text,Number(routerPort.text),routerUser.text,routerPassword.text,routerProtocol.currentText,menu.currentText);if(!rememberRouterPassword.checked)routerPassword.clear()}}
     FgButton {text: root.tr("قراءة القسم","Read section"); enabled: !backend.busy; onClicked: {root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.command("/"+menu.currentText+" print")}}
     RowLayout {Layout.columnSpan: 2
-     FgButton {text: root.tr("اكتشاف ميكروتيك","Discover MikroTik"); enabled:!backend.busy; onClicked: {root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.discoverRouters()}}
      FgButton {text: root.tr("إضافة / تعديل","Add / edit"); enabled: !root.inventoryView&&backend.routerConnected&&!backend.busy&&(root.routerModule.create||root.routerModule.edit); onClicked:adminEditor.open()}
      FgButton {text: root.tr("تفعيل","Enable"); enabled: root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"enable",root.selectedRouterId,"{}")}
      FgButton {text: root.tr("تعطيل","Disable"); enabled: root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"disable",root.selectedRouterId,"{}")}
@@ -157,9 +171,9 @@ ApplicationWindow {
     }
     RowLayout {Layout.columnSpan:2;Layout.fillWidth:true
      FgField {id:profileName;Layout.fillWidth:true;placeholderText:root.tr("اسم الراوتر لحفظ الاتصال","Router name to save connection")}
-     FgButton {text:root.tr("حفظ الاتصال","Save connection");onClicked:backend.saveRouterProfile(profileName.text,commerce.scope,routerUrl.text,Number(routerPort.text),routerUser.text,routerProtocol.currentText)}
-     FgCombo {id:savedRouter;Layout.fillWidth:true;model:backend.profiles;textRole:"name";onActivated:{let p=backend.profiles[currentIndex];routerUrl.text=p.host;routerUser.text=p.user;routerPort.text=String(p.port);routerProtocol.currentIndex=routerProtocol.model.indexOf(p.protocol)}}
-     FgButton {text:root.tr("حذف المحفوظ","Delete saved");enabled:backend.profiles.length>0;onClicked:backend.deleteRouterProfile(backend.profiles[savedRouter.currentIndex].id)}
+     FgButton {text:root.tr("حفظ الاتصال","Save connection");accent:theme.gold;onClicked:backend.saveRouterProfile(profileName.text,commerce.scope,routerUrl.text,Number(routerPort.text),routerUser.text,routerProtocol.currentText,routerPassword.text,rememberRouterPassword.checked)}
+     FgCombo {id:savedRouter;Layout.fillWidth:true;model:backend.profiles;textRole:"name";onActivated:{let p=backend.profiles[currentIndex];routerUrl.text=p.host;routerUser.text=p.user;routerPort.text=String(p.port);routerProtocol.currentIndex=routerProtocol.model.indexOf(p.protocol);rememberRouterPassword.checked=Boolean(p.hasPassword);routerPassword.text=p.hasPassword?backend.routerProfilePassword(p.id):""}}
+     FgButton {text:root.tr("حذف المحفوظ","Delete saved");enabled:backend.profiles.length>0;onClicked:{backend.deleteRouterProfile(backend.profiles[savedRouter.currentIndex].id);routerPassword.clear();rememberRouterPassword.checked=false}}
     }
     FgButton {Layout.columnSpan:2;text:root.tr("أجهزة الشبكة والأكسسات","Network devices & access points");enabled:backend.routerConnected&&!backend.busy;onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.discoverNetworkDevices()}}
     ColumnLayout {Layout.columnSpan:2;Layout.fillWidth:true;visible:backend.discoveryDiagnostics.length>0;spacing:5
