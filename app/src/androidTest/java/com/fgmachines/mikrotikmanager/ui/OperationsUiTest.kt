@@ -20,6 +20,8 @@ class OperationsUiTest {
         compose.waitForIdle()
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         instrumentation.waitForIdleSync()
+        // Wait for the physical display frame after dialog and scroll state changes.
+        android.os.SystemClock.sleep(750)
         val bitmap=checkNotNull(instrumentation.uiAutomation.takeScreenshot())
         instrumentation.targetContext.openFileOutput(name,0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
         bitmap.recycle()

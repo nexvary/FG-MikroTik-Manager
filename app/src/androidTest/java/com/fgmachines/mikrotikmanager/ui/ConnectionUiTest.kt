@@ -24,6 +24,8 @@ class ConnectionUiTest {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.waitForIdleSync()
+        // Compose idleness does not imply that SurfaceFlinger has presented the new frame.
+        android.os.SystemClock.sleep(750)
         val bitmap = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
         instrumentation.targetContext.openFileOutput(name, 0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         bitmap.recycle()
