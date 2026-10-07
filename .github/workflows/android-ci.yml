@@ -70,6 +70,19 @@ jobs:
       - name: Assemble debug APK
         run: gradle :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
+      - name: Verify and stage final APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/FG-MTM-Android-0.17.4.apk
+          BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/FG-MTM-Android-0.17.4.apk | head -n 1)"
+          echo "$BADGING"
+          echo "$BADGING" | grep -F "package: name='com.fgmachines.mikrotikmanager'"
+          echo "$BADGING" | grep -F "versionCode='27'"
+          echo "$BADGING" | grep -F "versionName='0.17.4'"
+          sha256sum dist/FG-MTM-Android-0.17.4.apk | tee dist/FG-MTM-Android-0.17.4.sha256
+
       - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,6 +104,15 @@ jobs:
         with:
           name: FG-MTM-0.17.4-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload final named APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FG-MTM-Android-0.17.4
+          path: |
+            dist/FG-MTM-Android-0.17.4.apk
+            dist/FG-MTM-Android-0.17.4.sha256
           if-no-files-found: error
 
 
@@ -163,10 +185,21 @@ jobs:
           disable-animations: true
           script: bash scripts/run-ui-checks.sh
 
+      - name: Package Android UI proof
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p proof-bundles
+          if find ui-proof -maxdepth 1 -type f | grep -q .; then
+            (cd ui-proof && zip -9 -r ../proof-bundles/Android-UI-Proof.zip .)
+          fi
+
       - name: Upload UI proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: FG-MTM-0.17.4-ui-proof
-          path: ui-proof/*
+          path: |
+            ui-proof/*
+            proof-bundles/Android-UI-Proof.zip
           if-no-files-found: error

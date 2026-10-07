@@ -92,11 +92,18 @@ jobs:
           $app=Start-Process C:/fg-mtm-qt-test/fg_mtm.exe -ArgumentList '--smoke-test' -RedirectStandardError qt-ui-stderr.log -RedirectStandardOutput qt-ui-stdout.log -PassThru
           if (-not $app.WaitForExit(90000)) { $app.Kill(); throw 'Installed UI timeout' }
           if ($app.ExitCode -ne 0) { throw 'Installed UI failed' }
+          $installer = 'qt-installer/FG-MTM-Windows-0.17.4-Setup.exe'
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  FG-MTM-Windows-0.17.4-Setup.exe" | Set-Content -Encoding ascii qt-installer/FG-MTM-Windows-0.17.4-Setup.sha256
+          if (Test-Path qt-installer/Windows-UI-Proof.zip) { Remove-Item qt-installer/Windows-UI-Proof.zip -Force }
+          Compress-Archive -Path qt-proof/*.png -DestinationPath qt-installer/Windows-UI-Proof.zip -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
         with:
           name: FG-MTM-Windows-0.17.4
           path: |
             qt-installer/*.exe
+            qt-installer/*.sha256
+            qt-installer/Windows-UI-Proof.zip
             qt-proof/*.png
           if-no-files-found: error
 
