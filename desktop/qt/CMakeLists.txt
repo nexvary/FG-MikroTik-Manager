@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
-project(FgMtmDesktop VERSION 0.17.2 LANGUAGES CXX)
+project(FgMtmDesktop VERSION 0.17.3 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
-find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network Test Widgets PrintSupport Sql)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network Test Widgets PrintSupport Sql Svg)
 add_library(fg_core STATIC
  src/Bridge.cpp src/Bridge.hpp src/Protocol.cpp src/Protocol.hpp
  src/RouterClient.cpp src/RouterClient.hpp src/RouterJob.hpp
@@ -23,13 +23,33 @@ set(portal_assets
  resources/hotspot/logout.html resources/hotspot/rstatus.html resources/hotspot/fg.css
  resources/hotspot/login.html resources/hotspot/error.html)
 qt_add_executable(fg_mtm WIN32 src/main.cpp)
+set(icon_assets
+ qml/icons/cloud.svg
+ qml/icons/dashboard.svg
+ qml/icons/developer.svg
+ qml/icons/diagnostics.svg
+ qml/icons/import.svg
+ qml/icons/monitor.svg
+ qml/icons/network.svg
+ qml/icons/online.svg
+ qml/icons/plans.svg
+ qml/icons/renewal.svg
+ qml/icons/router.svg
+ qml/icons/sales.svg
+ qml/icons/security.svg
+ qml/icons/server.svg
+ qml/icons/settings.svg
+ qml/icons/subscribers.svg
+ qml/icons/terminal.svg
+ qml/icons/voucher.svg
+)
 qt_add_resources(fg_mtm "ui" PREFIX "/" FILES
  qml/Main.qml qml/FgDialog.qml qml/Theme.qml qml/FgButton.qml qml/FgField.qml qml/FgCombo.qml qml/NavIcon.qml
  qml/SubscriberWorkspace.qml qml/VoucherStudio.qml qml/BusinessWorkspace.qml qml/RouterToolsWorkspace.qml
  qml/MonitorWorkspace.qml qml/BusinessTransferWorkspace.qml qml/CommandLibrary.qml
  qml/NetworkBillingWorkspace.qml qml/AboutWorkspace.qml qml/HomeWorkspace.qml qml/FgTab.qml
- resources/business-schema.json resources/command-library.json resources/router-modules.json ${portal_assets} packaging/fg-mtm.png)
-target_link_libraries(fg_mtm PRIVATE fg_core Qt6::Quick Qt6::QuickControls2)
+ resources/business-schema.json resources/command-library.json resources/router-modules.json ${portal_assets} ${icon_assets} packaging/fg-mtm.png)
+target_link_libraries(fg_mtm PRIVATE fg_core Qt6::Quick Qt6::QuickControls2 Qt6::Svg)
 if(WIN32)
  configure_file(packaging/app.rc ${CMAKE_CURRENT_BINARY_DIR}/app.rc @ONLY)
  target_sources(fg_mtm PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/app.rc)

@@ -58,7 +58,7 @@ ApplicationWindow {
     ScrollView {id:navScroll;Layout.fillWidth: true;Layout.fillHeight: true;clip:true;contentWidth:availableWidth;ScrollBar.vertical:ScrollBar {policy:ScrollBar.AlwaysOn;width:5;background:Rectangle {color:theme.panel;radius:2} contentItem:Rectangle {color:theme.mint;opacity:0.55;radius:2}}
     ColumnLayout {width:navScroll.availableWidth-10;spacing:8
     Repeater {
-     model: [{key:"home",ar:"الرئيسية",en:"Main menu",icon:0},{key:"tools",ar:"الإعداد المتقدم",en:"Advanced Setup",icon:7},{key:"router:NETWORK",ar:"الشبكة والاتصال",en:"Network & connectivity",icon:10},{key:"router:SYSTEM",ar:"النظام والأمان",en:"System & security",icon:11},{key:"vouchers",ar:"إنشاء الكروت",en:"Voucher Studio",icon:6},{key:"commerce",ar:"المشتركون والحسابات",en:"Subscribers & accounts",icon:2},{key:"about",ar:"عن المطور",en:"About developer",icon:5},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:9},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:1},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:7},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:1},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:2},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:8}]
+     model: [{key:"home",ar:"الرئيسية",en:"Main menu",icon:0},{key:"tools",ar:"الإعداد المتقدم",en:"Advanced Setup",icon:3},{key:"router:NETWORK",ar:"الشبكة والاتصال",en:"Network & connectivity",icon:19},{key:"router:SYSTEM",ar:"النظام والأمان",en:"System & security",icon:11},{key:"vouchers",ar:"إنشاء الكروت",en:"Voucher Studio",icon:6},{key:"commerce",ar:"المشتركون والحسابات",en:"Subscribers & accounts",icon:2},{key:"about",ar:"عن المطور",en:"About developer",icon:5},{key:"billing",ar:"ربط وتجديد الشبكة",en:"Bindings & renewal",icon:18},{key:"transfer",ar:"الاستيراد والتقارير",en:"Import & reports",icon:14},{key:"monitor",ar:"المراقبة والتنبيهات",en:"Monitoring & alerts",icon:7},{key:"business",ar:"أعمال الخادم",en:"Server business",icon:13},{key:"radius",ar:"RADIUS",en:"RADIUS",icon:13},{key:"diagnostics",ar:"تشخيص الخادم",en:"Server diagnostics",icon:3},{key:"settings",ar:"الاتصال بالخادم",en:"Server connection",icon:17}]
      delegate: FgButton {
       id:sidebarButton
       required property var modelData
@@ -66,7 +66,7 @@ ApplicationWindow {
       property color sectionColor:[theme.blue,theme.gold,theme.mint,"#B897FF","#FF91AB","#7ED9F5"][modelData.icon%6]
       Layout.fillWidth:true;implicitHeight:52;text:root.tr(modelData.ar,modelData.en);padding:8
       contentItem:RowLayout {spacing:12
-       NavIcon {kind:sidebarButton.modelData.icon;ink:sidebarButton.sectionColor;Layout.preferredWidth:34;Layout.preferredHeight:34}
+       NavIcon {kind:sidebarButton.modelData.icon;ink:sidebarButton.sectionColor;Layout.preferredWidth:40;Layout.preferredHeight:40}
        Text {Layout.fillWidth:true;text:sidebarButton.text;color:sidebarButton.selected?sidebarButton.sectionColor:theme.silver;font.pixelSize:14;font.bold:sidebarButton.selected;wrapMode:Text.Wrap;horizontalAlignment:root.arabic?Text.AlignRight:Text.AlignLeft;verticalAlignment:Text.AlignVCenter}
       }
       background:Rectangle {radius:12;color:sidebarButton.selected?"#193448":sidebarButton.hovered?theme.raised:"#0B1D2B";border.color:sidebarButton.selected?sidebarButton.sectionColor:"#223B4D"}
@@ -77,7 +77,7 @@ ApplicationWindow {
     }}
     FgButton {Layout.fillWidth: true; text: root.tr("ترمنال عائم • F4","Floating terminal • F4"); accent: theme.mint; onClicked: {terminalWindow.show();terminalWindow.raise()}}
     FgButton {Layout.fillWidth: true; text: root.arabic ? "English" : "العربية"; onClicked: root.arabic=!root.arabic}
-    Text {text: "FG Machines · 0.17.2"; color: theme.muted; font.pixelSize: 12}
+    Text {text: "FG Machines · 0.17.3"; color: theme.muted; font.pixelSize: 12}
    }
   }
   ColumnLayout {

@@ -1,7 +1,7 @@
 [Setup]
 AppId={{AC429F24-4B12-449C-BB01-A2EBBC9614F8}
 AppName=FG MTM
-AppVersion=0.17.2
+AppVersion=0.17.3
 AppPublisher=FG Machines
 AppPublisherURL=https://fgmachines.org
 DefaultDirName={localappdata}\Programs\FG Machines\FG MTM Qt
@@ -10,7 +10,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=../../../qt-installer
-OutputBaseFilename=FG-MTM-Windows-0.17.2-Setup
+OutputBaseFilename=FG-MTM-Windows-0.17.3-Setup
 SetupIconFile=fg-mtm.ico
 UninstallDisplayIcon={app}\fg_mtm.exe
 InfoBeforeFile=about.rtf

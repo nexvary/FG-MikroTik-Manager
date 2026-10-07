@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><defs>
+<linearGradient id="metal" x1="0" y1="0" x2="0.8" y2="1"><stop stop-color="#EEF5FC"/><stop offset=".45" stop-color="#9BB6CD"/><stop offset="1" stop-color="#486A88"/></linearGradient>
+<linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7CE4FF"/><stop offset=".5" stop-color="#189CFF"/><stop offset="1" stop-color="#255DD7"/></linearGradient>
+<linearGradient id="mint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B0FFCD"/><stop offset=".5" stop-color="#38E9A1"/><stop offset="1" stop-color="#009B80"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFF1AC"/><stop offset=".5" stop-color="#FFC34C"/><stop offset="1" stop-color="#D47D20"/></linearGradient>
+<linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#EDCEFF"/><stop offset=".55" stop-color="#AB80F0"/><stop offset="1" stop-color="#6454C4"/></linearGradient>
+<linearGradient id="glass" x1="0" y1="0" x2="0.7" y2="1"><stop stop-color="#284F6A"/><stop offset="1" stop-color="#102137"/></linearGradient>
+</defs><ellipse cx="32" cy="58" rx="23" ry="4" fill="#020A13" opacity=".55"/><g stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M27 6H37L39 14L45 17L53 15L58 24L52 30V36L58 42L53 51L45 49L39 52L37 59H27L25 52L19 49L11 51L6 42L12 36V30L6 24L11 15L19 17L25 14Z" fill="url(#metal)" stroke="#C8DEEF"/>
+<circle cx="32" cy="32" r="16" fill="url(#glass)"/><circle cx="32" cy="32" r="10" fill="url(#blue)" stroke="#8ADDFF"/><circle cx="32" cy="32" r="4" fill="#C9F2FF"/></g></svg>

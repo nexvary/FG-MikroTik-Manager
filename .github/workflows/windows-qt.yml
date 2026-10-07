@@ -80,21 +80,21 @@ jobs:
           $app=Start-Process qt-package/fg_mtm.exe -ArgumentList '--smoke-test' -RedirectStandardError qt-ui-stderr.log -RedirectStandardOutput qt-ui-stdout.log -PassThru
           if (-not $app.WaitForExit(90000)) { $app.Kill(); throw 'UI timeout' }
           if ($app.ExitCode -ne 0) { Get-Content qt-ui-stderr.log; throw 'UI failed' }
-          if (Select-String -Path qt-ui-stderr.log -Pattern 'TypeError|ReferenceError|Unable to assign|Cannot assign|is not a type' -Quiet) { Get-Content qt-ui-stderr.log; throw 'QML runtime error' }
+          if (Select-String -Path qt-ui-stderr.log -Pattern 'TypeError|ReferenceError|Unable to assign|Cannot assign|is not a type|Cannot open:|Error decoding:' -Quiet) { Get-Content qt-ui-stderr.log; throw 'QML runtime error' }
           if (!(Test-Path qt-proof/terminal-ar.png)) { throw 'Terminal screenshot missing' }
       - name: Build and test installer
         shell: pwsh
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" desktop/qt/packaging/installer.iss
           if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
-          $setup=Start-Process qt-installer/FG-MTM-Windows-0.17.2-Setup.exe -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\fg-mtm-qt-test"' -PassThru -Wait
+          $setup=Start-Process qt-installer/FG-MTM-Windows-0.17.3-Setup.exe -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\fg-mtm-qt-test"' -PassThru -Wait
           if ($setup.ExitCode -ne 0) { throw 'Install failed' }
           $app=Start-Process C:/fg-mtm-qt-test/fg_mtm.exe -ArgumentList '--smoke-test' -RedirectStandardError qt-ui-stderr.log -RedirectStandardOutput qt-ui-stdout.log -PassThru
           if (-not $app.WaitForExit(90000)) { $app.Kill(); throw 'Installed UI timeout' }
           if ($app.ExitCode -ne 0) { throw 'Installed UI failed' }
       - uses: actions/upload-artifact@v4
         with:
-          name: FG-MTM-Windows-0.17.2
+          name: FG-MTM-Windows-0.17.3
           path: |
             qt-installer/*.exe
             qt-proof/*.png
