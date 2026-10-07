@@ -12,6 +12,8 @@ Item {
   id:glyph
   anchors.fill:parent;anchors.margins:3
   onWidthChanged:requestPaint();onHeightChanged:requestPaint()
+  onVisibleChanged:if(visible)requestPaint()
+  onAvailableChanged:if(available)requestPaint()
   Connections {target:badge;function onInkChanged(){glyph.requestPaint()} function onKindChanged(){glyph.requestPaint()}}
  onPaint: {
   var c=getContext("2d");c.reset();c.scale(width/24,height/24);c.translate(2,2);c.scale(0.84,0.84);c.strokeStyle=badge.ink;c.fillStyle=Qt.rgba(badge.ink.r,badge.ink.g,badge.ink.b,0.22);c.lineWidth=2;c.lineCap="round";c.beginPath();
