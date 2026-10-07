@@ -92,7 +92,11 @@ fun BusinessAccessRoot(model:BusinessAccessModel=viewModel(),content:@Composable
     val identityKey=if(!model.enabled)"legacy" else model.principal?.id ?: "locked"
     val activity=androidx.activity.compose.LocalActivity.current as? androidx.activity.ComponentActivity
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){delay(2000);model.refresh(true)}}}
+    LaunchedEffect(lifecycle,identityKey){
+        if(model.principal!=null) lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){
+            while(true){delay(2000);model.refresh(true)}
+        }
+    }
     LaunchedEffect(identityKey){
         previousIdentity?.takeIf{it!=identityKey}?.let{holder.removeState(it)}
         if(previousIdentity!=null && previousIdentity!=identityKey){manage=false;business=false}
