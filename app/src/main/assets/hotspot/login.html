@@ -119,8 +119,8 @@ function loginVoucher(){
     return false;
   }
   var button=document.getElementById('connectButton'),label=document.getElementById('connectLabel');
-  button.classList.add('is-loading');button.disabled=true;
-  label.textContent=document.documentElement.lang==='en'?'Connecting…':'جارٍ الاتصال…';
+  if(button){button.classList.add('is-loading');button.disabled=true}
+  if(label){var en=document.documentElement&&document.documentElement.lang==='en';label.textContent=en?'Connecting…':'جارٍ الاتصال…'}
   return true;
 }
 (function(){
