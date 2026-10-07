@@ -162,6 +162,11 @@ ApplicationWindow {
      FgButton {text:root.tr("حذف المحفوظ","Delete saved");enabled:backend.profiles.length>0;onClicked:backend.deleteRouterProfile(backend.profiles[savedRouter.currentIndex].id)}
     }
     FgButton {Layout.columnSpan:2;text:root.tr("أجهزة الشبكة والأكسسات","Network devices & access points");enabled:backend.routerConnected&&!backend.busy;onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.discoverNetworkDevices()}}
+    ColumnLayout {Layout.columnSpan:2;Layout.fillWidth:true;visible:backend.discoveryDiagnostics.length>0;spacing:5
+     Text {Layout.fillWidth:true;text:root.tr("تشخيص اكتشاف MikroTik","MikroTik discovery diagnostics");color:theme.gold;font.bold:true}
+     Repeater {model:backend.discoveryDiagnostics;delegate:Text {required property var modelData;Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:(modelData.adapter||"")+" • IPv4 "+(modelData.ipv4||"")+" • "+root.tr("الشبكة","subnet")+" "+(modelData.subnet||"")+" • broadcast "+(modelData.broadcast||"-")+" • UDP 5678: "+(modelData.udp5678||"-")+" • MNDP: "+(modelData.mndp||"-")+" • "+root.tr("الفحص البديل","fallback")+": "+(modelData.scan||"-")}}
+    }
+    Text {Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;wrapMode:Text.Wrap;text:root.tr("الاكتشاف يستخدم كل بطاقات الشبكة النشطة: MNDP ثم Gateway وARP وفحص منافذ WinBox/API. يمكنك دائمًا الاتصال بعنوان IP يدويًا.","Discovery uses every active adapter: MNDP, then Gateway/ARP and WinBox/API port fallback. Manual IP connection always remains available.")}
     Text {Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;wrapMode:Text.Wrap;text:root.tr("اختر جهازًا لنسخ عنوانه، ثم احفظ كل ميكروتيك باسم مستقل. أجهزة DHCP وARP ليست مؤكدة الاتصال، وضبط الأكسس يعتمد على موديله.","Select a device to fill its IP, then save each MikroTik with a separate name. DHCP/ARP devices are not verified online; AP configuration depends on its model.")}
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
