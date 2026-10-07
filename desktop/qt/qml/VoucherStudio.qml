@@ -19,71 +19,71 @@ ColumnLayout {
   Layout.fillWidth: true; Layout.preferredHeight: 330; clip: true
   GridLayout {
    width: studio.width-24; columns: 4; rowSpacing: 10; columnSpacing: 12
-   Text {text: studio.tr("الخدمة","Service"); color: theme.silver}
-   ComboBox {id: mode; model: ["HOTSPOT","USER_MANAGER","PPPOE","OFFLINE"]; Layout.fillWidth: true;onActivated:vouchers.loadProfiles(currentText)}
-   Text {text: studio.tr("العدد","Quantity"); color: theme.silver}
+   Text {text: studio.tr("الخدمة","Service"); color: theme.gold;font.pixelSize:13;font.bold:true}
+   FgCombo {id: mode; model: ["HOTSPOT","USER_MANAGER","PPPOE","OFFLINE"]; Layout.fillWidth: true;onActivated:vouchers.loadProfiles(currentText)}
+   Text {text: studio.tr("العدد","Quantity"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: quantity; text: "10"; Layout.fillWidth: true; inputMethodHints: Qt.ImhDigitsOnly}
-   Text {text: studio.tr("الباقة","Profile"); color: theme.silver}
+   Text {text: studio.tr("الباقة","Profile"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: profile; text: "default"; Layout.fillWidth: true}
-   Text {text: studio.tr("خادم HotSpot","HotSpot server"); color: theme.silver}
+   Text {text: studio.tr("خادم HotSpot","HotSpot server"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: server; text: "all"; Layout.fillWidth: true}
-   Text {text: studio.tr("طول الكود","Code length"); color: theme.silver}
+   Text {text: studio.tr("طول الكود","Code length"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: length; text: "8"; Layout.fillWidth: true}
-   Text {text: studio.tr("نوع الأحرف","Characters"); color: theme.silver}
-   ComboBox {id: alphabet; model: ["NUMERIC","ALPHANUMERIC"]; Layout.fillWidth: true}
-   Text {text: studio.tr("بداية الكود","Prefix"); color: theme.silver}
+   Text {text: studio.tr("نوع الأحرف","Characters"); color: theme.gold;font.pixelSize:13;font.bold:true}
+   FgCombo {id: alphabet; model: ["NUMERIC","ALPHANUMERIC"]; Layout.fillWidth: true}
+   Text {text: studio.tr("بداية الكود","Prefix"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: prefix; Layout.fillWidth: true}
-   Text {text: studio.tr("نهاية الكود","Suffix"); color: theme.silver}
+   Text {text: studio.tr("نهاية الكود","Suffix"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: suffix; Layout.fillWidth: true}
-   Text {text: studio.tr("كلمة المرور","Password"); color: theme.silver}
-   ComboBox {id: passwordMode; model: ["SAME_AS_USERNAME","RANDOM"]; Layout.fillWidth: true}
-   Text {text: studio.tr("طول كلمة المرور","Password length"); color: theme.silver}
+   Text {text: studio.tr("كلمة المرور","Password"); color: theme.gold;font.pixelSize:13;font.bold:true}
+   FgCombo {id: passwordMode; model: ["SAME_AS_USERNAME","RANDOM"]; Layout.fillWidth: true}
+   Text {text: studio.tr("طول كلمة المرور","Password length"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: passwordLength; text: "6"; Layout.fillWidth: true}
-   Text {text: studio.tr("المدة","Duration"); color: theme.silver}
+   Text {text: studio.tr("المدة","Duration"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: duration; text: "60"; Layout.fillWidth: true}
-   Text {text: studio.tr("الوحدة","Unit"); color: theme.silver}
-   ComboBox {id: durationUnit; model: ["MINUTES","HOURS","DAYS"]; Layout.fillWidth: true}
-   Text {text: studio.tr("حجم البيانات MB","Data allowance MB"); color: theme.silver}
+   Text {text: studio.tr("الوحدة","Unit"); color: theme.gold;font.pixelSize:13;font.bold:true}
+   FgCombo {id: durationUnit; model: ["MINUTES","HOURS","DAYS"]; Layout.fillWidth: true}
+   Text {text: studio.tr("حجم البيانات MB","Data allowance MB"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: dataLimit; placeholderText: studio.tr("فارغ = بلا حد","Empty = unlimited"); Layout.fillWidth: true}
-   Text {text: studio.tr("الانتهاء المطلق","Absolute expiry"); color: theme.silver}
+   Text {text: studio.tr("الانتهاء المطلق","Absolute expiry"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: expiry; placeholderText: "2026-12-31T23:59:00+02:00"; Layout.fillWidth: true}
-   Text {text: studio.tr("اسم الشبكة","Network name"); color: theme.silver}
+   Text {text: studio.tr("اسم الشبكة","Network name"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: network; text: "FG Machines WiFi"; Layout.fillWidth: true}
-   Text {text: studio.tr("الدعم","Support phone"); color: theme.silver}
+   Text {text: studio.tr("الدعم","Support phone"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: phone; Layout.fillWidth: true}
-   Text {text: studio.tr("السعر الظاهر","Display price"); color: theme.silver}
+   Text {text: studio.tr("السعر الظاهر","Display price"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: price; Layout.fillWidth: true}
-   Text {text: studio.tr("رابط دخول QR","QR login URL"); color: theme.silver}
+   Text {text: studio.tr("رابط دخول QR","QR login URL"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: portal; Layout.fillWidth: true}
-   Text {text:studio.tr("باقات الراوتر","Router profiles");color:theme.silver}
-   ComboBox {model:vouchers.profiles;textRole:"name";Layout.fillWidth:true;onActivated:profile.text=currentText}
+   Text {text:studio.tr("باقات الراوتر","Router profiles");color:theme.gold;font.pixelSize:13;font.bold:true}
+   FgCombo {model:vouchers.profiles;textRole:"name";Layout.fillWidth:true;onActivated:profile.text=currentText}
    FgButton {text:studio.tr("قراءة الباقات","Load profiles");enabled:backend.routerConnected&&!backend.busy;onClicked:vouchers.loadProfiles(mode.currentText)}
-   ComboBox {model:vouchers.servers;textRole:"name";Layout.fillWidth:true;onActivated:server.text=currentText}
-   Text {text: studio.tr("ملاحظة","Comment"); color: theme.silver}
+   FgCombo {model:vouchers.servers;textRole:"name";Layout.fillWidth:true;onActivated:server.text=currentText}
+   Text {text: studio.tr("ملاحظة","Comment"); color: theme.gold;font.pixelSize:13;font.bold:true}
    FgField {id: comment; Layout.fillWidth: true; Layout.columnSpan: 3}
   }
  }
  Flow {
   Layout.fillWidth: true;spacing:8
-  FgButton {text: studio.tr("إنشاء وحفظ","Generate & save"); enabled: !vouchers.busy; accent: theme.mint; onClicked: {
+  FgButton {filled:true;text: studio.tr("إنشاء وحفظ","Generate & save"); enabled: !vouchers.busy; accent: theme.mint; onClicked: {
    var request={quantity:Number(quantity.text),usernameLength:Number(length.text),passwordLength:Number(passwordLength.text),mode:mode.currentText,profile:profile.text,server:server.text,prefix:prefix.text,suffix:suffix.text,passwordMode:passwordMode.currentText,characterSet:alphabet.currentText,durationValue:Number(duration.text),durationUnit:durationUnit.currentText,comment:comment.text,branding:{networkName:network.text,supportPhone:phone.text,priceText:price.text,portalLoginUrl:portal.text}}
    if(dataLimit.text.length)request.limitBytesTotal=String(Math.round(Number(dataLimit.text)*1048576))
    if(expiry.text.length)request.absoluteExpiryEpochMs=String(new Date(expiry.text).getTime())
    vouchers.generate(request)
   }}
   FgButton {text: studio.tr("تفعيل على الراوتر","Activate on router"); enabled: !vouchers.busy&&vouchers.cards.length>0; onClicked: activation.open()}
-  ComboBox {id: paper; model: ["A4","58","80"]}
+  FgCombo {id: paper; model: ["A4","58","80"]}
   FgButton {text: studio.tr("طباعة","Print"); enabled: vouchers.cards.length>0&&!vouchers.busy; onClicked: vouchers.print(paper.currentText)}
-  ComboBox {id: format; model: ["PDF","PNG","HTML","CSV","RSC"]}
+  FgCombo {id: format; model: ["PDF","PNG","HTML","CSV","RSC"]}
   FgButton {text: studio.tr("تصدير","Export"); enabled: vouchers.cards.length>0&&!vouchers.busy; onClicked: {studio.exportFormat=format.currentText;saveFile.open()}}
  }
- FgDialog {id: activation; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 520; title: studio.tr("تفعيل دفعة الكروت","Activate voucher batch"); contentItem: ColumnLayout {Text {Layout.fillWidth: true; wrapMode: Text.Wrap; text: studio.tr("سيُنشئ كروت الدفعة على الراوتر المتصل. راجع الخدمة والباقات والصلاحية أولًا.","Creates this batch on the connected router. Review service, profile and expiry first."); color: theme.silver} FgButton {text: studio.tr("تأكيد التفعيل","Confirm activation"); onClicked: {vouchers.activate();activation.close()}}}}
+ FgDialog {id: activation; parent: Overlay.overlay; anchors.centerIn: parent; modal: true; width: 520; title: studio.tr("تفعيل دفعة الكروت","Activate voucher batch"); contentItem: ColumnLayout {Text {Layout.fillWidth: true; wrapMode: Text.Wrap; text: studio.tr("سيُنشئ كروت الدفعة على الراوتر المتصل. راجع الخدمة والباقات والصلاحية أولًا.","Creates this batch on the connected router. Review service, profile and expiry first."); color: theme.gold;font.pixelSize:13;font.bold:true} FgButton {text: studio.tr("تأكيد التفعيل","Confirm activation"); onClicked: {vouchers.activate();activation.close()}}}}
  Text {text: vouchers.status; color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
  Flow {
   Layout.fillWidth: true;spacing:8
   FgButton {text:studio.tr("السابق","Previous");enabled:vouchers.archivePage>0;onClicked:vouchers.setArchivePage(vouchers.archivePage-1)}
   FgButton {text:studio.tr("التالي","Next");enabled:(vouchers.archivePage+1)*20<vouchers.archiveCount;onClicked:vouchers.setArchivePage(vouchers.archivePage+1)}
-  ComboBox {id: archive; model: vouchers.archive; textRole: "id"; Layout.preferredWidth: 260}
+  FgCombo {id: archive; model: vouchers.archive; textRole: "id"; Layout.preferredWidth: 260}
   FgButton {text: studio.tr("فتح دفعة","Open batch"); enabled: !vouchers.busy; onClicked: if(archive.currentIndex>=0)vouchers.openBatch(vouchers.archive[archive.currentIndex].id)}
   FgField {id: backupPassword;width:240; echoMode: TextInput.Password; placeholderText: studio.tr("كلمة مرور النسخة المشفرة (12+)","Backup password (12+)"); Layout.fillWidth: true}
   FgButton {text: studio.tr("نسخ الأرشيف","Back up archive"); enabled: backupPassword.text.length>=12&&!vouchers.busy; onClicked: archiveFile.open()}

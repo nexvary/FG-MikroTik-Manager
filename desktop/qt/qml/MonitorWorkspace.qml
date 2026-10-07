@@ -11,7 +11,7 @@ Item {
   Text {Layout.fillWidth:true;color:theme.silver;wrapMode:Text.Wrap;text:pane.tr("تابع أربعة راوترات، بحد اتصالين متزامنين. التنبيهات: انقطاع وعودة وارتفاع المعالج. كلمات المرور لهذه الجلسة فقط.","Monitor four routers with two concurrent connections. Alerts cover outages, recovery and high CPU. Passwords are kept for this session only.")}
   RowLayout {
    Layout.fillWidth:true
-   ComboBox {id: profile;Layout.fillWidth:true;model:backend.profiles;textRole:"name"}
+   FgCombo {id: profile;Layout.fillWidth:true;model:backend.profiles;textRole:"name"}
    FgField {id: secret;Layout.preferredWidth:200;echoMode:TextInput.Password;placeholderText:pane.tr("كلمة مرور الراوتر","Router password")}
    FgButton {text:pane.tr("بدء المراقبة","Start monitoring");enabled:commerce.allowed("ROUTER")&&backend.profiles.length>0;onClicked:{monitor.start(backend.profiles[profile.currentIndex],secret.text);secret.clear()}}
    FgButton {text:pane.tr("إيقاف الكل","Stop all");onClicked:monitor.stopAll()}

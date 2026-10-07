@@ -12,7 +12,7 @@ ColumnLayout {
  Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:pane.tr("الربط يحفظ هوية الجهاز والحساب دون كلمات المرور. التجديد المالي يُحفظ أولًا؛ تطبيقه على الشبكة خطوة مستقلة تؤكدها هنا.","Bindings store device and account identity without passwords. Financial renewal is saved first; applying it to the network is a separate confirmed step.")}
  RowLayout {Layout.fillWidth:true
   FgButton {text:pane.tr("قراءة حسابات الراوتر","Load router accounts");enabled:!networkBilling.busy&&commerce.allowed("IMPORT")&&commerce.allowed("ROUTER");onClicked:{pane.selection=[];networkBilling.loadCatalog()}}
-  ComboBox {id:currency;model:["EGP","USD","EUR","SAR","AED","TRY"]}
+  FgCombo {id:currency;model:["EGP","USD","EUR","SAR","AED","TRY"]}
   FgButton {text:pane.tr("ربط المحدد بالمشتركين","Bind selected accounts");enabled:!networkBilling.busy&&pane.selection.length>0;onClicked:networkBilling.importSelected(pane.selection,currency.currentText)}
   Text {text:String(pane.selection.length)+pane.tr(" محدد"," selected");color:theme.mint}
  }
@@ -20,7 +20,7 @@ ColumnLayout {
   delegate:CheckBox {required property var modelData;required property int index;width:ListView.view.width;text:modelData.name+" • "+modelData.service+" • "+modelData.profile;checked:pane.selection.indexOf(String(index))>=0;onClicked:{let next=pane.selection.slice(),i=next.indexOf(String(index));if(checked&&i<0)next.push(String(index));else if(!checked&&i>=0)next.splice(i,1);pane.selection=next}}
  }
  RowLayout {Layout.fillWidth:true
-  ComboBox {id:invoice;Layout.fillWidth:true;editable:true;model:pane.invoiceChoices;textRole:"display";valueRole:"id";property string text:editText===displayText?(currentValue||""):editText;onDownChanged:if(down)pane.invoiceChoices=commerce.choices("invoices")}
+  FgCombo {id:invoice;Layout.fillWidth:true;editable:true;model:pane.invoiceChoices;textRole:"display";valueRole:"id";property string text:editText===displayText?(currentValue||""):editText;onDownChanged:if(down)pane.invoiceChoices=commerce.choices("invoices")}
   FgField {id:profile;Layout.preferredWidth:180;placeholderText:pane.tr("اسم الباقة على الراوتر","Router profile name")}
   FgField {id:allowance;Layout.preferredWidth:140;text:"0";placeholderText:pane.tr("البيانات MB؛ 0 بلا حد","MB; 0 unlimited")}
   FgButton {text:pane.tr("معاينة التجديد","Preview renewal");enabled:!networkBilling.busy&&commerce.allowed("ROUTER");onClicked:networkBilling.prepare(invoice.text,profile.text,allowance.text)}

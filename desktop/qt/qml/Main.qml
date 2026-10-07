@@ -117,7 +117,7 @@ ApplicationWindow {
     visible: root.page==="business"; Layout.fillWidth: true
     RowLayout {
      Layout.fillWidth: true
-     ComboBox {id: tables; Layout.preferredWidth: 220; model: root.arabic ? root.tableAr : root.tableKeys; onActivated: {root.businessPage=0;root.filter()}}
+     FgCombo {id: tables; Layout.preferredWidth: 220; model: root.arabic ? root.tableAr : root.tableKeys; onActivated: {root.businessPage=0;root.filter()}}
      FgField {id: search; Layout.fillWidth: true; placeholderText: root.tr("ابحث في السجلات","Search records"); onTextEdited: {root.businessPage=0;root.filter()}}
      FgButton {text: root.tr("قراءة","Read"); enabled: !backend.busy; onClicked: {tables.currentIndex=0;root.businessPage=0;backend.business()}}
      FgButton {text: "CSV"; enabled: backend.connected&&!backend.busy; onClicked: csvDialog.open()}
@@ -141,10 +141,10 @@ ApplicationWindow {
    GridLayout {
     visible: root.page==="router"; columns: 2; Layout.fillWidth: true
     FgField {id: routerUrl; Layout.fillWidth: true; placeholderText: root.tr("عنوان IP أو اسم الراوتر","Router IP or hostname"); LayoutMirroring.enabled: false}
-    ComboBox {id: menu; model: backend.menus.filter(function(key){return root.routerGroup==="ALL"||backend.module(key).group===root.routerGroup}); Layout.fillWidth: true;onActivated:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
+    FgCombo {id: menu; model: backend.menus.filter(function(key){return root.routerGroup==="ALL"||backend.module(key).group===root.routerGroup}); Layout.fillWidth: true;onActivated:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
     FgField {id: routerUser; Layout.fillWidth: true; placeholderText: root.tr("حساب الراوتر","Router username"); LayoutMirroring.enabled: false}
     FgField {id: routerPassword; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: root.tr("كلمة المرور","Password"); LayoutMirroring.enabled: false}
-    ComboBox {id: routerProtocol; model: ["REST","API_SSL","API","AUTO","REST_HTTP"]; Layout.fillWidth: true; onActivated: routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":currentIndex===4?"80":"8728"}
+    FgCombo {id: routerProtocol; model: ["REST","API_SSL","API","AUTO","REST_HTTP"]; Layout.fillWidth: true; onActivated: routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":currentIndex===4?"80":"8728"}
     FgField {id: routerPort; text: "443"; placeholderText: root.tr("المنفذ","Port")}
     FgButton {text: root.tr("اتصال وقراءة","Connect & read"); enabled: !backend.busy; onClicked: {root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.connectRouter(routerUrl.text,Number(routerPort.text),routerUser.text,routerPassword.text,routerProtocol.currentText,menu.currentText);routerPassword.clear()}}
     FgButton {text: root.tr("قراءة القسم","Read section"); enabled: !backend.busy; onClicked: {root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.command("/"+menu.currentText+" print")}}
@@ -158,7 +158,7 @@ ApplicationWindow {
     RowLayout {Layout.columnSpan:2;Layout.fillWidth:true
      FgField {id:profileName;Layout.fillWidth:true;placeholderText:root.tr("اسم الراوتر لحفظ الاتصال","Router name to save connection")}
      FgButton {text:root.tr("حفظ الاتصال","Save connection");onClicked:backend.saveRouterProfile(profileName.text,commerce.scope,routerUrl.text,Number(routerPort.text),routerUser.text,routerProtocol.currentText)}
-     ComboBox {id:savedRouter;Layout.fillWidth:true;model:backend.profiles;textRole:"name";onActivated:{let p=backend.profiles[currentIndex];routerUrl.text=p.host;routerUser.text=p.user;routerPort.text=String(p.port);routerProtocol.currentIndex=routerProtocol.model.indexOf(p.protocol)}}
+     FgCombo {id:savedRouter;Layout.fillWidth:true;model:backend.profiles;textRole:"name";onActivated:{let p=backend.profiles[currentIndex];routerUrl.text=p.host;routerUser.text=p.user;routerPort.text=String(p.port);routerProtocol.currentIndex=routerProtocol.model.indexOf(p.protocol)}}
      FgButton {text:root.tr("حذف المحفوظ","Delete saved");enabled:backend.profiles.length>0;onClicked:backend.deleteRouterProfile(backend.profiles[savedRouter.currentIndex].id)}
     }
     FgButton {Layout.columnSpan:2;text:root.tr("أجهزة الشبكة والأكسسات","Network devices & access points");enabled:backend.routerConnected&&!backend.busy;onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.discoverNetworkDevices()}}
