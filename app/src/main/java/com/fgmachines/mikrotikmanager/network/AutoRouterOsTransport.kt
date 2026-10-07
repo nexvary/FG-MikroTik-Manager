@@ -10,10 +10,22 @@ class AutoRouterOsTransport internal constructor(
     private val candidatesFactory: () -> List<RouterOsTransport>
 ) : RouterOsTransport {
 
-    constructor(settings: RouterConnectionSettings) : this({ listOf(
-        ApiRouterOsTransport(settings.copy(port = 8728, protocol = RouterProtocol.API)),
-        RestRouterOsTransport(settings.copy(port = 443, protocol = RouterProtocol.REST_HTTPS))
-    ) })
+    constructor(settings: RouterConnectionSettings) : this({
+        val candidates = automaticCandidateSettings(settings)
+        listOf(
+            ApiRouterOsTransport(candidates[0]),
+            ApiRouterOsTransport(candidates[1]),
+            RestRouterOsTransport(candidates[2])
+        )
+    })
+
+    companion object {
+        internal fun automaticCandidateSettings(settings: RouterConnectionSettings): List<RouterConnectionSettings> = listOf(
+            settings.copy(port = 8728, protocol = RouterProtocol.API),
+            settings.copy(port = 8729, protocol = RouterProtocol.API_SSL),
+            settings.copy(port = 443, protocol = RouterProtocol.REST_HTTPS)
+        )
+    }
 
     @Volatile private var delegate: RouterOsTransport? = null
     private val lifecycleLock = Any()

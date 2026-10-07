@@ -86,11 +86,18 @@ void RouterClient::close(){cancelDiscovery();auditAttempt={};++configVersion;++g
 void RouterClient::read(QString menu,Done done){execute(menu,"print",{},std::move(done));}
 void RouterClient::execute(QString menu,QString operation,QJsonObject attrs,Done done){if(!authorization()){done({{},"ACCESS_DENIED"});return;}if(active||pendingRetry){done({{},"الراوتر مشغول • Router busy"});return;}
  if(autoMode&&!negotiated&&!selecting){selecting=true;const auto version=configVersion;
-  read("system/identity",[this,menu,operation,attrs,done,version](RouterReply probe){
+  read("system/identity",[this,menu,operation,attrs,done,version](RouterReply apiProbe){
    if(version!=configVersion){done({{},"SESSION_CHANGED"});return;}
-   if(probe.ok()){negotiated=true;selecting=false;execute(menu,operation,attrs,done);return;}
-   protocol="REST";port=443;
-   read("system/identity",[this,menu,operation,attrs,done,version](RouterReply fallback){if(version!=configVersion){done({{},"SESSION_CHANGED"});return;}selecting=false;if(!fallback.ok()){done(fallback);return;}negotiated=true;execute(menu,operation,attrs,done);});
+   if(apiProbe.ok()){negotiated=true;selecting=false;execute(menu,operation,attrs,done);return;}
+   protocol="API_SSL";port=8729;
+   read("system/identity",[this,menu,operation,attrs,done,version](RouterReply sslProbe){
+    if(version!=configVersion){done({{},"SESSION_CHANGED"});return;}
+    if(sslProbe.ok()){negotiated=true;selecting=false;execute(menu,operation,attrs,done);return;}
+    protocol="REST";port=443;
+    read("system/identity",[this,menu,operation,attrs,done,version](RouterReply restProbe){
+     if(version!=configVersion){done({{},"SESSION_CHANGED"});return;}selecting=false;if(!restProbe.ok()){done(restProbe);return;}negotiated=true;execute(menu,operation,attrs,done);
+    });
+   });
   });return;
  }
  if(!retrying)readRetries=0;retrying=false;

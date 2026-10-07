@@ -10,6 +10,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AutoRouterOsTransportTest {
+    @Test fun automaticCandidatesIncludeApiSslBeforeRestFallback() {
+        val base = com.fgmachines.mikrotikmanager.data.RouterConnectionSettings("192.168.88.1", 9999, "admin", "pw")
+        val candidates = AutoRouterOsTransport.automaticCandidateSettings(base)
+        assertEquals(listOf(
+            com.fgmachines.mikrotikmanager.data.RouterProtocol.API,
+            com.fgmachines.mikrotikmanager.data.RouterProtocol.API_SSL,
+            com.fgmachines.mikrotikmanager.data.RouterProtocol.REST_HTTPS
+        ), candidates.map { it.protocol })
+        assertEquals(listOf(8728, 8729, 443), candidates.map { it.port })
+    }
+
     private class Probe : RouterOsTransport {
         var probes = 0
         var creates = 0
