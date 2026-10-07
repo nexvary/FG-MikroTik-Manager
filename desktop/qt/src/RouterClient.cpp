@@ -8,9 +8,15 @@
 #include <QNetworkDatagram>
 #include <QElapsedTimer>
 #include <QUrl>
+#include <QTcpSocket>
+#include <QProcess>
+#include <QQueue>
+#include <QSet>
+#include <QHash>
 #include <memory>
 #include <utility>
 #include <stdexcept>
+#include <algorithm>
 namespace RouterCodec {
 QByteArray length(quint32 n){QByteArray b;auto put=[&](quint32 x){b.append(char(x&255));};if(n<0x80)put(n);else if(n<0x4000){put((n>>8)|0x80);put(n);}else if(n<0x200000){put((n>>16)|0xc0);put(n>>8);put(n);}else if(n<0x10000000){put((n>>24)|0xe0);put(n>>16);put(n>>8);put(n);}else{put(0xf0);put(n>>24);put(n>>16);put(n>>8);put(n);}return b;}
 QByteArray sentence(const QStringList &words){QByteArray b;for(auto word:words){auto bytes=word.toUtf8();b+=length(quint32(bytes.size()));b+=bytes;}b.append('\0');return b;}
@@ -37,15 +43,46 @@ RouterCommand parse(const QString &line){RouterCommand c;QString token;QStringLi
  return c;
 }
 }
+namespace RouterDiscoveryCodec {
+QJsonObject parseMndp(const QByteArray &b,const QHostAddress &sender){
+ if(b.size()<4||sender.protocol()!=QAbstractSocket::IPv4Protocol)return {};
+ QJsonObject row{{"host",sender.toString()}};int pos=4;bool valid=true;
+ while(pos+4<=b.size()){
+  auto u=[&](int i){return quint8(b[i]);};int type=(u(pos)<<8)|u(pos+1),n=(u(pos+2)<<8)|u(pos+3);pos+=4;
+  if(n<0||pos+n>b.size()){valid=false;break;}auto v=b.mid(pos,n);
+  if(type!=1&&type!=17)while(v.endsWith(char(0)))v.chop(1);
+  if(type==5)row["name"]=QString::fromUtf8(v);
+  else if(type==7)row["version"]=QString::fromUtf8(v);
+  else if(type==8)row["platform"]=QString::fromUtf8(v);
+  else if(type==12)row["board"]=QString::fromUtf8(v);
+  else if(type==16)row["interface"]=QString::fromUtf8(v);
+  else if(type==17&&n==4)row["host"]=QHostAddress((quint32(quint8(v[0]))<<24)|(quint32(quint8(v[1]))<<16)|(quint32(quint8(v[2]))<<8)|quint8(v[3])).toString();
+  else if(type==1&&n==6)row["mac"]=QString::fromLatin1(v.toHex(':')).toUpper();
+  pos+=n;
+ }
+ if(!valid||pos!=b.size())return {};
+ if(row["name"].toString().isEmpty())row["name"]="MikroTik";
+ row["method"]="MNDP";row["verification"]="MNDP RouterOS";
+ return row;
+}
+QStringList scanHosts(const QHostAddress &local,int prefixLength,int cap){
+ bool ok=false;quint32 address=local.toIPv4Address(&ok);if(!ok||prefixLength<1||prefixLength>30||cap<1)return {};
+ const int prefix=std::max(24,prefixLength);if(prefix>30)return {};
+ const quint32 mask=prefix==0?0u:(0xffffffffu<<(32-prefix));const quint32 network=address&mask,broadcast=network|~mask;
+ QStringList result;for(quint32 current=network+1;current<broadcast&&result.size()<cap;current++)if(current!=address)result.append(QHostAddress(current).toString());
+ return result;
+}
+}
 RouterClient::RouterClient(QObject*p):QObject(p){deadline.setSingleShot(true);connect(&deadline,&QTimer::timeout,this,[this]{fail("انتهت مهلة الراوتر • Router timeout",true);});
  connect(&socket,&QSslSocket::connected,this,[this]{if(protocol=="API")sendLogin();});connect(&socket,&QSslSocket::encrypted,this,&RouterClient::sendLogin);
  connect(&socket,&QSslSocket::readyRead,this,&RouterClient::receive);
  connect(&socket,&QSslSocket::errorOccurred,this,[this](QAbstractSocket::SocketError){if(active)fail("انقطع اتصال الراوتر • Router connection lost",true);});
  connect(&socket,&QSslSocket::sslErrors,this,[this](const QList<QSslError>&){fail("شهادة الراوتر غير موثوقة • Router certificate rejected");});
  connect(&socket,&QSslSocket::disconnected,this,[this]{authenticated=false;if(active)fail("انقطع اتصال الراوتر • Router connection lost",true);emit changed();});}
-RouterClient::~RouterClient(){callback={};active=false;deadline.stop();socket.disconnect(this);socket.abort();net.disconnect(this);password.fill(QChar(0));}
+RouterClient::~RouterClient(){cancelDiscovery();callback={};active=false;deadline.stop();socket.disconnect(this);socket.abort();net.disconnect(this);password.fill(QChar(0));}
 void RouterClient::configure(QString h,int p,QString u,QString pw,QString proto){close();host=h.trimmed();port=p;username=u;password=pw;autoMode=proto=="AUTO";negotiated=false;selecting=false;protocol=autoMode?"API":proto=="REST_HTTPS"?"REST":proto;port=autoMode?8728:p;message.clear();emit changed();}
-void RouterClient::close(){auditAttempt={};++configVersion;++generation;selecting=false;negotiated=false;bool running=active||pendingRetry;pendingRetry=false;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
+void RouterClient::cancelDiscovery(){if(!discovering&&!discoveryContext)return;++discoveryGeneration;discovering=false;if(discoveryContext){discoveryContext->deleteLater();discoveryContext=nullptr;}}
+void RouterClient::close(){cancelDiscovery();auditAttempt={};++configVersion;++generation;selecting=false;negotiated=false;bool running=active||pendingRetry;pendingRetry=false;auto cb=std::move(callback);callback={};active=false;authenticated=false;deadline.stop();socket.abort();input.clear();password.clear();if(running&&cb)cb({{},"أغلقت الجلسة • Session closed",wrote&&action!="print"});emit changed();}
 void RouterClient::read(QString menu,Done done){execute(menu,"print",{},std::move(done));}
 void RouterClient::execute(QString menu,QString operation,QJsonObject attrs,Done done){if(!authorization()){done({{},"ACCESS_DENIED"});return;}if(active||pendingRetry){done({{},"الراوتر مشغول • Router busy"});return;}
  if(autoMode&&!negotiated&&!selecting){selecting=true;const auto version=configVersion;
@@ -98,8 +135,115 @@ void RouterClient::command(QString text,Done done){auto c=RouterCodec::parse(tex
  }
  execute(c.menu,c.action,c.attributes,std::move(done));
 }
-void RouterClient::discover(){auto udp=new QUdpSocket(this);if(!udp->bind(QHostAddress::AnyIPv4,5678,QUdpSocket::ShareAddress|QUdpSocket::ReuseAddressHint)){delete udp;message="تعذر بدء اكتشاف الراوتر • Discovery bind failed";emit changed();return;}
- neighbors={};connect(udp,&QUdpSocket::readyRead,this,[this,udp]{while(udp->hasPendingDatagrams()){if(udp->pendingDatagramSize()>65536){udp->receiveDatagram();continue;}QByteArray b(int(udp->pendingDatagramSize()),'\0');QHostAddress sender;udp->readDatagram(b.data(),b.size(),&sender);if(b.size()<4)continue;QJsonObject row{{"host",sender.toString()}};int pos=4;bool valid=true;while(pos+4<=b.size()){auto u=[&](int i){return quint8(b[i]);};int type=(u(pos)<<8)|u(pos+1),n=(u(pos+2)<<8)|u(pos+3);pos+=4;if(pos+n>b.size()){valid=false;break;}auto v=b.mid(pos,n);if(type!=1&&type!=17)while(v.endsWith(char(0)))v.chop(1);if(type==5)row["name"]=QString::fromUtf8(v);else if(type==7)row["version"]=QString::fromUtf8(v);else if(type==8)row["platform"]=QString::fromUtf8(v);else if(type==12)row["board"]=QString::fromUtf8(v);else if(type==16)row["interface"]=QString::fromUtf8(v);else if(type==17&&n==4)row["host"]=QHostAddress((quint32(quint8(v[0]))<<24)|(quint32(quint8(v[1]))<<16)|(quint32(quint8(v[2]))<<8)|quint8(v[3])).toString();else if(type==1&&n==6)row["mac"]=QString::fromLatin1(v.toHex(':')).toUpper();pos+=n;}if(!valid||pos!=b.size())continue;if(row["name"].toString().isEmpty())row["name"]="MikroTik";bool duplicate=false;for(auto v:neighbors)if(row.contains("mac")?v.toObject()["mac"]==row["mac"]:v.toObject()["host"]==row["host"]&&v.toObject()["name"]==row["name"]){duplicate=true;break;}if(!duplicate)neighbors.append(row);}});
- udp->writeDatagram(QByteArray(4,'\0'),QHostAddress::Broadcast,5678);
- for(auto iface:QNetworkInterface::allInterfaces())for(auto entry:iface.addressEntries())if(!entry.broadcast().isNull())udp->writeDatagram(QByteArray(4,'\0'),entry.broadcast(),5678);
- QTimer::singleShot(4000,udp,[this,udp]{udp->close();udp->deleteLater();emit discoveryReady(neighbors);message="اكتمل اكتشاف الشبكة المحلية • LAN discovery complete";emit changed();});}
+void RouterClient::discover(QVariantList savedProfiles){
+ if(discovering||active||pendingRetry)return;cancelDiscovery();discovering=true;neighbors={};discoveryDiagnosticsRows={};const auto current=++discoveryGeneration;
+ auto context=new QObject(this);discoveryContext=context;
+ struct AdapterInfo{QString name,ip,broadcast,subnet;quint32 address=0,mask=0;int prefix=0;};
+ QList<AdapterInfo> adapters;
+ auto candidateSource=std::make_shared<QHash<QString,QString>>(),candidateName=std::make_shared<QHash<QString,QString>>();
+ auto extraPorts=std::make_shared<QHash<QString,QSet<quint16>>>();
+ auto sourceRank=[](const QString&s){return s=="Saved Router"?4:s=="Gateway"?3:s=="ARP"?2:1;};
+ auto addCandidate=[candidateSource,candidateName,extraPorts,sourceRank](QString host,QString source,QString name={},int port=0){
+  host=host.trimmed();if(host.isEmpty()||host=="0.0.0.0"||host=="255.255.255.255")return;
+  auto old=candidateSource->value(host);if(old.isEmpty()||sourceRank(source)>sourceRank(old))(*candidateSource)[host]=source;
+  if(!name.trimmed().isEmpty())(*candidateName)[host]=name.trimmed();
+  if(port>0&&port<=65535)(*extraPorts)[host].insert(quint16(port));
+ };
+ for(auto iface:QNetworkInterface::allInterfaces()){
+  auto flags=iface.flags();if(!flags.testFlag(QNetworkInterface::IsUp)||!flags.testFlag(QNetworkInterface::IsRunning)||flags.testFlag(QNetworkInterface::IsLoopBack))continue;
+  for(auto entry:iface.addressEntries()){
+   if(entry.ip().protocol()!=QAbstractSocket::IPv4Protocol||entry.ip().isLoopback()||entry.ip().isMulticast())continue;
+   bool ok=false;auto address=entry.ip().toIPv4Address(&ok);int prefix=entry.prefixLength();if(!ok||prefix<1||prefix>30)continue;
+   quint32 mask=0xffffffffu<<(32-prefix);AdapterInfo info{iface.humanReadableName(),entry.ip().toString(),entry.broadcast().toString(),QHostAddress(address&mask).toString()+"/"+QString::number(prefix),address,mask,prefix};adapters.append(info);
+   QJsonObject diag{{"adapter",info.name},{"ipv4",info.ip},{"subnet",info.subnet},{"broadcast",info.broadcast},{"udp5678","Starting"},{"mndp","Waiting"},{"scan","Pending"},{"firewall","Private/Domain installer rule"}};
+   discoveryDiagnosticsRows.append(diag);
+   for(auto host:RouterDiscoveryCodec::scanHosts(entry.ip(),prefix,254))addCandidate(host,"IP Scan");
+  }
+ }
+ for(auto value:savedProfiles){auto p=value.toMap();addCandidate(p.value("host").toString(),"Saved Router",p.value("name").toString(),p.value("port").toInt());}
+ auto adapterFor=[adapters](QString host){QHostAddress h(host);bool ok=false;auto a=h.toIPv4Address(&ok);if(!ok)return QString{};for(const auto&i:adapters)if((a&i.mask)==(i.address&i.mask))return i.name;return QString{};};
+ auto markDiagnostics=[this,current](const QString &adapter,const QString &field,const QString &value){
+  if(current!=discoveryGeneration)return;for(int i=0;i<discoveryDiagnosticsRows.size();i++){auto row=discoveryDiagnosticsRows[i].toObject();if(adapter.isEmpty()||row["adapter"].toString()==adapter){row[field]=value;discoveryDiagnosticsRows[i]=row;}}emit changed();
+ };
+ auto publish=[this,current,adapterFor,markDiagnostics](QJsonObject row){
+  if(current!=discoveryGeneration)return;QString host=row["host"].toString(),mac=row["mac"].toString().toUpper();if(host.isEmpty()&&mac.isEmpty())return;
+  int found=-1;for(int i=0;i<neighbors.size();i++){auto old=neighbors[i].toObject();if(!mac.isEmpty()&&old["mac"].toString().toUpper()==mac){found=i;break;}if(mac.isEmpty()&&!host.isEmpty()&&old["host"].toString()==host){found=i;break;}}
+  QJsonObject merged=found>=0?neighbors[found].toObject():QJsonObject{};
+  auto methods=merged["method"].toString().split(" / ",Qt::SkipEmptyParts);for(auto m:row["method"].toString().split(" / ",Qt::SkipEmptyParts))if(!methods.contains(m))methods.append(m);
+  for(auto it=row.begin();it!=row.end();++it)if(it.key()!="method"&&!it.value().isNull()&&!it.value().isUndefined()&&(!it.value().isString()||!it.value().toString().isEmpty())){
+   if(it.key()=="name"&&!merged["name"].toString().isEmpty()&&it.value().toString().contains("candidate",Qt::CaseInsensitive))continue;
+   if(it.key()=="verification"&&merged["verification"].toString()=="MNDP RouterOS")continue;
+   merged[it.key()]=it.value();
+  }
+  merged["method"]=methods.join(" / ");if(!merged.contains("adapter")&&!host.isEmpty())merged["adapter"]=adapterFor(host);
+  if(found>=0)neighbors[found]=merged;else neighbors.append(merged);
+  if(methods.contains("MNDP"))markDiagnostics(merged["adapter"].toString(),"mndp","Found");
+  emit discoveryReady(neighbors);message=QString("تم العثور على %1 جهاز • %1 discovery result(s)").arg(neighbors.size());emit changed();
+ };
+ message="جارٍ اكتشاف MikroTik عبر كل بطاقات الشبكة • Discovering MikroTik on all active adapters";emit changed();
+
+ auto udp=new QUdpSocket(context);
+ bool udpBound=udp->bind(QHostAddress::AnyIPv4,5678,QUdpSocket::ShareAddress|QUdpSocket::ReuseAddressHint);
+ for(int i=0;i<discoveryDiagnosticsRows.size();i++){auto row=discoveryDiagnosticsRows[i].toObject();row["udp5678"]=udpBound?"Listening":("Bind failed: "+udp->errorString());discoveryDiagnosticsRows[i]=row;}
+ if(udpBound){
+  connect(udp,&QUdpSocket::readyRead,context,[this,current,udp,publish]{while(current==discoveryGeneration&&udp->hasPendingDatagrams()){
+   if(udp->pendingDatagramSize()>65536){udp->receiveDatagram();continue;}QByteArray b(int(udp->pendingDatagramSize()),'\0');QHostAddress sender;udp->readDatagram(b.data(),b.size(),&sender);
+   auto row=RouterDiscoveryCodec::parseMndp(b,sender);if(!row.isEmpty())publish(row);
+  }});
+  auto broadcast=[udp,adapters]{QByteArray probe(4,'\0');udp->writeDatagram(probe,QHostAddress::Broadcast,5678);for(const auto&i:adapters){QHostAddress b(i.broadcast);if(!b.isNull())udp->writeDatagram(probe,b,5678);}};
+  broadcast();auto repeat=new QTimer(context);repeat->setInterval(3000);connect(repeat,&QTimer::timeout,context,broadcast);repeat->start();
+ }else message="تعذر فتح UDP 5678؛ سيستمر الفحص البديل • UDP 5678 bind failed; fallback discovery will continue";
+ emit changed();
+
+#ifdef Q_OS_WIN
+ auto parseProcess=[context,addCandidate](QString program,QStringList args,bool route){
+  auto process=new QProcess(context);connect(process,&QProcess::finished,context,[process,addCandidate,route](int,QProcess::ExitStatus){
+   auto text=QString::fromLocal8Bit(process->readAllStandardOutput());
+   if(route){QRegularExpression re("^\\s*0\\.0\\.0\\.0\\s+0\\.0\\.0\\.0\\s+(\\d{1,3}(?:\\.\\d{1,3}){3})\\s+(\\d{1,3}(?:\\.\\d{1,3}){3})\\s+\\d+\\s*$",QRegularExpression::MultilineOption);auto it=re.globalMatch(text);while(it.hasNext())addCandidate(it.next().captured(1),"Gateway");}
+   else {QRegularExpression re("(\\d{1,3}(?:\\.\\d{1,3}){3})\\s+([0-9A-Fa-f]{2}(?:-[0-9A-Fa-f]{2}){5})\\s+");auto it=re.globalMatch(text);while(it.hasNext())addCandidate(it.next().captured(1),"ARP");}
+   process->deleteLater();
+  });process->start(program,args);QTimer::singleShot(1800,process,[process]{if(process->state()!=QProcess::NotRunning)process->kill();});
+ };
+ parseProcess("route",{"print","-4"},true);parseProcess("arp",{"-a"},false);
+#endif
+
+ QTimer::singleShot(6000,context,[this,current,context,candidateSource,candidateName,extraPorts,adapterFor,publish,markDiagnostics]{
+  if(current!=discoveryGeneration)return;markDiagnostics({},"scan",QString("Scanning %1 candidate(s)").arg(candidateSource->size()));
+  auto tasks=std::make_shared<QQueue<QPair<QString,quint16>>>();
+  auto hosts=candidateSource->keys();std::sort(hosts.begin(),hosts.end());for(const auto&host:hosts){QSet<quint16> ports{8291,8728,8729};ports.unite(extraPorts->value(host));auto list=ports.values();std::sort(list.begin(),list.end());for(auto port:list)tasks->enqueue({host,port});}
+  auto inFlight=std::make_shared<int>(0);auto openPorts=std::make_shared<QHash<QString,QSet<quint16>>>();auto verified=std::make_shared<QSet<QString>>();
+  auto publishCandidate=[candidateSource,candidateName,openPorts,verified,adapterFor,publish](const QString&host){
+   auto ports=openPorts->value(host).values();std::sort(ports.begin(),ports.end());QStringList labels;for(auto p:ports)labels.append(QString::number(p));
+   QJsonObject row{{"host",host},{"name",candidateName->value(host,"MikroTik candidate")},{"method",candidateSource->value(host,"IP Scan")},{"ports",labels.join(", ")},{"verification",verified->contains(host)?"RouterOS API":"Management port reachable"}};
+   auto adapter=adapterFor(host);if(!adapter.isEmpty())row["adapter"]=adapter;publish(row);
+  };
+  auto launcher=new QTimer(context);launcher->setInterval(20);
+  connect(launcher,&QTimer::timeout,context,[this,current,context,tasks,inFlight,openPorts,verified,publishCandidate,markDiagnostics,launcher]{
+   if(current!=discoveryGeneration){launcher->stop();return;}
+   while(*inFlight<64&&!tasks->isEmpty()){
+    auto task=tasks->dequeue();auto host=task.first;auto port=task.second;(*inFlight)++;
+    auto socket=new QTcpSocket(context);auto done=std::make_shared<bool>(false),connected=std::make_shared<bool>(false),buffer=std::make_shared<QByteArray>();
+    auto finish=[socket,done,inFlight](){if(*done)return;*done=true;(*inFlight)--;socket->abort();socket->deleteLater();};
+    connect(socket,&QTcpSocket::connected,context,[socket,host,port,connected,openPorts,publishCandidate,finish]{
+     *connected=true;(*openPorts)[host].insert(port);
+     if(port==8728){socket->write(RouterCodec::sentence({"/login","=name=__fg_discovery__","=password=__invalid__"}));return;}
+     publishCandidate(host);finish();
+    });
+    connect(socket,&QTcpSocket::readyRead,context,[socket,host,port,buffer,verified,publishCandidate,finish]{
+     if(port!=8728)return;*buffer+=socket->readAll();QStringList words;for(;;){int n=RouterCodec::takeSentence(*buffer,words);if(n<=0)break;if(!words.isEmpty()&&QStringList{"!done","!trap","!fatal"}.contains(words.first())){verified->insert(host);publishCandidate(host);finish();break;}}
+    });
+    connect(socket,&QTcpSocket::errorOccurred,context,[finish](QAbstractSocket::SocketError){finish();});
+    socket->connectToHost(host,port);QTimer::singleShot(750,socket,[host,connected,publishCandidate,finish]{if(*connected)publishCandidate(host);finish();});
+   }
+   if(tasks->isEmpty()&&*inFlight==0){launcher->stop();markDiagnostics({},"scan","Complete");}
+  });launcher->start();
+ });
+
+ QTimer::singleShot(38000,context,[this,current,context]{
+  if(current!=discoveryGeneration)return;
+  for(int i=0;i<discoveryDiagnosticsRows.size();i++){auto row=discoveryDiagnosticsRows[i].toObject();if(row["mndp"]=="Waiting")row["mndp"]="No advertisement received";if(row["scan"]!="Complete")row["scan"]="Stopped at discovery deadline";discoveryDiagnosticsRows[i]=row;}
+  discovering=false;discoveryContext=nullptr;++discoveryGeneration;emit discoveryReady(neighbors);
+  message=neighbors.isEmpty()?"لم يتم العثور على MikroTik؛ راجع التشخيص أو اتصل بعنوان IP يدويًا • No MikroTik found; review diagnostics or connect by IP":QString("اكتمل الاكتشاف: %1 جهاز • Discovery complete: %1 device(s)").arg(neighbors.size());
+  emit changed();context->deleteLater();
+ });
+}
