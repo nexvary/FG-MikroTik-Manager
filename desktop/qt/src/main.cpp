@@ -27,6 +27,7 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   vouchers.generate({{"quantity",8},{"mode","OFFLINE"},{"usernameLength",8},{"durationValue",60},{"durationUnit","MINUTES"},{"branding",QJsonObject{{"networkName","FG Machines WiFi"},{"supportPhone","01234567890"},{"priceText","10 EGP"}}}});if(vouchers.cards().size()!=8)return 10;
   auto today=QDate::currentDate().toString("yyyy-MM-dd");commerce.report(today,today);
   accessPoints.fixture();
+  routerTools.loadUiProofFixture();
   bridge.smoke();if(bridge.rows().size()!=50)return 3;bridge.filter("subscribers","Customer 51",0);if(bridge.rows().size()!=1)return 4;bridge.filter("subscribers","",1);if(bridge.rows().size()!=1)return 5;bridge.filter("subscribers","",0);auto w=qobject_cast<QQuickWindow*>(engine.rootObjects().first());
   if(!w)return 1;
   if(!QMetaObject::invokeMethod(w,"showOnline")||w->property("page").toString()!="tools"||w->property("toolsTab").toInt()!=2||!w->property("onlineOnly").toBool())return 12;
@@ -39,9 +40,14 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
    const QStringList pages{"home","accesspoints","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing","about"};
-   if(*index>=pages.size()*2+14){app.exit(0);return;}
-   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool routerReview=extra>=6;const bool ar=routerReview?(extra%2==0):*index>=pages.size();auto page=routerReview?QString(extra<8?"router-discovery":extra<10?"router-compact":extra<12?"router-saved":"router-discovery-details"):terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
-   if(routerReview){
+   if(*index>=pages.size()*2+18){app.exit(0);return;}
+   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool hotspotProof=extra>=14;const bool routerReview=extra>=6&&extra<14;const bool ar=hotspotProof?(extra%2==0):routerReview?(extra%2==0):*index>=pages.size();auto page=hotspotProof?QString(extra<16?"hotspot-wan-auto":"hotspot-wan-manual"):routerReview?QString(extra<8?"router-discovery":extra<10?"router-compact":extra<12?"router-saved":"router-discovery-details"):terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
+   if(hotspotProof){
+    QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("arabic",ar);w->setProperty("page","tools");
+    if(!QMetaObject::invokeMethod(w,"showHotspotProof",Q_ARG(QVariant,extra>=16))){app.exit(25);return;}
+    w->resize(1280,800);
+   }
+   else if(routerReview){
     QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("arabic",ar);w->setProperty("page","router");w->setProperty("inventoryView",true);bridge.smokeDiscovery();
     w->resize(extra>=8?1000:1280,extra>=8?650:800);
     if(extra>=10&&!QMetaObject::invokeMethod(w,extra<12?"showConnectionOptions":"showDiscoveryDetails")){app.exit(19);return;}
@@ -50,7 +56,11 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
    else if(extra>=4){QMetaObject::invokeMethod(w,"closeReviewDialogs");if(!QMetaObject::invokeMethod(w,extra==4?"showSubscribers":"showOnline")){app.exit(18);return;}}
    else if(extra>0){QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("page",extra==1?"commerce":extra==2?"vouchers":"router");const char *method=extra==1?"showBusinessEditor":extra==2?"showVoucherPreview":"showRouterEditor";if(!QMetaObject::invokeMethod(w,method)){app.exit(11);return;}}
    else{w->setProperty("arabic",ar);w->setProperty("page",page);bridge.clearView();if(page=="business")bridge.filter("subscribers","",0);}
-   QTimer::singleShot(800,&app,[&,w,index,step,page,ar,terminal,routerReview]{
+   QTimer::singleShot(800,&app,[&,w,index,step,page,ar,terminal,routerReview,hotspotProof]{
+    if(hotspotProof){
+     auto automatic=w->findChild<QQuickItem*>("wanAutoSelector");
+     if(!automatic||automatic->property("checked").toBool()!=(page=="hotspot-wan-auto")){qWarning()<<"WAN proof mode mismatch";app.exit(26);return;}
+    }
     if(routerReview){
      auto results=w->findChild<QQuickItem*>("discoveryResultsList");
      if(!results||!results->isVisible()||results->height()<140||results->mapToScene(QPointF(0,results->height())).y()>w->height()+1){qWarning()<<"Discovery results not visible at supported window size";app.exit(20);return;}

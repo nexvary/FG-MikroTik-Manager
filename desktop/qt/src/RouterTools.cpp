@@ -64,6 +64,26 @@ bool natServes(QJsonObject r,QString cidr,QString internet){if(!enabled(r)||r["c
 }
 RouterTools::RouterTools(RouterClient*c,QObject*p):QObject(p),client(c){connect(client,&RouterClient::changed,this,[this]{if(!client->connected()){tables.remove("ip/hotspot/user");tables.remove("ip/hotspot/active");}emit changed();});}
 RouterTools::~RouterTools(){lifetime.reset();}
+void RouterTools::loadUiProofFixture(){
+ tables=QJsonObject{
+  {"interface",QJsonArray{QJsonObject{{"name","ether1"},{"type","ether"},{"running","yes"}},QJsonObject{{"name","fg-clients"},{"type","bridge"},{"running","yes"}}}},
+  {"interface/bridge",QJsonArray{QJsonObject{{"name","fg-clients"},{"running","yes"}}}},
+  {"interface/bridge/port",QJsonArray{}},{"interface/vlan",QJsonArray{}},{"interface/pppoe-client",QJsonArray{}},
+  {"interface/list/member",QJsonArray{QJsonObject{{"list","WAN"},{"interface","ether1"}}}},
+  {"ip/dhcp-client",QJsonArray{QJsonObject{{"interface","ether1"},{"status","bound"}}}},
+  {"ip/address",QJsonArray{QJsonObject{{"interface","fg-clients"},{"address","192.168.10.1/24"}}}},
+  {"ip/route",QJsonArray{QJsonObject{{"dst-address","0.0.0.0/0"},{"active","yes"},{"distance","1"},{"routing-table","main"},{"gateway","192.168.1.1"},{"immediate-gw","192.168.1.1%ether1"}}}},
+  {"ip/dns",QJsonArray{QJsonObject{{"servers","1.1.1.1,8.8.8.8"},{"allow-remote-requests","no"}}}},
+  {"ip/dhcp-server",QJsonArray{}},{"ip/dhcp-server/network",QJsonArray{}},{"ip/pool",QJsonArray{}},{"ip/hotspot",QJsonArray{}},{"ip/hotspot/profile",QJsonArray{}},{"ip/hotspot/user/profile",QJsonArray{}},
+  {"ip/firewall/nat",QJsonArray{}},{"ip/firewall/filter",QJsonArray{}},{"ip/service",QJsonArray{}},{"user",QJsonArray{}},{"file",QJsonArray{}},{"system/clock",QJsonArray{}},{"system/scheduler",QJsonArray{}},{"system/resource",QJsonArray{QJsonObject{{"cpu-load","12"}}}}
+ };
+ unavailable.clear();
+ report=readinessChecks(tables,{},"fg-clients");
+ QJsonObject request{{"interface","fg-clients"},{"wan","ether1"},{"gateway","192.168.10.1/24"},{"network","192.168.10.0/24"},{"pool","192.168.10.10-192.168.10.250"},{"dnsName","wifi.local"},{"synchronizeTime",true},{"replacePortal",false}};
+ pending=hotspotPlan(tables,request,"192.168.1.2");
+ message="UI proof fixture • ether1 WAN / fg-clients";
+ emit changed();
+}
 QJsonObject RouterTools::detectWan(QJsonObject t){return detectWanEvidence(t);}
 QVariantMap RouterTools::wanDetection()const{return detectWanEvidence(tables).toVariantMap();}
 QVariantList RouterTools::clientInterfaces()const{QVariantList result;auto internet=wan(tables);for(auto value:tables["interface"].toArray()){auto row=value.toObject();if(str(row,"name")==internet||!enabled(row))continue;result.append(row.toVariantMap());}return result;}

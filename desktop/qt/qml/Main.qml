@@ -39,6 +39,7 @@ ApplicationWindow {
  function showRouterEditor(){adminEditor.open()}
  function showConnectionOptions(){connectionOptions.open()}
  function showDiscoveryDetails(){discoveryDetails.open()}
+ function showHotspotProof(manual){page="tools";toolsWorkspace.showWanProof(manual)}
  function showTerminal(){terminalWindow.show();terminalWindow.raise()}
  function filter(){backend.filter(tableKeys[tables.currentIndex],search.text,businessPage)}
  Theme {id: theme}

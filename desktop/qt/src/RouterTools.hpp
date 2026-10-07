@@ -42,6 +42,7 @@ public:
  static QJsonObject pingEvidence(QJsonArray rows);
  static QJsonObject renderPortal(QJsonObject design);
  Q_INVOKABLE void inspect(QString clientInterface={});
+ void loadUiProofFixture();
  Q_INVOKABLE void refreshSubscribers();
  Q_INVOKABLE void planHotspot(QJsonObject request);
  Q_INVOKABLE void planPorts(QString client,QString wan);

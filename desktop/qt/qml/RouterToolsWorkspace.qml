@@ -13,7 +13,9 @@ ColumnLayout {
  property string logoDataUri:routerTools.portalDesign.logoDataUri||""
  property var selectedNetworks: []
  function showTab(index,online){tabs.currentIndex=index;subscribers.onlineOnly=online||false}
+ function showWanProof(manual){tabs.currentIndex=1;wanAuto.checked=!manual}
  function tr(ar,en){return arabic?ar:en}
+ function comboValue(control){var item=control.model[control.currentIndex];return item&&item.value!==undefined?item.value:control.currentText}
  function selectedWan(){return wanAuto.checked?(routerTools.wanDetection.name||""):wanManual.currentText}
  function hotspotInputValid(){return client.currentText.length>0&&selectedWan().length>0&&client.currentText!==selectedWan()&&gateway.text.length>0&&subnet.text.length>0&&pool.text.length>0}
  function design(){return {networkName:networkName.text,supportPhone:support.text,welcome:welcome.text,color:color.text,terms:terms.text,website:website.text,logoDataUri:workspace.logoDataUri}}
@@ -60,10 +62,10 @@ ColumnLayout {
    CheckBox {id: replacePortal; text: workspace.tr("استبدال صفحة الدخول الموجودة","Replace existing login portal")}
    Rectangle {Layout.fillWidth:true;implicitHeight:wanAuto.checked?112:150;radius:14;color:theme.panel;border.color:(workspace.selectedWan().length&&workspace.selectedWan()!==client.currentText)?theme.blue:theme.error
     ColumnLayout {anchors.fill:parent;anchors.margins:14;spacing:7
-     RowLayout {Layout.fillWidth:true;Text {text:workspace.tr("واجهة الإنترنت / WAN","Internet interface / WAN");color:theme.white;font.bold:true;Layout.fillWidth:true} CheckBox {id:wanAuto;checked:true;text:workspace.tr("تلقائي","Auto")}}
+     RowLayout {Layout.fillWidth:true;Text {text:workspace.tr("واجهة الإنترنت / WAN","Internet interface / WAN");color:theme.white;font.bold:true;Layout.fillWidth:true} CheckBox {id:wanAuto;objectName:"wanAutoSelector";checked:true;text:workspace.tr("تلقائي","Auto")}}
      Text {visible:wanAuto.checked;Layout.fillWidth:true;wrapMode:Text.Wrap;text:(routerTools.wanDetection.name||"").length?workspace.tr("✓ تم اكتشاف واجهة الإنترنت تلقائيًا: ","✓ Auto detected WAN: ")+(routerTools.wanDetection.name||""):workspace.tr("تعذر تحديد واجهة الإنترنت تلقائيًا. ألغِ تلقائي واخترها يدويًا.","WAN could not be detected automatically. Turn off Auto and choose it manually.");color:(routerTools.wanDetection.name||"").length?theme.mint:theme.gold}
      Text {visible:wanAuto.checked&&(routerTools.wanDetection.source||"").length;Layout.fillWidth:true;text:workspace.tr("المصدر: ","Source: ")+(routerTools.wanDetection.source||"");color:theme.silver}
-     FgCombo {id:wanManual;visible:!wanAuto.checked;Layout.fillWidth:true;model:routerTools.interfaces;textRole:"name"}
+     FgCombo {id:wanManual;objectName:"wanManualSelector";visible:!wanAuto.checked;Layout.fillWidth:true;model:routerTools.interfaces;textRole:"name"}
      Text {visible:workspace.selectedWan().length>0&&workspace.selectedWan()===client.currentText;Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr("واجهة العملاء لا يمكن أن تكون هي نفسها واجهة الإنترنت.","Client interface cannot be the WAN interface.");color:theme.error;font.bold:true}
     }
    }
@@ -83,8 +85,8 @@ ColumnLayout {
   ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 14
    Text {text: workspace.tr("فلترة DNS للشبكات الخاصة المختارة. تُحفظ الإعدادات السابقة لاستعادتها.","DNS filtering for selected private client networks. Previous settings are saved for restoration."); color: theme.silver; Layout.fillWidth: true; wrapMode: Text.Wrap}
    Repeater {model:routerTools.dhcpNetworks;CheckBox {required property var modelData; text:modelData.address+" • "+workspace.tr("DNS: ","DNS: ")+(modelData["dns-server"]||"");checked:workspace.selectedNetworks.indexOf(modelData[".id"])>=0;onClicked:{let next=workspace.selectedNetworks.slice(),i=next.indexOf(modelData[".id"]);if(checked&&i<0)next.push(modelData[".id"]);else if(!checked&&i>=0)next.splice(i,1);workspace.selectedNetworks=next}}}
-   FgCombo {id: dnsMode; model: ["FAMILY","ADS_TRACKERS"]; Layout.fillWidth: true}
-   FgButton {text: workspace.tr("معاينة خطة الحماية","Preview protection plan"); enabled: !routerTools.busy; onClicked: routerTools.planDns(workspace.selectedNetworks,dnsMode.currentText)}
+   FgCombo {id: dnsMode; model: [{label:workspace.tr("حماية عائلية","Family protection"),value:"FAMILY"},{label:workspace.tr("حظر الإعلانات والتتبع","Block ads & trackers"),value:"ADS_TRACKERS"}]; textRole:"label"; Layout.fillWidth: true}
+   FgButton {text: workspace.tr("معاينة خطة الحماية","Preview protection plan"); enabled: !routerTools.busy; onClicked: routerTools.planDns(workspace.selectedNetworks,workspace.comboValue(dnsMode))}
    Repeater {model: routerTools.changes; Text {required property var modelData; text: modelData.label+" • "+JSON.stringify(modelData.attributes); color: theme.gold; Layout.fillWidth: true; wrapMode: Text.Wrap}}
    RowLayout {FgField {id: dnsBackup; echoMode: TextInput.Password; placeholderText: workspace.tr("كلمة مرور النسخة الاحتياطية (12+)","Backup password (12+)"); Layout.fillWidth: true} FgButton {text: workspace.tr("تأكيد الحماية","Confirm protection"); enabled: dnsBackup.text.length>=12&&!routerTools.busy; onClicked: {routerTools.apply(dnsBackup.text);dnsBackup.clear()}}}
    FgButton {text: workspace.tr("استعادة DNS السابق","Restore previous DNS"); enabled: !routerTools.busy; onClicked: routerTools.restoreDns()}
