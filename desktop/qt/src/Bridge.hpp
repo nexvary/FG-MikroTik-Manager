@@ -50,7 +50,8 @@ public:
  Q_INVOKABLE void executePreview();
  Q_INVOKABLE void discoverRouters();
  Q_INVOKABLE void discoverNetworkDevices();
- Q_INVOKABLE void saveRouterProfile(QString name,QString branch,QString host,int port,QString user,QString protocol);
+ Q_INVOKABLE void saveRouterProfile(QString name,QString branch,QString host,int port,QString user,QString protocol,QString password,bool rememberPassword);
+ Q_INVOKABLE QString routerProfilePassword(QString id) const;
  Q_INVOKABLE void deleteRouterProfile(QString id);
  Q_INVOKABLE QVariantMap module(QString menu)const;
  Q_INVOKABLE void admin(QString menu,QString action,QString id,QString json);
