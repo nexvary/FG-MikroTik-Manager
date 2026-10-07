@@ -219,6 +219,10 @@ fun AdvancedSetupScreen(
             item { Text("${wizardStep+1}/8 — ${steps[wizardStep]}",color=FgBlue,fontWeight=FontWeight.Bold) }
             if(wizardStep==0) {
                 item { Text(label("تم اقتراح شبكة العملاء تلقائيًا. يمكنك متابعة الإعداد بالقيمة المختارة أو تغييرها.", "Customer network detected automatically; continue with the selection or change it."), color=FgSilver) }
+                item {
+                    val detectedWan=report?.wanInterface.orEmpty()
+                    Text(label("واجهة الإنترنت المكتشفة: ", "Detected WAN: ") + detectedWan.ifBlank { label("غير محددة", "Not detected") } + report?.wanSource?.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty(), color=if(detectedWan.isBlank()) FgAmber else FgMint)
+                }
                 item { Text(label("اختر شبكة العملاء. لا تختَر منفذ الإنترنت أو اتصال الإدارة الحالي؛ تشغيل HotSpot قد يفصل الهاتف.", "Select the client network. Avoid the internet or current management interface; enabling HotSpot may disconnect this phone."),color=FgAmber) }
                 items(report?.let { RouterAutomation.clientCandidates(it) }.orEmpty()) { row ->
                     val name=row["name"].orEmpty();OutlinedButton(onClick={ request=manager?.suggestion(report!!,name) ?: request?.copy(interfaceName=name) },modifier=Modifier.fillMaxWidth()) { Text((if(request?.interfaceName==name) "✓ " else "")+name) }

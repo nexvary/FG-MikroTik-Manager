@@ -13,6 +13,8 @@ class RouterTools:public QObject{
  Q_PROPERTY(QVariantList changes READ changes NOTIFY changed)
  Q_PROPERTY(QVariantList backups READ backups NOTIFY changed)
  Q_PROPERTY(QVariantList interfaces READ interfaces NOTIFY changed)
+ Q_PROPERTY(QVariantList clientInterfaces READ clientInterfaces NOTIFY changed)
+ Q_PROPERTY(QVariantMap wanDetection READ wanDetection NOTIFY changed)
  Q_PROPERTY(QVariantList dhcpNetworks READ dhcpNetworks NOTIFY changed)
  Q_PROPERTY(QVariantList users READ users NOTIFY changed)
  Q_PROPERTY(QVariantList activeSessions READ activeSessions NOTIFY changed)
@@ -23,10 +25,14 @@ class RouterTools:public QObject{
 public:
  RouterTools(RouterClient *client,QObject*p=nullptr);~RouterTools();
  bool busy()const{return working;}QString status()const{return message;}QVariantList checks()const{return report.toVariantList();}QVariantList changes()const{return pending["changes"].toArray().toVariantList();}
- QVariantList interfaces()const{return tables["interface"].toArray().toVariantList();}QVariantList dhcpNetworks()const{return client->authorized()?tables["ip/dhcp-server/network"].toArray().toVariantList():QVariantList{};}
+ QVariantList interfaces()const{return tables["interface"].toArray().toVariantList();}
+ QVariantList clientInterfaces()const;
+ QVariantMap wanDetection()const;
+ QVariantList dhcpNetworks()const{return client->authorized()?tables["ip/dhcp-server/network"].toArray().toVariantList():QVariantList{};}
  QVariantList users()const;
  QVariantList activeSessions()const{return client->authorized()&&client->connected()?Protocol::redact(tables["ip/hotspot/active"]).toArray().toVariantList():QVariantList{};}
  bool sessionsKnown()const{return client->authorized()&&client->connected()&&tables.contains("ip/hotspot/active")&&!unavailable.contains("ip/hotspot/active");}
+ static QJsonObject detectWan(QJsonObject tables);
  static QJsonArray readinessChecks(QJsonObject tables,QSet<QString> unavailable={},QString clientInterface={});
  static QJsonObject subscriberUsage(QJsonObject user,QJsonArray sessions,bool sessionsKnown=true);QVariantList profiles()const{return tables["ip/hotspot/profile"].toArray().toVariantList();}QString portalPreview()const{return preview;}
  static bool validCidr(QString cidr);static QString network(QString cidr);static bool privateSubnet(QString cidr);

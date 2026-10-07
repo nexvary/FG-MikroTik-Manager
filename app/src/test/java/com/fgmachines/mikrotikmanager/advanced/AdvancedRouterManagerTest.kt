@@ -42,6 +42,33 @@ class AdvancedRouterManagerTest {
         val probe=AdvancedRouterManager.pingEvidence(listOf(mapOf("time" to "12ms500us"),mapOf("status" to "timeout"),mapOf("time" to "20ms")))
         assertEquals(3,probe.sent);assertEquals(2,probe.received);assertEquals(33,probe.lossPercent);assertEquals(16.25,probe.latencyMs!!,0.001)
     }
+    @Test fun wanDetectionUsesRouteDistanceAndDhcpFallback() {
+        val routes = mapOf(
+            "interface" to listOf(mapOf("name" to "ether1", "running" to "true"), mapOf("name" to "ether2", "running" to "true")),
+            "ip/route" to listOf(
+                mapOf("dst-address" to "0.0.0.0/0", "active" to "true", "distance" to "5", "immediate-gw" to "10.0.0.1%ether2"),
+                mapOf("dst-address" to "0.0.0.0/0", "active" to "true", "distance" to "1", "routing-table" to "main", "immediate-gw" to "192.168.1.1%ether1")
+            )
+        )
+        assertEquals("ether1", AdvancedRouterManager.detectWan(routes).interfaceName)
+        val dhcp = routes.toMutableMap().apply { this["ip/route"] = emptyList(); this["ip/dhcp-client"] = listOf(mapOf("interface" to "ether2", "status" to "bound")) }
+        val detected = AdvancedRouterManager.detectWan(dhcp)
+        assertEquals("ether2", detected.interfaceName); assertEquals("Bound DHCP client", detected.source)
+    }
+    @Test fun wanDetectionSupportsPppoeLteAndCurrentFgClientsFixture() {
+        val pppoe = mapOf("interface" to listOf(mapOf("name" to "pppoe-out1", "running" to "true"), mapOf("name" to "fg-clients", "running" to "true")), "interface/pppoe-client" to listOf(mapOf("interface" to "pppoe-out1", "running" to "true")))
+        assertEquals("pppoe-out1", AdvancedRouterManager.detectWan(pppoe).interfaceName)
+        val lte = mapOf("interface" to listOf(mapOf("name" to "lte1", "type" to "lte", "running" to "true"), mapOf("name" to "fg-clients", "type" to "bridge", "running" to "true")))
+        assertEquals("lte1", AdvancedRouterManager.detectWan(lte).interfaceName)
+        val current = configured().toMutableMap().apply {
+            this["interface"] = listOf(mapOf("name" to "ether1", "type" to "ether", "running" to "true"), mapOf("name" to "fg-clients", "type" to "bridge", "running" to "true"))
+            this["ip/address"] = listOf(mapOf(".id" to "*I", "interface" to "fg-clients", "address" to "192.168.10.1/24"))
+            this["ip/dhcp-server"] = listOf(mapOf(".id" to "*D", "name" to "clients", "interface" to "fg-clients", "address-pool" to "clients"))
+            this["ip/hotspot"] = listOf(mapOf("interface" to "fg-clients", "profile" to "clients"))
+        }
+        val report = AdvancedRouterManager(Fake()).evaluate(current, client = "fg-clients")
+        assertEquals("ether1", report.wanInterface); assertEquals("fg-clients", report.clientInterface); assertEquals("Active default route", report.wanSource)
+    }
     @Test fun non24SubnetSuggestionPreservesExistingGateway() {
         val t=configured().toMutableMap();t["ip/address"]=listOf(mapOf("interface" to "ether2","address" to "172.16.4.1/16"))
         val m=AdvancedRouterManager(Fake());val request=m.suggestion(m.evaluate(t,client="ether2"))
