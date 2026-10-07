@@ -43,6 +43,12 @@ android {
         buildConfig = true
     }
 
+    // Reuse the exact multicolor SVG artwork used by the Windows client.
+    // This keeps both products on one icon source instead of maintaining approximations.
+    sourceSets {
+        getByName("main").assets.srcDir("../desktop/qt/qml/icons")
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -74,6 +80,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("com.google.zxing:core:3.5.3")
+    implementation("com.caverock:androidsvg-aar:1.4")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
