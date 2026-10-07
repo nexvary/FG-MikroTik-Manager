@@ -28,7 +28,7 @@ public:
  bool busy()const{return m_busy||workflowBusy||inventoryBusy||routerClient.busy();}
  bool routerConnected()const{return routerClient.connected();} QString preview()const{return m_preview;} QVariantList profiles()const; bool connected()const{return !token.isEmpty() && QDateTime::currentDateTimeUtc()<expires;}
  QString status()const{return m_status;} QString scope()const{return m_scope;} QString terminal()const{return m_terminal;}
- QVariantList rows()const{return m_rows;} QStringList columns()const{return m_columns;} QVariantList discoveryDiagnostics()const{return routerClient.discoveryDiagnostics();} QStringList menus()const;
+ QVariantList rows()const{return m_rows;} QStringList columns()const{return m_columns;} QVariantList discoveryDiagnostics()const{return discoveryFixture.isEmpty()?routerClient.discoveryDiagnostics():discoveryFixture;} QStringList menus()const;
  QVariantList commandLibrary()const;
  Q_INVOKABLE QString fillCommand(QString text,QVariantMap values);
  Q_INVOKABLE void copyText(QString text);
@@ -58,8 +58,10 @@ public:
  Q_INVOKABLE void clearTerminal();
  Q_INVOKABLE void clearView();
  Q_INVOKABLE void smoke();
+ void smokeDiscovery(); // Screenshot fixtures; ignored outside test mode.
 signals: void changed();
 private:
+ QVariantList discoveryFixture;
  Business *commerce=nullptr;QString serverTenant,serverBranch,serverRole;
  RouterClient routerClient; QString m_preview,pendingCommand;
  QNetworkAccessManager net; bool m_busy=false,workflowBusy=false,inventoryBusy=false; QString token,origin,m_status,m_scope,m_terminal,routerOrigin,routerAuth;

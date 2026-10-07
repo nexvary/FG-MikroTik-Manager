@@ -16,6 +16,7 @@
 #include <QRegularExpression>
 #include <QApplication>
 #include <QClipboard>
+#include <QStandardPaths>
 Bridge::Bridge(QObject *p):QObject(p),routerClient(this) {
  connect(&routerClient,&RouterClient::changed,this,[this]{m_status=routerClient.status();emit changed();});
  connect(&routerClient,&RouterClient::discoveryReady,this,[this](QJsonArray rows){showRows(rows);});
@@ -130,3 +131,13 @@ void Bridge::syncBusiness(bool joinEmpty){
 QVariantList Bridge::commandLibrary()const{QFile f(":/resources/command-library.json");if(!f.open(QIODevice::ReadOnly))return {};return QJsonDocument::fromJson(f.readAll()).array().toVariantList();}
 QString Bridge::fillCommand(QString text,QVariantMap values){QRegularExpression pattern("\\{\\{([a-z]+)\\}\\}");auto matches=pattern.globalMatch(text);QList<QRegularExpressionMatch> found;while(matches.hasNext())found.append(matches.next());for(auto it=found.rbegin();it!=found.rend();++it){auto value=values[it->captured(1)].toString();if(value.trimmed().isEmpty()||value.contains('\n')||value.contains('\r')||value.contains(QChar(0))){m_status="املأ كل المتغيرات بقيم من سطر واحد • Fill every variable with one-line values";emit changed();return {};}value.replace("\\","\\\\").replace("\"","\\\"");text.replace(it->capturedStart(),it->capturedLength(),"\""+value+"\"");}auto command=RouterCodec::parse(text);if(!command.valid()){m_status=command.error;emit changed();return {};}return text;}
 void Bridge::copyText(QString text){QApplication::clipboard()->setText(text);m_status="نُسخ النص • Text copied";emit changed();}
+
+void Bridge::smokeDiscovery(){
+ if(!QStandardPaths::isTestModeEnabled())return;
+ discoveryFixture.clear();
+ const QStringList adapters{"Ethernet", "Ethernet 3", "VMware Network Adapter VMnet1", "VMware Network Adapter VMnet8", "ZeroTier One", "Wi-Fi"};
+ for(int i=0;i<adapters.size();++i)discoveryFixture.append(QVariantMap{{"adapter",adapters[i]},{"ipv4",QString("192.168.%1.107").arg(i+1)},{"subnet",QString("192.168.%1.0/24").arg(i+1)},{"broadcast",QString("192.168.%1.255").arg(i+1)},{"udp5678","Listening"},{"mndp","Found"},{"scan","Stopped at discovery deadline"}});
+ QJsonArray devices;
+ for(int i=1;i<=9;++i)devices.append(QJsonObject{{"name",QString("راوتر تجريبي %1 • Demo router %1").arg(i)},{"host",QString("192.168.1.%1").arg(i+10)},{"mac",QString("00:11:22:33:44:%1").arg(i,2,16,QChar('0'))},{"adapter","Wi-Fi"},{"method","MNDP / IP Scan"},{"verification","RouterOS API"},{"ports","8728, 8291"}});
+ m_status="اكتمل الاكتشاف: 9 أجهزة تجريبية • Discovery complete: 9 fixture devices";showRows(devices);
+}

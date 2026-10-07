@@ -7,6 +7,8 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
+#include <QQuickItem>
+#include <QDebug>
 #include <QTimer>
 #include <QIcon>
 #include <QDir>
@@ -35,13 +37,27 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
    const QStringList pages{"home","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing","about"};
-   if(*index>=pages.size()*2+6){app.exit(0);return;}
-   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool ar=*index>=pages.size();auto page=terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
-   if(terminal){if(!QMetaObject::invokeMethod(w,"showTerminal")){app.exit(7);return;}}
+   if(*index>=pages.size()*2+14){app.exit(0);return;}
+   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool routerReview=extra>=6;const bool ar=routerReview?(extra%2==0):*index>=pages.size();auto page=routerReview?QString(extra<8?"router-discovery":extra<10?"router-compact":extra<12?"router-saved":"router-discovery-details"):terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
+   if(routerReview){
+    QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("arabic",ar);w->setProperty("page","router");w->setProperty("inventoryView",true);bridge.smokeDiscovery();
+    w->resize(extra>=8?1000:1280,extra>=8?650:800);
+    if(extra>=10&&!QMetaObject::invokeMethod(w,extra<12?"showConnectionOptions":"showDiscoveryDetails")){app.exit(19);return;}
+   }
+   else if(terminal){if(!QMetaObject::invokeMethod(w,"showTerminal")){app.exit(7);return;}}
    else if(extra>=4){QMetaObject::invokeMethod(w,"closeReviewDialogs");if(!QMetaObject::invokeMethod(w,extra==4?"showSubscribers":"showOnline")){app.exit(18);return;}}
    else if(extra>0){QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("page",extra==1?"commerce":extra==2?"vouchers":"router");const char *method=extra==1?"showBusinessEditor":extra==2?"showVoucherPreview":"showRouterEditor";if(!QMetaObject::invokeMethod(w,method)){app.exit(11);return;}}
    else{w->setProperty("arabic",ar);w->setProperty("page",page);bridge.clearView();if(page=="business")bridge.filter("subscribers","",0);}
-   QTimer::singleShot(800,&app,[&,w,index,step,page,ar,terminal]{
+   QTimer::singleShot(800,&app,[&,w,index,step,page,ar,terminal,routerReview]{
+    if(routerReview){
+     auto results=w->findChild<QQuickItem*>("discoveryResultsList");
+     if(!results||!results->isVisible()||results->height()<140||results->mapToScene(QPointF(0,results->height())).y()>w->height()+1){qWarning()<<"Discovery results not visible at supported window size";app.exit(20);return;}
+     for(const char *name:{"discoverRoutersButton","connectionOptionsButton","connectRouterButton"}){
+      auto control=w->findChild<QQuickItem*>(name);if(!control){app.exit(21);return;}
+      auto bounds=control->mapRectToScene(QRectF(0,0,control->width(),control->height()));
+      if(bounds.left()<0||bounds.right()>w->width()+1||bounds.top()<0||bounds.bottom()>w->height()+1||control->width()<80){qWarning()<<"Router control clipped"<<name<<bounds;app.exit(22);return;}
+     }
+    }
     bool saved=false;
     if(terminal){for(auto window:QGuiApplication::allWindows()){auto view=qobject_cast<QQuickWindow*>(window);if(view&&view!=w&&view->isVisible())saved=view->grabWindow().save("qt-proof/terminal-ar.png")||saved;}}
     else saved=w->grabWindow().save("qt-proof/"+page+(ar?"-ar.png":"-en.png"));

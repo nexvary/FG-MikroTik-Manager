@@ -33,10 +33,12 @@ ApplicationWindow {
  function showSubscribers(){navigateTask("tools:2")}
  function showOnline(){navigateTask("tools:2:online")}
 
- function closeReviewDialogs(){localBusiness.closeDialogs();voucherStudio.closeDialogs();adminEditor.close();terminalWindow.hide()}
+ function closeReviewDialogs(){deviceDetails.close();connectionOptions.close();discoveryDetails.close();localBusiness.closeDialogs();voucherStudio.closeDialogs();adminEditor.close();terminalWindow.hide()}
  function showBusinessEditor(){localBusiness.showEditorFor("renew")}
  function showVoucherPreview(){voucherStudio.previewFirst()}
  function showRouterEditor(){adminEditor.open()}
+ function showConnectionOptions(){connectionOptions.open()}
+ function showDiscoveryDetails(){discoveryDetails.open()}
  function showTerminal(){terminalWindow.show();terminalWindow.raise()}
  function filter(){backend.filter(tableKeys[tables.currentIndex],search.text,businessPage)}
  Theme {id: theme}
@@ -138,59 +140,92 @@ ApplicationWindow {
     FgButton {text: root.tr("بدء تشخيص الخادم","Run server diagnostics"); enabled: !backend.busy; onClicked: backend.diagnose(); accent: theme.mint}
     Text {text: root.tr("الفحوص من الخادم، لا من الكمبيوتر.","Tests run on FG Server, not this PC."); color: theme.muted; Layout.fillWidth: true; wrapMode: Text.Wrap}
    }
-   GridLayout {
-    visible: root.page==="router"; columns: 2; Layout.fillWidth: true
-    FgButton {
-     Layout.columnSpan:2;Layout.fillWidth:true;implicitHeight:54
-     text:root.tr("اكتشاف الراوترات و MikroTik على الشبكة","Discover routers & MikroTik on the network")
-     filled:true;accent:theme.mint;enabled:!backend.busy
-     onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.discoverRouters()}
+   ColumnLayout {
+    visible: root.page==="router"; Layout.fillWidth:true; spacing:10
+    Rectangle {
+     Layout.fillWidth:true; implicitHeight:connectionLayout.implicitHeight+28
+     radius:14;color:theme.panel;border.color:"#315366"
+     ColumnLayout {
+      id:connectionLayout;anchors.fill:parent;anchors.margins:14;spacing:10
+      RowLayout {
+       Layout.fillWidth:true
+       NavIcon {kind:10;ink:theme.blue;Layout.preferredWidth:32;Layout.preferredHeight:32}
+       Text {text:root.tr("اتصال الراوتر","Router connection");color:theme.white;font.pixelSize:18;font.bold:true;Layout.fillWidth:true}
+       FgButton {objectName:"discoverRoutersButton";text:root.tr("اكتشاف الراوترات","Discover routers");accent:theme.mint;enabled:!backend.busy;onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView();backend.discoverRouters()}}
+       FgButton {objectName:"connectionOptionsButton";text:root.tr("المحفوظ والمتقدم","Saved & advanced");accent:theme.gold;onClicked:connectionOptions.open()}
+      }
+      GridLayout {
+       Layout.fillWidth:true;columns:3;columnSpacing:12;rowSpacing:4
+       Text {text:root.tr("عنوان الراوتر","Router address");color:theme.silver;Layout.fillWidth:true}
+       Text {text:root.tr("اسم المستخدم","Username");color:theme.silver;Layout.fillWidth:true}
+       Text {text:root.tr("كلمة المرور","Password");color:theme.silver;Layout.fillWidth:true}
+       FgField {id:routerUrl;objectName:"routerAddressField";Layout.fillWidth:true;Layout.minimumWidth:100;placeholderText:"192.168.88.1";LayoutMirroring.enabled:false}
+       FgField {id:routerUser;Layout.fillWidth:true;Layout.minimumWidth:80;placeholderText:"admin";LayoutMirroring.enabled:false}
+       FgField {id:routerPassword;Layout.fillWidth:true;Layout.minimumWidth:80;echoMode:TextInput.Password;placeholderText:root.tr("كلمة مرور الراوتر","Router password");LayoutMirroring.enabled:false}
+      }
+      RowLayout {
+       Layout.fillWidth:true;spacing:12
+       Text {text:root.tr("البروتوكول","Protocol");color:theme.silver}
+       FgCombo {id:routerProtocol;Layout.preferredWidth:140;model:["REST","API_SSL","API","AUTO","REST_HTTP"];LayoutMirroring.enabled:false;onActivated:routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":currentIndex===4?"80":"8728"}
+       Text {text:root.tr("المنفذ","Port");color:theme.silver}
+       FgField {id:routerPort;Layout.preferredWidth:84;LayoutMirroring.enabled:false;text:"443";validator:IntValidator {bottom:1;top:65535} inputMethodHints:Qt.ImhDigitsOnly}
+       Item {Layout.fillWidth:true}
+       FgButton {objectName:"connectRouterButton";text:root.tr("اتصال وقراءة","Connect & read");filled:true;accent:theme.blue;enabled:!backend.busy&&routerUrl.text.trim().length>0&&routerUser.text.trim().length>0&&routerPort.acceptableInput;onClicked:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.connectRouter(routerUrl.text,Number(routerPort.text),routerUser.text,routerPassword.text,routerProtocol.currentText,menu.currentText);if(!rememberRouterPassword.checked)routerPassword.clear()}}
+      }
+     }
     }
-    FgField {id: routerUrl; Layout.fillWidth: true; placeholderText: root.tr("عنوان IP أو اسم الراوتر","Router IP or hostname"); LayoutMirroring.enabled: false}
-    FgCombo {id: menu; model: backend.menus.filter(function(key){return root.routerGroup==="ALL"||backend.module(key).group===root.routerGroup}); Layout.fillWidth: true;onActivated:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
-    FgField {id: routerUser; Layout.fillWidth: true; placeholderText: root.tr("حساب الراوتر","Router username"); LayoutMirroring.enabled: false}
-    FgField {id: routerPassword; Layout.fillWidth: true; echoMode: TextInput.Password; placeholderText: root.tr("كلمة المرور","Password"); LayoutMirroring.enabled: false}
-    CheckBox {
-     id:rememberRouterPassword;Layout.columnSpan:2
-     text:root.tr("حفظ كلمة المرور بأمان على هذا الكمبيوتر","Save password securely on this PC")
-     palette.windowText:theme.silver
+    RowLayout {
+     Layout.fillWidth:true;spacing:8
+     Text {text:root.tr("القسم","Section");color:theme.silver}
+     FgCombo {id:menu;Layout.fillWidth:true;Layout.minimumWidth:100;model:backend.menus.filter(function(key){return root.routerGroup==="ALL"||backend.module(key).group===root.routerGroup});LayoutMirroring.enabled:false;onActivated:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView()}}
+     FgButton {text:root.tr("قراءة","Read");enabled:backend.routerConnected&&!backend.busy;onClicked:{root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.command("/"+menu.currentText+" print")}}
+     FgButton {text:root.tr("الأجهزة والأكسسات","Devices & APs");enabled:backend.routerConnected&&!backend.busy;onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.clearView();backend.discoverNetworkDevices()}}
+    }
+    RowLayout {
+     Layout.fillWidth:true;spacing:8
+     FgButton {text:root.tr("إضافة / تعديل","Add / edit");enabled:!root.inventoryView&&backend.routerConnected&&!backend.busy&&(root.routerModule.create||root.routerModule.edit);onClicked:adminEditor.open()}
+     FgButton {text:root.tr("تفعيل","Enable");enabled:!root.inventoryView&&root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy;onClicked:backend.admin(menu.currentText,"enable",root.selectedRouterId,"{}")}
+     FgButton {text:root.tr("تعطيل","Disable");enabled:!root.inventoryView&&root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy;onClicked:backend.admin(menu.currentText,"disable",root.selectedRouterId,"{}")}
+     FgButton {text:root.tr("حذف","Delete");accent:theme.error;enabled:!root.inventoryView&&root.routerModule.delete&&root.selectedRouterId.length>0&&!backend.busy;onClicked:backend.admin(menu.currentText,"remove",root.selectedRouterId,"{}")}
+     Item {Layout.fillWidth:true}
+     FgButton {objectName:"discoveryDiagnosticsButton";text:root.tr("تشخيص الاكتشاف","Discovery details");visible:backend.discoveryDiagnostics.length>0;accent:theme.gold;onClicked:discoveryDetails.open()}
     }
     Text {
-     Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;font.pixelSize:12;wrapMode:Text.Wrap
-     text:root.tr("عند التفعيل تُشفّر كلمة المرور بواسطة Windows DPAPI وتُربط بحساب Windows الحالي، ولا تُحفظ كنص مكشوف.","When enabled, the password is protected by Windows DPAPI for the current Windows account and is never stored as plain text.")
+     Layout.fillWidth:true;wrapMode:Text.Wrap;color:root.inventoryView?theme.mint:theme.muted;font.pixelSize:14
+     text:root.inventoryView?(backend.busy?root.tr("جارٍ البحث… ستظهر الأجهزة هنا.","Searching… Devices will appear here."):backend.rows.length>0?root.tr("اختر جهازًا من النتائج لتعبئة عنوانه، ثم أدخل حساب الراوتر واضغط اتصال.","Select a device to fill its address, then enter router credentials and connect."):root.tr("لم تظهر أجهزة. تحقق من الشبكة أو أدخل عنوان الراوتر يدويًا. تفاصيل الفحص متاحة في تشخيص الاكتشاف.","No devices found. Check your network or enter the address manually. Open discovery details for the scan report.")):root.tr("اختر القسم لقراءته، ثم اختر صفًا لإدارة العنصر.","Read a section, then select a row to manage the item.")
     }
-    FgCombo {id: routerProtocol; model: ["REST","API_SSL","API","AUTO","REST_HTTP"]; Layout.fillWidth: true; onActivated: routerPort.text=currentIndex===0?"443":currentIndex===1?"8729":currentIndex===4?"80":"8728"}
-    FgField {id: routerPort; text: "443"; placeholderText: root.tr("المنفذ","Port")}
-    FgButton {text: root.tr("اتصال وقراءة","Connect & read");filled:true;accent:theme.blue;enabled: !backend.busy; onClicked: {root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.connectRouter(routerUrl.text,Number(routerPort.text),routerUser.text,routerPassword.text,routerProtocol.currentText,menu.currentText);if(!rememberRouterPassword.checked)routerPassword.clear()}}
-    FgButton {text: root.tr("قراءة القسم","Read section"); enabled: !backend.busy; onClicked: {root.inventoryView=false;root.selectedRouterId="";root.selectedRouterRow=({});backend.command("/"+menu.currentText+" print")}}
-    RowLayout {Layout.columnSpan: 2
-     FgButton {text: root.tr("إضافة / تعديل","Add / edit"); enabled: !root.inventoryView&&backend.routerConnected&&!backend.busy&&(root.routerModule.create||root.routerModule.edit); onClicked:adminEditor.open()}
-     FgButton {text: root.tr("تفعيل","Enable"); enabled: root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"enable",root.selectedRouterId,"{}")}
-     FgButton {text: root.tr("تعطيل","Disable"); enabled: root.routerModule.toggle&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"disable",root.selectedRouterId,"{}")}
-     FgButton {text: root.tr("حذف","Delete"); accent: theme.error; enabled: root.routerModule.delete&&root.selectedRouterId.length>0&&!backend.busy; onClicked: backend.admin(menu.currentText,"remove",root.selectedRouterId,"{}")}
-    }
-    RowLayout {Layout.columnSpan:2;Layout.fillWidth:true
-     FgField {id:profileName;Layout.fillWidth:true;placeholderText:root.tr("اسم الراوتر لحفظ الاتصال","Router name to save connection")}
-     FgButton {text:root.tr("حفظ الاتصال","Save connection");accent:theme.gold;onClicked:backend.saveRouterProfile(profileName.text,commerce.scope,routerUrl.text,Number(routerPort.text),routerUser.text,routerProtocol.currentText,routerPassword.text,rememberRouterPassword.checked)}
-     FgCombo {id:savedRouter;Layout.fillWidth:true;model:backend.profiles;textRole:"name";onActivated:{let p=backend.profiles[currentIndex];routerUrl.text=p.host;routerUser.text=p.user;routerPort.text=String(p.port);routerProtocol.currentIndex=routerProtocol.model.indexOf(p.protocol);rememberRouterPassword.checked=Boolean(p.hasPassword);routerPassword.text=p.hasPassword?backend.routerProfilePassword(p.id):""}}
-     FgButton {text:root.tr("حذف المحفوظ","Delete saved");enabled:backend.profiles.length>0;onClicked:{backend.deleteRouterProfile(backend.profiles[savedRouter.currentIndex].id);routerPassword.clear();rememberRouterPassword.checked=false}}
-    }
-    FgButton {Layout.columnSpan:2;text:root.tr("أجهزة الشبكة والأكسسات","Network devices & access points");enabled:backend.routerConnected&&!backend.busy;onClicked:{root.inventoryView=true;root.selectedRouterId="";root.selectedRouterRow=({});backend.discoverNetworkDevices()}}
-    ColumnLayout {Layout.columnSpan:2;Layout.fillWidth:true;visible:backend.discoveryDiagnostics.length>0;spacing:5
-     Text {Layout.fillWidth:true;text:root.tr("تشخيص اكتشاف MikroTik","MikroTik discovery diagnostics");color:theme.gold;font.bold:true}
-     Repeater {model:backend.discoveryDiagnostics;delegate:Text {required property var modelData;Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:(modelData.adapter||"")+" • IPv4 "+(modelData.ipv4||"")+" • "+root.tr("الشبكة","subnet")+" "+(modelData.subnet||"")+" • broadcast "+(modelData.broadcast||"-")+" • UDP 5678: "+(modelData.udp5678||"-")+" • MNDP: "+(modelData.mndp||"-")+" • "+root.tr("الفحص البديل","fallback")+": "+(modelData.scan||"-")}}
-    }
-    Text {Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;wrapMode:Text.Wrap;text:root.tr("الاكتشاف يستخدم كل بطاقات الشبكة النشطة: MNDP ثم Gateway وARP وفحص منافذ WinBox/API. يمكنك دائمًا الاتصال بعنوان IP يدويًا.","Discovery uses every active adapter: MNDP, then Gateway/ARP and WinBox/API port fallback. Manual IP connection always remains available.")}
-    Text {Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;wrapMode:Text.Wrap;text:root.tr("اختر جهازًا لنسخ عنوانه، ثم احفظ كل ميكروتيك باسم مستقل. أجهزة DHCP وARP ليست مؤكدة الاتصال، وضبط الأكسس يعتمد على موديله.","Select a device to fill its IP, then save each MikroTik with a separate name. DHCP/ARP devices are not verified online; AP configuration depends on its model.")}
-    Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
    RouterToolsWorkspace {onConnectRouter:root.navigateTask("router");id:toolsWorkspace;enabled:!networkBilling.busy;visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    BusinessWorkspace {id:localBusiness;visible: root.page==="commerce"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    VoucherStudio {id:voucherStudio;visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    Rectangle {
     visible: root.page!=="about"&&root.page!=="billing"&&root.page!=="transfer"&&root.page!=="monitor"&&root.page!=="tools"&&root.page!=="commerce"&&root.page!=="vouchers"&&root.page!=="home"&&root.page!=="settings"; Layout.fillWidth: true; Layout.fillHeight: true; color: theme.navy; radius: 14; border.color: theme.muted; clip: true
+    ListView {
+     id:inventoryResults;objectName:"discoveryResultsList";visible:root.page==="router"&&root.inventoryView
+     anchors.fill:parent;anchors.margins:12;clip:true;spacing:8;model:backend.rows
+     ScrollBar.vertical:ScrollBar {}
+     delegate:Rectangle {
+      required property var modelData
+      width:inventoryResults.width;implicitHeight:deviceContent.implicitHeight+24;radius:10
+      color:root.selectedRouterRow===modelData?theme.raised:theme.panel;border.color:theme.muted
+      RowLayout {
+       id:deviceContent;anchors.fill:parent;anchors.margins:12;spacing:12
+       NavIcon {kind:10;ink:theme.mint;Layout.preferredWidth:36;Layout.preferredHeight:36}
+       ColumnLayout {
+        Layout.fillWidth:true;spacing:5
+        Text {Layout.fillWidth:true;text:modelData.name||modelData.identity||root.tr("جهاز شبكة","Network device");color:theme.white;font.bold:true;font.pixelSize:16;elide:Text.ElideRight}
+        Text {Layout.fillWidth:true;text:modelData.host||root.tr("لا يوجد عنوان IP؛ لا يمكن الاتصال بهذا الصف","No IP address; this entry cannot be connected");color:theme.blue;font.pixelSize:16;LayoutMirroring.enabled:false;elide:Text.ElideRight}
+        Text {Layout.fillWidth:true;text:(modelData.method||modelData.source||"")+"  ·  "+(modelData.verification||modelData.evidence||"");color:theme.muted;font.pixelSize:14;wrapMode:Text.Wrap}
+       }
+       FgButton {text:root.tr("التفاصيل","Details");onClicked:{deviceDetails.record=modelData;deviceDetails.open()}}
+       FgButton {text:root.tr("اختيار","Select");accent:theme.mint;enabled:Boolean(modelData.host);onClicked:{root.selectedRouterRow=modelData;root.selectedRouterId="";routerUrl.text=modelData.host;routerUser.forceActiveFocus()}}
+      }
+      TapHandler {onTapped:{root.selectedRouterRow=parent.modelData;root.selectedRouterId="";if(parent.modelData.host){routerUrl.text=parent.modelData.host;routerUser.forceActiveFocus()}}}
+     }
+    }
     Flickable {
-     anchors.fill: parent; anchors.margins: 12; contentWidth: Math.max(width,backend.columns.length*190); contentHeight: height; clip: true
+     visible:root.page!=="router"||!root.inventoryView
+     objectName:"routerResultsTable"; anchors.fill: parent; anchors.margins: 12; contentWidth: Math.max(width,backend.columns.length*190); contentHeight: height; clip: true
      ScrollBar.horizontal: ScrollBar {}
      ColumnLayout {
       width: parent.contentWidth; height: parent.height; spacing: 8
@@ -204,7 +239,7 @@ ApplicationWindow {
         required property var modelData
         required property int index
         width: ListView.view.width; height: 46; color: root.page==="router"&&root.selectedRouterId===modelData[".id"] ? theme.blue : index%2===0 ? theme.panel : theme.raised
-        TapHandler {onTapped: if(root.page==="router"){root.selectedRouterId=parent.modelData[".id"]||"";root.selectedRouterRow=parent.modelData;if(parent.modelData.host)routerUrl.text=parent.modelData.host}}
+        TapHandler {onTapped: if(root.page==="router"){root.selectedRouterId=parent.modelData[".id"]||"";root.selectedRouterRow=parent.modelData;if(parent.modelData.host){routerUrl.text=parent.modelData.host;routerUser.forceActiveFocus()}}}
         Row {Repeater {model: backend.columns; Text {required property string modelData; text: parent.parent.modelData[modelData]||""; width: 190; height: 46; padding: 8; color: theme.white; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter; ToolTip.visible: hovered.hovered; ToolTip.text: text; HoverHandler {id: hovered}}}}
        }
       }
@@ -212,6 +247,58 @@ ApplicationWindow {
     }
    }
    Item {visible: root.page==="settings"; Layout.fillHeight: true}
+  }
+ }
+ FgDialog {
+  id:deviceDetails;parent:Overlay.overlay;anchors.centerIn:parent;modal:true;property var record:({})
+  width:Math.min(640,parent.width-40);height:Math.min(500,parent.height-40);title:root.tr("تفاصيل الجهاز","Device details")
+  contentItem:ScrollView {clip:true;TextArea {readOnly:true;selectByMouse:true;wrapMode:TextEdit.Wrap;color:theme.silver;font.pixelSize:15;LayoutMirroring.enabled:false;text:JSON.stringify(deviceDetails.record,null,2);background:Rectangle {color:theme.navy}}}
+ }
+ FgDialog {
+  id:connectionOptions;objectName:"connectionOptionsDialog";parent:Overlay.overlay;anchors.centerIn:parent;modal:true
+  width:Math.min(620,parent.width-40);height:Math.min(540,parent.height-40)
+  title:root.tr("الاتصالات المحفوظة والإعداد المتقدم","Saved connections & advanced settings")
+  contentItem:ScrollView {
+   id:connectionOptionsScroll;clip:true;contentWidth:availableWidth
+   ColumnLayout {
+    width:connectionOptionsScroll.availableWidth;spacing:12
+    Text {text:root.tr("استدعاء اتصال محفوظ","Load a saved connection");color:theme.gold;font.bold:true}
+    FgCombo {id:savedRouter;Layout.fillWidth:true;model:backend.profiles;textRole:"name";onActivated:{let p=backend.profiles[currentIndex];if(!p)return;routerUrl.text=p.host;routerUser.text=p.user;routerPort.text=String(p.port);routerProtocol.currentIndex=routerProtocol.model.indexOf(p.protocol);rememberRouterPassword.checked=Boolean(p.hasPassword);routerPassword.text=p.hasPassword?backend.routerProfilePassword(p.id):"";connectionOptions.close()}}
+    FgButton {text:root.tr("حذف الاتصال المحدد","Delete selected connection");accent:theme.error;enabled:savedRouter.currentIndex>=0&&savedRouter.currentIndex<backend.profiles.length&&!backend.busy;onClicked:{backend.deleteRouterProfile(backend.profiles[savedRouter.currentIndex].id);routerPassword.clear();rememberRouterPassword.checked=false}}
+    Rectangle {Layout.fillWidth:true;implicitHeight:1;color:"#315366"}
+    Text {text:root.tr("حفظ الاتصال الحالي","Save current connection");color:theme.gold;font.bold:true}
+    FgField {id:profileName;Layout.fillWidth:true;placeholderText:root.tr("اسم واضح للراوتر، مثل فرع دمياط","Router name, for example Main branch");horizontalAlignment:root.arabic?Text.AlignRight:Text.AlignLeft}
+    CheckBox {id:rememberRouterPassword;Layout.fillWidth:true;text:root.tr("حفظ كلمة المرور على هذا الكمبيوتر","Remember password on this PC");palette.windowText:theme.silver;font.pixelSize:14}
+    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.muted;text:root.tr("تُشفّر كلمة المرور وتُربط بحساب Windows الحالي.","The password is encrypted for the current Windows account.");font.pixelSize:14}
+    FgButton {text:root.tr("حفظ الاتصال","Save connection");accent:theme.gold;enabled:profileName.text.trim().length>0&&routerUrl.text.trim().length>0&&routerUser.text.trim().length>0&&routerPort.acceptableInput&&!backend.busy;onClicked:backend.saveRouterProfile(profileName.text,commerce.scope,routerUrl.text,Number(routerPort.text),routerUser.text,routerProtocol.currentText,routerPassword.text,rememberRouterPassword.checked)}
+    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:root.tr("REST عادةً على 443، وAPI-SSL على 8729، وAPI على 8728. اختر البروتوكول والمنفذ المفعّلين في الراوتر.","REST typically uses 443, API-SSL 8729 and API 8728. Select the protocol and port enabled on your router.");font.pixelSize:14}
+    FgButton {text:root.tr("إغلاق","Close");onClicked:connectionOptions.close()}
+   }
+  }
+ }
+ FgDialog {
+  id:discoveryDetails;objectName:"discoveryDetailsDialog";parent:Overlay.overlay;anchors.centerIn:parent;modal:true
+  width:Math.min(760,parent.width-40);height:Math.min(580,parent.height-40)
+  title:root.tr("تشخيص اكتشاف الراوترات","Router discovery diagnostics")
+  contentItem:ColumnLayout {
+   spacing:12
+   Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;font.pixelSize:14;text:root.tr("تقرير كل بطاقة شبكة. أجهزة DHCP وARP لا تثبت أن الجهاز متصل الآن. ضبط الأكسس يعتمد على موديله.","Report per network adapter. DHCP/ARP entries do not confirm current connectivity. AP configuration depends on its model.")}
+   ListView {
+    id:discoveryReport;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:10;model:backend.discoveryDiagnostics
+    ScrollBar.vertical:ScrollBar {}
+    delegate:Rectangle {
+     required property var modelData
+     width:discoveryReport.width;implicitHeight:adapterLayout.implicitHeight+24;radius:12;color:theme.panel;border.color:"#315366"
+     ColumnLayout {
+      id:adapterLayout;anchors.fill:parent;anchors.margins:12;spacing:6
+      Text {Layout.fillWidth:true;text:modelData.adapter||"—";color:theme.gold;font.pixelSize:16;font.bold:true;wrapMode:Text.Wrap;LayoutMirroring.enabled:false}
+      Text {Layout.fillWidth:true;text:"IPv4: "+(modelData.ipv4||"—")+"    CIDR: "+(modelData.subnet||"—");color:theme.white;font.pixelSize:14;wrapMode:Text.Wrap;LayoutMirroring.enabled:false}
+      Text {Layout.fillWidth:true;text:"Broadcast: "+(modelData.broadcast||"—")+"    UDP 5678: "+(modelData.udp5678||"—");color:theme.silver;font.pixelSize:14;wrapMode:Text.Wrap;LayoutMirroring.enabled:false}
+      Text {Layout.fillWidth:true;text:"MNDP: "+(modelData.mndp||"—")+"\n"+root.tr("الفحص البديل: ","Fallback: ")+(modelData.scan||"—");color:theme.muted;font.pixelSize:14;wrapMode:Text.Wrap;LayoutMirroring.enabled:false}
+     }
+    }
+   }
+   FgButton {text:root.tr("إغلاق","Close");onClicked:discoveryDetails.close()}
   }
  }
  FgDialog {
