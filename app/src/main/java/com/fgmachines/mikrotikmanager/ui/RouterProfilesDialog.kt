@@ -43,21 +43,27 @@ fun RouterProfilesDialog(arabic:Boolean,current:RouterConnectionSettings?,onSele
         onDispose { lifecycle.removeObserver(observer);monitorPassword="" }
     }
     var profiles by remember { mutableStateOf(emptyList<RouterProfile>()) };var busy by remember { mutableStateOf(false) };var error by remember { mutableStateOf(false) }
+    var guidanceOpen by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") };var edit by rememberSaveable { mutableStateOf<String?>(null) };var delete by remember { mutableStateOf<RouterProfile?>(null) }
     var name by rememberSaveable { mutableStateOf("") };var branch by rememberSaveable { mutableStateOf("") }
     fun load(work:()->Unit={}) { if(busy)return;busy=true;error=false;scope.launch { try { profiles=withContext(Dispatchers.IO){work();store.list()};edit=null;delete=null }catch(_:Exception){error=true}finally{busy=false} } }
     LaunchedEffect(Unit){load()}
-    AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text(tr("مركز الراوترات","Router center"))},text={Column(Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+    AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text(tr("مركز الراوترات","Router center"))},text={Column(Modifier.heightIn(max=520.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text(tr("ملفات اتصال محلية بلا كلمات مرور. اختر راوترًا ثم أدخل كلمة مروره واضغط اتصال. اتصال إدارة واحد؛ المراقبة منفصلة.","Local profiles without passwords. Select a router, enter its password and connect. One editing connection at a time. Monitoring is separate."))
-        Text(tr("لراوترين بهوتسبوت مستقل على نفس الإنترنت: احفظ ملف اتصال لكل راوتر واختر المطلوب قبل إدارة كروته ومشتركيه. اجعل عناوين إدارة الراوترين مختلفة، وشبكتي HotSpot منفصلتين؛ لا تجمع منفذي LAN في شبكة واحدة مع خادمي DHCP.","For two independent hotspots sharing an Internet uplink: save a profile for each router and select it before managing its users and vouchers. Use different management addresses and separate HotSpot LANs; do not join two DHCP-serving LANs."),style=MaterialTheme.typography.bodySmall)
-        Text(tr("راقب حتى 4 راوترات بفحص كل 30 ثانية، حتى في الخلفية، مع إشعار دائم وزر إيقاف. كلمات المرور في الذاكرة فقط؛ إذا أغلق النظام التطبيق ستحتاج بدء المراقبة مجددًا. حالة الراوتر لا تثبت اتصال الإنترنت أو الأكسس.","Monitor up to 4 routers every 30 seconds, including in the background, with a persistent notification and Stop action. Passwords remain in memory; restart monitoring if Android kills the process. Router reachability does not prove Internet or AP connectivity."),style=MaterialTheme.typography.bodySmall)
         if(notificationDenied)Text(tr("فعّل الإشعارات من إعدادات التطبيق ثم أعد المحاولة.","Enable notifications in app settings and try again."),color=MaterialTheme.colorScheme.error)
         if(monitored.isNotEmpty())OutlinedButton(onClick={BackgroundMonitor.stopAll(context)}){Text(tr("إيقاف كل المراقبة","Stop all monitoring"))}
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error)Text(tr("تعذرت العملية. راجع البيانات أو الاسم المكرر.","Operation failed. Check fields or duplicate names."),color=MaterialTheme.colorScheme.error)
         OutlinedTextField(search,{search=it.take(120)},label={Text(tr("بحث بالاسم أو الفرع أو العنوان","Search name, branch or address"))},modifier=Modifier.fillMaxWidth())
         OutlinedButton(onClick={edit=UUID.randomUUID().toString();name="";branch=""},enabled=current!=null && !busy){Text(tr("حفظ بيانات الاتصال الحالية","Save current connection fields"))}
-        LazyColumn(Modifier.heightIn(max=320.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.weight(1f, fill=false),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            item {
+                TextButton(onClick={guidanceOpen=!guidanceOpen}){Text(tr(if(guidanceOpen) "إخفاء إرشادات الشبكة والمراقبة" else "إرشادات الشبكة والمراقبة",if(guidanceOpen) "Hide network & monitoring guidance" else "Network & monitoring guidance"))}
+                if(guidanceOpen) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text(tr("لراوترين بهوتسبوت مستقل على نفس الإنترنت: احفظ ملف اتصال لكل راوتر واختر المطلوب قبل إدارة كروته ومشتركيه. اجعل عناوين إدارة الراوترين مختلفة، وشبكتي HotSpot منفصلتين؛ لا تجمع منفذي LAN في شبكة واحدة مع خادمي DHCP.","For two independent hotspots sharing an Internet uplink: save a profile for each router and select it before managing its users and vouchers. Use different management addresses and separate HotSpot LANs; do not join two DHCP-serving LANs."),style=MaterialTheme.typography.bodySmall)
+        Text(tr("راقب حتى 4 راوترات بفحص كل 30 ثانية، حتى في الخلفية، مع إشعار دائم وزر إيقاف. كلمات المرور في الذاكرة فقط؛ إذا أغلق النظام التطبيق ستحتاج بدء المراقبة مجددًا. حالة الراوتر لا تثبت اتصال الإنترنت أو الأكسس.","Monitor up to 4 routers every 30 seconds, including in the background, with a persistent notification and Stop action. Passwords remain in memory; restart monitoring if Android kills the process. Router reachability does not prove Internet or AP connectivity."),style=MaterialTheme.typography.bodySmall)
+                }
+            }
             items(alerts.take(10)) { a->Text(a.router+" • "+when(a.kind){"UNREACHABLE"->tr("تعذر الاتصال مرتين","Unreachable twice");"HIGH_CPU"->tr("استخدام معالج مرتفع","High CPU");"AUTH_REQUIRED"->tr("سجل الدخول لاستئناف المراقبة","Sign in to resume monitoring");else->tr("انتهى التنبيه","Alert resolved")},style=MaterialTheme.typography.bodySmall) }
             items(profiles.filter { (it.name+" "+it.branch+" "+it.host).contains(search,true) },key={it.id}) { p->Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(8.dp)) {
                 Text(p.name+if(p.branch.isBlank())"" else " • "+p.branch);Text(p.host+":"+p.port+" • "+p.protocol.name)

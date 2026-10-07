@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -59,6 +62,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -309,7 +313,7 @@ fun RouterDemoApp(screen: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ConnectionScreen(
+internal fun ConnectionScreen(
     connecting: Boolean,
     discovering: Boolean,
     discoveredRouters: List<DiscoveredRouter>,
@@ -345,6 +349,53 @@ private fun ConnectionScreen(
             password = password, protocol = protocol))
     }
 
+    var discoveryOpen by rememberSaveable { mutableStateOf(false) }
+    if (discoveryOpen) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { discoveryOpen = false },
+            title = { Text(if (arabic) "الراوترات المكتشفة (${discoveredRouters.size})" else "Discovered routers (${discoveredRouters.size})") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (arabic) "اختر راوترًا لتعبئة عنوانه. يمكنك إدخال العنوان يدويًا أيضًا." else "Select a router to fill its address. You can also enter the address manually.")
+                    if (discovering) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (!discovering && discoveredRouters.isEmpty()) Text(
+                        if (arabic) "لم تظهر أجهزة. تحقق من اتصالك بالشبكة المحلية أو أدخل عنوان الراوتر يدويًا." else "No devices found. Check the local network or enter the router address manually.",
+                        color = FgSilver
+                    )
+                    LazyColumn(
+                        Modifier.heightIn(max = 360.dp).testTag("discoveredRouterList"),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(discoveredRouters) { router ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().clickable(enabled = router.ipAddress.isNotBlank() && !connecting) {
+                                    host = router.ipAddress
+                                    discoveryOpen = false
+                                    onClearError()
+                                },
+                                colors = CardDefaults.cardColors(containerColor = FgPanel),
+                                border = BorderStroke(1.dp, if (host == router.ipAddress) FgMint else FgMetalSilver)
+                            ) {
+                                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    WindowsColorIcon("router", Modifier.size(36.dp))
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(router.identity.ifBlank { "MikroTik" }, color = FgWhite, fontWeight = FontWeight.Bold)
+                                        Text(router.ipAddress.ifBlank { if (arabic) "لا يوجد عنوان IP" else "No IP address" }, color = FgBlue,
+                                            style = MaterialTheme.typography.bodyMedium.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr))
+                                        if (router.boardName.isNotBlank()) Text(router.boardName, color = FgSilverMuted)
+                                        if (router.macAddress.isNotBlank()) Text(router.macAddress, color = FgSilverMuted,
+                                            style = MaterialTheme.typography.bodySmall.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { discoveryOpen = false }) { Text(if (arabic) "رجوع" else "Back") } }
+        )
+    }
+
     LaunchedEffect(Unit) { onDiscover() }
     LaunchedEffect(discoveredRouters) {
         if (host.isBlank() && discoveredRouters.size == 1) {
@@ -356,11 +407,27 @@ private fun ConnectionScreen(
         containerColor = FgBlack,
         topBar = {
             CompactAppHeader(
-                subtitle = if (arabic) "اتصال بالراوتر" else "Connect",
+                subtitle = if (arabic) "اتصال بالراوتر" else "Router connection",
                 showBack = false,
                 onBack = {},
                 onLanguageToggle = onLanguageToggle
             )
+        },
+        bottomBar = {
+            Column(Modifier.fillMaxWidth().background(FgBlack).navigationBarsPadding().imePadding().padding(horizontal = 14.dp, vertical = 8.dp)) {
+                Button(
+                    onClick = { connect() },
+                    colors = ButtonDefaults.buttonColors(containerColor = FgRoyalBlue, contentColor = FgWhite),
+                    enabled = !connecting && host.isNotBlank() && username.isNotBlank() && validPort,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("connectRouterButton")
+                ) {
+                    if (connecting) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (arabic) "اتصال بالراوتر" else "Connect")
+                }
+            }
         }
     ) { padding ->
         LazyColumn(
@@ -376,9 +443,9 @@ private fun ConnectionScreen(
             item {
                 Text(
                     if (arabic) {
-                        "اختر الراوتر الموجود على الشبكة ثم اكتب كلمة المرور."
+                        "أدخل بيانات الراوتر، أو اختره من نتائج الاكتشاف."
                     } else {
-                        "Select a discovered router, then enter its password."
+                        "Enter router credentials, or choose a discovered router."
                     },
                     color = FgSilver,
                     style = MaterialTheme.typography.bodySmall
@@ -387,7 +454,7 @@ private fun ConnectionScreen(
 
             item {
                 Button(
-                    onClick = onDiscover,
+                    onClick = { discoveryOpen = true; onDiscover() },
                     colors = ButtonDefaults.buttonColors(containerColor = FgRoyalBlue, contentColor = FgWhite),
                     enabled = !discovering && !connecting,
                     modifier = Modifier.fillMaxWidth()
@@ -410,54 +477,11 @@ private fun ConnectionScreen(
 
             item { OutlinedButton(onClick={profilesOpen=true},enabled=!connecting,modifier=Modifier.fillMaxWidth()) { Text(if(arabic) "مركز الراوترات" else "Router center") } }
 
-            if (discoveredRouters.isNotEmpty()) {
-                item {
-                    Text(
-                        if (arabic) "الراوترات الموجودة" else "Discovered routers",
-                        color = FgMint,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                items(discoveredRouters.take(6)) { router ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                host = router.ipAddress
-                                onClearError()
-                            },
-                        colors = CardDefaults.cardColors(containerColor = FgPanel),
-                        border = BorderStroke(
-                            1.5.dp,
-                            if (host == router.ipAddress) FgMint else FgBlue.copy(alpha = 0.65f)
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            WindowsColorIcon("router", Modifier.size(42.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    router.identity.ifBlank { "MikroTik" },
-                                    color = FgWhite,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    listOfNotNull(
-                                        router.boardName.takeIf { it.isNotBlank() },
-                                        router.ipAddress.takeIf { it.isNotBlank() }
-                                    ).joinToString(" • "),
-                                    color = FgSilverMuted
-                                )
-                            }
-                        }
-                    }
+            if (discoveredRouters.isNotEmpty()) item {
+                OutlinedButton(onClick = { discoveryOpen = true }, enabled = !connecting, modifier = Modifier.fillMaxWidth()) {
+                    WindowsColorIcon("router", Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (arabic) "اختيار راوتر (${discoveredRouters.size})" else "Choose router (${discoveredRouters.size})", color = FgMint)
                 }
             }
 
@@ -467,7 +491,8 @@ private fun ConnectionScreen(
                     textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
                     value = host,
                     onValueChange = { host = it; onClearError() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("routerHostField"),
+                    enabled = !connecting,
                     label = { Text(if (arabic) "عنوان الراوتر أو اسم النطاق" else "Router IP or hostname") },
                     placeholder = { Text("192.168.88.1") },
                     singleLine = true
@@ -480,7 +505,8 @@ private fun ConnectionScreen(
                     textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
                     value = username,
                     onValueChange = { username = it; onClearError() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("routerUsernameField"),
+                    enabled = !connecting,
                     label = { Text(if (arabic) "اسم المستخدم" else "Username") },
                     singleLine = true
                 )
@@ -491,7 +517,8 @@ private fun ConnectionScreen(
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = FgMetalSilver, unfocusedBorderColor = FgMetalSilver, focusedLabelColor = FgSilver, cursorColor = FgBlue),
                     value = password,
                     onValueChange = { password = it; onClearError() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("routerPasswordField"),
+                    enabled = !connecting,
                     label = { Text(if (arabic) "كلمة مرور MikroTik" else "MikroTik password") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -564,21 +591,6 @@ private fun ConnectionScreen(
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium
                     )
-                }
-            }
-
-            item {
-                Button(
-                    onClick = { connect() },
-                    colors = ButtonDefaults.buttonColors(containerColor = FgRoyalBlue, contentColor = FgWhite),
-                    enabled = !connecting && host.isNotBlank() && username.isNotBlank() && validPort,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (connecting) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Text(if (arabic) "اتصال بالراوتر" else "Connect")
                 }
             }
 

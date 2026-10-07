@@ -1,7 +1,6 @@
 package com.fgmachines.mikrotikmanager.ui
 
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -16,15 +15,14 @@ class OperationsUiTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
     private fun tap(text:String){compose.waitUntil(15000){runCatching{compose.onNodeWithText(text).assertIsEnabled();true}.getOrDefault(false)};val n=compose.onNodeWithText(text);runCatching{n.performScrollTo()};n.performClick();compose.waitForIdle()}
     private fun waitText(text:String){compose.waitUntil(10000){compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()}}
-    // Capture the synchronized Compose root rather than a stale SurfaceFlinger frame.
+    // Capture the actual display, including Dialog windows, rather than the activity underneath.
     private fun capture(name:String){
         compose.waitForIdle()
-        val root=if(name=="router-center-en.png")
-            compose.onNode(isRoot() and hasAnyDescendant(hasText("Navigation demo • Cairo")))
-        else compose.onRoot()
-        val bitmap=root.captureToImage().asAndroidBitmap()
-        val context=InstrumentationRegistry.getInstrumentation().targetContext
-        context.openFileOutput(name,0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        val bitmap=checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        instrumentation.targetContext.openFileOutput(name,0).use { check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
+        bitmap.recycle()
     }
     @Test fun routerProfilesTeamWalletAndArchiveScreens(){
         compose.onNodeWithText("Router IP or hostname").performTextInput("192.168.88.1")
