@@ -233,22 +233,100 @@ ApplicationWindow {
   function submit(action){let fields=Object.assign({},values);try{if(advancedFields.text.trim().length){let extra=JSON.parse(advancedFields.text);if(!extra||Array.isArray(extra)||typeof extra!=="object")throw "JSON";for(let key in extra){if(typeof extra[key]!=="string"||key===".id")throw "JSON";fields[key]=extra[key]}}backend.admin(menu.currentText,action,action==="set"?root.selectedRouterId:"",JSON.stringify(fields));close()}catch(error){advancedFields.placeholderText=root.tr("أدخل JSON بقيم نصية صحيحة","Enter valid JSON with string values")}}
  }
 
- CommandLibrary {id:commandLibrary;parent:Overlay.overlay;arabic:root.arabic;onSelected:function(command){commandInput.text=command;root.showTerminal()}}
+ CommandLibrary {id:commandLibrary;parent:Overlay.overlay;arabic:root.arabic;onSelected:function(command){commandInput.text=command;root.showTerminal();Qt.callLater(function(){commandInput.forceActiveFocus()})}}
  Window {
   id: terminalWindow
-  title: root.tr("FG MTM — ترمنال الراوتر","FG MTM — Router terminal")
-  width: 800; height: 500; minimumWidth: 550; minimumHeight: 350; color: theme.black
+  title: root.tr("FG MTM — ترمنال الراوتر السريع","FG MTM — Quick Router terminal")
+  width: 1040; height: 680; minimumWidth: 760; minimumHeight: 520; color: theme.black
   transientParent: root; flags: Qt.Window
+  property var recentCommands: []
+  property var quickCommands: [
+   {ar:"موارد الراوتر",en:"Resources",command:"/system resource print"},
+   {ar:"الواجهات",en:"Interfaces",command:"/interface print"},
+   {ar:"عناوين IP",en:"IP addresses",command:"/ip address print"},
+   {ar:"DHCP Leases",en:"DHCP leases",command:"/ip dhcp-server lease print"},
+   {ar:"المتصلون HotSpot",en:"HotSpot active",command:"/ip hotspot active print"},
+   {ar:"سجل الأحداث",en:"Event log",command:"/log print"},
+   {ar:"Firewall",en:"Firewall",command:"/ip firewall filter print"},
+   {ar:"NAT",en:"NAT",command:"/ip firewall nat print"}
+  ]
+  function remember(command){
+   let value=command.trim()
+   if(!value.length)return
+   let next=[value]
+   for(let i=0;i<recentCommands.length&&next.length<10;i++)if(recentCommands[i]!==value)next.push(recentCommands[i])
+   recentCommands=next
+  }
+  function run(command){
+   let value=command.trim()
+   if(!value.length||backend.busy)return
+   remember(value);commandInput.text=value;backend.command(value)
+  }
+  Shortcut {sequence:"Ctrl+K";context:Qt.WindowShortcut;onActivated:commandLibrary.open()}
+  Shortcut {sequence:"Ctrl+L";context:Qt.WindowShortcut;onActivated:backend.clearTerminal()}
   ColumnLayout {
    anchors.fill: parent; anchors.margins: 18; spacing: 12
-   Text {text: root.tr("أوامر RouterOS • راجع التغييرات قبل التنفيذ","RouterOS commands • review changes before execution"); color: theme.mint; Layout.fillWidth: true; wrapMode: Text.Wrap}
-   ScrollView {Layout.fillWidth: true; Layout.fillHeight: true; TextArea {text: backend.terminal; readOnly: true; selectByMouse: true; color: theme.white; font.family: "Consolas"; font.pixelSize: 14; wrapMode: TextEdit.Wrap; background: Rectangle {color: theme.navy}}}
-   FgField {id: commandInput; Layout.fillWidth: true; placeholderText: "/system resource print"; LayoutMirroring.enabled: false; onAccepted: if(!backend.busy)backend.command(text)}
+   RowLayout {
+    Layout.fillWidth:true
+    ColumnLayout {Layout.fillWidth:true;spacing:2
+     Text {text: root.tr("ترمنال RouterOS السريع","Quick RouterOS terminal");color:theme.gold;font.pixelSize:22;font.bold:true}
+     Text {text: root.tr("أوامر جاهزة + مكتبة شاملة + مراجعة تلقائية قبل أي تغيير","Quick actions + full command library + automatic review before changes");color:theme.silver;wrapMode:Text.Wrap;Layout.fillWidth:true}
+    }
+    Rectangle {implicitWidth:170;implicitHeight:38;radius:19;color:backend.routerConnected?"#123B31":"#28333D";border.color:backend.routerConnected?theme.mint:theme.muted
+     Text {anchors.centerIn:parent;text:backend.routerConnected?root.tr("● الراوتر متصل","● Router connected"):root.tr("○ غير متصل","○ Disconnected");color:backend.routerConnected?theme.mint:theme.silver;font.bold:true}
+    }
+   }
+   Rectangle {
+    Layout.fillWidth:true;implicitHeight:154;color:theme.panel;border.color:"#284457";radius:14
+    ColumnLayout {anchors.fill:parent;anchors.margins:12;spacing:8
+     RowLayout {Layout.fillWidth:true
+      Text {Layout.fillWidth:true;text:root.tr("أوامر سريعة","Quick actions");color:theme.mint;font.bold:true;font.pixelSize:16}
+      Text {text:backend.commandLibrary.length+" "+root.tr("أمر في المكتبة","commands in library");color:theme.muted;font.pixelSize:12}
+     }
+     GridLayout {Layout.fillWidth:true;columns:4;columnSpacing:8;rowSpacing:8
+      Repeater {model:terminalWindow.quickCommands;delegate:FgButton {
+       required property var modelData
+       Layout.fillWidth:true;text:root.arabic?modelData.ar:modelData.en;accent:theme.blue
+       onClicked:terminalWindow.run(modelData.command)
+      }}
+     }
+    }
+   }
+   RowLayout {
+    Layout.fillWidth:true;Layout.fillHeight:true;spacing:12
+    Rectangle {
+     Layout.fillWidth:true;Layout.fillHeight:true;color:theme.navy;border.color:"#284457";radius:14
+     ColumnLayout {anchors.fill:parent;anchors.margins:10;spacing:6
+      RowLayout {Layout.fillWidth:true
+       Text {Layout.fillWidth:true;text:root.tr("نتيجة الأوامر","Command output");color:theme.blue;font.bold:true}
+       FgButton {text:root.tr("مسح Ctrl+L","Clear Ctrl+L");onClicked:backend.clearTerminal()}
+      }
+      ScrollView {Layout.fillWidth:true;Layout.fillHeight:true
+       TextArea {text:backend.terminal.length?backend.terminal:root.tr("نفّذ أمرًا من الأزرار السريعة أو افتح المكتبة.","Run a quick action or open the command library.");readOnly:true;selectByMouse:true;color:backend.terminal.length?theme.white:theme.muted;font.family:"Consolas";font.pixelSize:14;wrapMode:TextEdit.Wrap;background:Rectangle {color:"#06121C";radius:10}}
+      }
+     }
+    }
+    Rectangle {
+     Layout.preferredWidth:300;Layout.fillHeight:true;color:theme.panel;border.color:"#284457";radius:14
+     ColumnLayout {anchors.fill:parent;anchors.margins:12;spacing:10
+      Text {text:root.tr("المساعدة السريعة","Quick help");color:theme.gold;font.bold:true;font.pixelSize:16}
+      Text {Layout.fillWidth:true;text:root.tr("Ctrl+K يفتح مكتبة الأوامر. Enter ينفّذ الأمر. أوامر التغيير لا تُنفّذ مباشرة؛ تظهر شاشة مراجعة أولًا.","Ctrl+K opens the library. Enter runs the command. Changing commands are never applied directly; a review screen appears first.");color:theme.silver;wrapMode:Text.Wrap}
+      FgButton {Layout.fillWidth:true;text:root.tr("فتح مكتبة الأوامر","Open command library")+" • Ctrl+K";filled:true;accent:theme.blue;onClicked:commandLibrary.open()}
+      Text {visible:terminalWindow.recentCommands.length>0;text:root.tr("الأوامر الأخيرة","Recent commands");color:theme.mint;font.bold:true}
+      FgCombo {id:recentCommand;visible:terminalWindow.recentCommands.length>0;Layout.fillWidth:true;model:terminalWindow.recentCommands;onActivated:commandInput.text=currentText}
+      FgButton {visible:terminalWindow.recentCommands.length>0;Layout.fillWidth:true;text:root.tr("استخدم الأمر المحدد","Use selected command");onClicked:commandInput.text=recentCommand.currentText}
+      Item {Layout.fillHeight:true}
+      Text {Layout.fillWidth:true;text:root.tr("للسلامة: لا تدعم النافذة سلاسل الأوامر المركبة أو أوامر shell. الأسرار لا تظهر في سجل النتائج.","Safety: compound command chains and shell commands are not accepted. Secrets are redacted from results.");color:theme.muted;font.pixelSize:12;wrapMode:Text.Wrap}
+     }
+    }
+   }
+   Text {text:root.tr("الأمر","Command");color:theme.silver;font.bold:true}
+   FgField {id:commandInput;Layout.fillWidth:true;placeholderText:"/system resource print";LayoutMirroring.enabled:false;onAccepted:terminalWindow.run(text)}
    Flow {Layout.fillWidth:true;spacing:8
-    FgButton {text: root.tr("معاينة / تنفيذ","Preview / run"); enabled: !backend.busy; onClicked: backend.command(commandInput.text)}
-    FgButton {text: root.tr("المكتبة","Library");onClicked:commandLibrary.open()}
-    FgButton {text: root.tr("نسخ","Copy");onClicked:backend.copyText(commandInput.text)}
-    FgButton {text: root.tr("مسح","Clear"); onClicked: backend.clearTerminal()}
+    FgButton {text:root.tr("تنفيذ / مراجعة","Run / review");filled:true;accent:theme.mint;enabled:!backend.busy&&commandInput.text.trim().length>0;onClicked:terminalWindow.run(commandInput.text)}
+    FgButton {text:root.tr("المكتبة","Library");accent:theme.blue;onClicked:commandLibrary.open()}
+    FgButton {text:root.tr("نسخ الأمر","Copy command");enabled:commandInput.text.trim().length>0;onClicked:backend.copyText(commandInput.text)}
+    FgButton {text:root.tr("مسح خانة الأمر","Clear command");onClicked:commandInput.clear()}
    }
   }
  }
