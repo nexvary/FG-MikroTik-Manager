@@ -21,13 +21,14 @@ class Bridge : public QObject {
  Q_PROPERTY(QString terminal READ terminal NOTIFY changed)
  Q_PROPERTY(QVariantList rows READ rows NOTIFY changed)
  Q_PROPERTY(QStringList columns READ columns NOTIFY changed)
+ Q_PROPERTY(QVariantList discoveryDiagnostics READ discoveryDiagnostics NOTIFY changed)
  Q_PROPERTY(QStringList menus READ menus CONSTANT)
 public:
  explicit Bridge(QObject *parent=nullptr);
  bool busy()const{return m_busy||workflowBusy||inventoryBusy||routerClient.busy();}
  bool routerConnected()const{return routerClient.connected();} QString preview()const{return m_preview;} QVariantList profiles()const; bool connected()const{return !token.isEmpty() && QDateTime::currentDateTimeUtc()<expires;}
  QString status()const{return m_status;} QString scope()const{return m_scope;} QString terminal()const{return m_terminal;}
- QVariantList rows()const{return m_rows;} QStringList columns()const{return m_columns;} QStringList menus()const;
+ QVariantList rows()const{return m_rows;} QStringList columns()const{return m_columns;} QVariantList discoveryDiagnostics()const{return routerClient.discoveryDiagnostics();} QStringList menus()const;
  QVariantList commandLibrary()const;
  Q_INVOKABLE QString fillCommand(QString text,QVariantMap values);
  Q_INVOKABLE void copyText(QString text);
