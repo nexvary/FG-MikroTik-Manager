@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QNetworkAccessManager>
+#include <QHostAddress>
 #include <QSslSocket>
 #include <QTimer>
 #include <QJsonArray>
