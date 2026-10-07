@@ -222,7 +222,7 @@ void RouterClient::discover(QVariantList savedProfiles){
    if(current!=discoveryGeneration){launcher->stop();return;}
    while(*inFlight<64&&!tasks->isEmpty()){
     auto task=tasks->dequeue();auto host=task.first;auto port=task.second;(*inFlight)++;
-    auto socket=new QTcpSocket(context);auto done=std::make_shared<bool>(false),connected=std::make_shared<bool>(false),buffer=std::make_shared<QByteArray>();
+    auto socket=new QTcpSocket(context);auto done=std::make_shared<bool>(false);auto connected=std::make_shared<bool>(false);auto buffer=std::make_shared<QByteArray>();
     auto finish=[socket,done,inFlight](){if(*done)return;*done=true;(*inFlight)--;socket->abort();socket->deleteLater();};
     connect(socket,&QTcpSocket::connected,context,[socket,host,port,connected,openPorts,publishCandidate,finish]{
      *connected=true;(*openPorts)[host].insert(port);
