@@ -6,6 +6,7 @@ ColumnLayout {
  id: workspace
  property bool arabic: true
  property string inspectedInterface:""
+ signal connectRouter()
  property alias currentTab:tabs.currentIndex
  property alias onlineOnly:subscribers.onlineOnly
  property string userId: ""
@@ -20,7 +21,30 @@ ColumnLayout {
  TabBar {id: tabs; Layout.fillWidth: true; FgTab {text: workspace.tr("التشخيص","Diagnostics")} FgTab {text: workspace.tr("إعداد HotSpot","HotSpot setup")} FgTab {text: workspace.tr("المشتركون","Subscribers")} FgTab {text: workspace.tr("الحماية","Protection")} FgTab {text: workspace.tr("صفحة الدخول","Login portal")} FgTab {text: workspace.tr("النسخ والساعة","Backup & clock")}}
  StackLayout {
   currentIndex: tabs.currentIndex; Layout.fillWidth: true; Layout.fillHeight: true
-  ColumnLayout {Text {visible:routerTools.checks.length===0;Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:workspace.tr("اتصل بالراوتر من قسم الراوترات، ثم اضغط فحص وتحديث لعرض جاهزية الشبكة.","Connect in the Routers section, then select Inspect & refresh to see network readiness.")} ScrollView {Layout.fillWidth:true;Layout.fillHeight:true;clip: true; ListView {model: routerTools.checks; implicitWidth: workspace.width-24; spacing: 6; delegate: Rectangle {required property var modelData; width: ListView.view.width; height: 82; radius: 12; color: theme.panel; RowLayout {anchors.fill: parent; anchors.margins: 14; Text {text: workspace.tr(modelData.ar||modelData.check,modelData.en||modelData.check); color: theme.white; Layout.fillWidth: true;wrapMode:Text.Wrap} Text {text: (modelData.detail||"").includes(" • ")?(modelData.detail||"").split(" • ")[workspace.arabic?0:1]:modelData.detail; color: theme.muted; Layout.fillWidth: true; elide: Text.ElideRight} Text {text: modelData.state; color: modelData.state==="READY"?theme.mint:theme.gold}}}}}}
+  ColumnLayout {spacing:14
+   Rectangle {visible:routerTools.checks.length===0;Layout.fillWidth:true;implicitHeight:136;radius:18;color:theme.raised;border.color:"#315366"
+    RowLayout {anchors.fill:parent;anchors.margins:20;spacing:18
+     NavIcon {kind:7;ink:theme.blue;Layout.preferredWidth:66;Layout.preferredHeight:66}
+     ColumnLayout {Layout.fillWidth:true;spacing:8
+      Text {Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr("ابدأ بفحص شبكتك","Start with a network check");color:theme.gold;font.pixelSize:24;font.bold:true}
+      Text {Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr("اربط الراوتر ثم افحص إعدادات الإنترنت وHotSpot والحماية. نتائج الفحص تظهر بعد قراءة الجهاز فقط.","Connect a router to inspect Internet, HotSpot and protection. Results appear only after reading the device.");color:theme.silver;font.pixelSize:14}
+     }
+    }
+   }
+   GridLayout {visible:routerTools.checks.length===0;Layout.fillWidth:true;columns:3;columnSpacing:12
+    Repeater {model:[{ar:"١ · اتصال الراوتر",en:"1 · Connect router",hintAr:"العنوان والحساب وAPI",hintEn:"Address, account and API",icon:10,tint:theme.blue,action:0},{ar:"٢ · فحص الجاهزية",en:"2 · Inspect readiness",hintAr:"DHCP • DNS • NAT • HotSpot",hintEn:"DHCP • DNS • NAT • HotSpot",icon:7,tint:theme.mint,action:1},{ar:"٣ · مراجعة الحماية",en:"3 · Review protection",hintAr:"الشبكات المختارة وفلترة DNS",hintEn:"Selected networks and DNS filtering",icon:11,tint:"#B897FF",action:2}]
+     delegate:Rectangle {required property var modelData;Layout.fillWidth:true;implicitHeight:172;radius:14;color:theme.panel;border.color:"#294152"
+      ColumnLayout {anchors.fill:parent;anchors.margins:16;spacing:9
+       NavIcon {kind:modelData.icon;ink:modelData.tint;Layout.preferredWidth:42;Layout.preferredHeight:42}
+       Text {Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr(modelData.ar,modelData.en);color:modelData.tint;font.pixelSize:16;font.bold:true}
+       Text {Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr(modelData.hintAr,modelData.hintEn);color:theme.silver;font.pixelSize:12}
+       FgButton {Layout.fillWidth:true;implicitHeight:36;text:workspace.tr("فتح","Open");accent:modelData.tint;onClicked:{if(modelData.action===0)workspace.connectRouter();else if(modelData.action===1)routerTools.inspect(workspace.inspectedInterface);else tabs.currentIndex=3}}
+      }
+     }
+    }
+   }
+   ScrollView {Layout.fillWidth:true;Layout.fillHeight:true;clip: true; ListView {model: routerTools.checks; implicitWidth: workspace.width-24; spacing: 6; delegate: Rectangle {required property var modelData; width: ListView.view.width; height: 82; radius: 12; color: theme.panel; RowLayout {anchors.fill: parent; anchors.margins: 14; Text {text: workspace.tr(modelData.ar||modelData.check,modelData.en||modelData.check); color: theme.white; Layout.fillWidth: true;wrapMode:Text.Wrap} Text {text: (modelData.detail||"").includes(" • ")?(modelData.detail||"").split(" • ")[workspace.arabic?0:1]:modelData.detail; color: theme.muted; Layout.fillWidth: true; elide: Text.ElideRight} Text {text: modelData.state; color: modelData.state==="READY"?theme.mint:theme.gold}}}}}
+  }
   ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 12
    Text {text: workspace.tr("اختر شبكة العملاء. الخطة تستبعد واجهة الإنترنت وتحافظ على البوابة الحالية.","Select the client network. The plan excludes WAN and preserves the current gateway."); color: theme.silver; wrapMode: Text.Wrap; Layout.fillWidth: true}
    GridLayout {columns: 2; Layout.fillWidth: true

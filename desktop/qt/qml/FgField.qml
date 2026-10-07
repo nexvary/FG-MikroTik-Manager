@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Controls.Basic
 TextField {
- color: "#F4F7FA"
- placeholderTextColor: "#8FA5B5"
+ color: "#7ED9F5"
+ placeholderTextColor: "#61798B"
  font.pixelSize: 15
  implicitHeight: 44
  selectByMouse: true
  padding: 12
- background: Rectangle {radius: 12; color: "#071C2B"; border.color: parent.activeFocus ? "#159DFF" : "#8FA5B5"}
+ background: Rectangle {radius: 12; color: "#102331"; border.color: parent.activeFocus ? "#159DFF" : "#61798B"}
 }

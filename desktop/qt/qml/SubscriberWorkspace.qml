@@ -29,6 +29,16 @@ ColumnLayout {
   FgButton {text:pane.tr("زيادة الوقت","Add time");enabled:pane.userId.length>0&&Number(seconds.text)>=60&&!backend.busy;onClicked:confirm.openFor("add_time")}
  }
  Text {visible:pane.userId.length>0;Layout.fillWidth:true;color:theme.gold;text:pane.tr("المحدد: ","Selected: ")+(pane.selectedUser.name||pane.userId)}
+ Rectangle {visible:routerTools.users.length===0;Layout.fillWidth:true;implicitHeight:170;radius:18;color:theme.raised;border.color:"#315366"
+  RowLayout {anchors.fill:parent;anchors.margins:22;spacing:18
+   NavIcon {kind:2;ink:theme.mint;Layout.preferredWidth:72;Layout.preferredHeight:72}
+   ColumnLayout {Layout.fillWidth:true;spacing:9
+    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.gold;font.pixelSize:23;font.bold:true;text:pane.onlineOnly?pane.tr("الجلسات المتصلة","Connected sessions"):pane.tr("مركز إدارة المشتركين","Subscriber management center")}
+    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:!backend.routerConnected?pane.tr("اتصل بالراوتر لقراءة الحسابات والجلسات. ستظهر حالة كل مشترك والوقت والبيانات المتبقية بعد التحديث.","Connect a router to read accounts and sessions. Each subscriber's state, remaining time and data appear after refreshing."):pane.tr("اضغط تحديث لقراءة حسابات الراوتر. لا توجد حسابات محملة في هذه الصفحة حاليًا.","Refresh to read router accounts. No accounts are currently loaded on this page.")}
+    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.blue;font.pixelSize:13;text:pane.tr("بحث • تفعيل وتعطيل • فصل جلسة • تغيير باقة • زيادة الوقت","Search • enable & disable • disconnect • change profile • add time")}
+   }
+  }
+ }
  ListView {id:users;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;ScrollBar.vertical:ScrollBar{}
   model:routerTools.users.filter(function(row){return (!pane.onlineOnly||Number(row.sessionCount)>0)&&(!search.text.length||((row.name||"")+" "+(row.profile||"")).toLowerCase().includes(search.text.toLowerCase()))})
   delegate:Rectangle {required property var modelData;width:users.width;height:details.implicitHeight+28;radius:12;color:pane.userId===modelData[".id"]?theme.raised:theme.panel;border.color:pane.userId===modelData[".id"]?theme.blue:theme.muted

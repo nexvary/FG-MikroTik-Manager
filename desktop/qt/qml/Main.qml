@@ -8,7 +8,7 @@ ApplicationWindow {
  width: 1280; height: 800; minimumWidth: 1000; minimumHeight: 650
  onClosing:function(close){if(monitor.keepRunning){close.accepted=false;root.hide()}}
  visible: true; title: "FG MTM • FG Machines"
- color: theme.black
+ color: "#07121B"
  property bool arabic: true
  property bool inventoryView: false
  property string routerGroup:"ALL"
@@ -48,9 +48,9 @@ ApplicationWindow {
  RowLayout {
   anchors.fill: parent; spacing: 0
   Rectangle {
-   Layout.fillHeight: true; Layout.preferredWidth: 260; color: theme.navy
+   Layout.fillHeight: true; Layout.preferredWidth: 276; color: theme.navy
    ColumnLayout {
-    anchors.fill: parent; anchors.margins: 18; spacing: 12
+    anchors.fill: parent; anchors.margins: 16; spacing: 10
     Text {text: "FG MACHINES"; color: theme.silver; font.pixelSize: 23; font.bold: true}
     Text {text: "FG MTM"; color: theme.blue; font.pixelSize: 18; font.bold: true}
     Text {text: root.tr("إدارة شبكتك وأعمالك","Network & business"); color: theme.muted; font.pixelSize: 13}
@@ -62,21 +62,26 @@ ApplicationWindow {
      delegate: FgButton {
       id:sidebarButton
       required property var modelData
-      Layout.fillWidth: true;implicitHeight:54; text: root.tr(modelData.ar,modelData.en); leftPadding: 42; rightPadding: 14
-      contentItem:Text {text:sidebarButton.text;color:theme.white;font:sidebarButton.font;wrapMode:Text.Wrap;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter}
+      property bool selected:root.page===modelData.key.split(":")[0]&&(modelData.key.indexOf("router:")!==0||root.routerGroup===modelData.key.split(":")[1])
+      property color sectionColor:[theme.blue,theme.gold,theme.mint,"#B897FF","#FF91AB","#7ED9F5"][modelData.icon%6]
+      Layout.fillWidth:true;implicitHeight:52;text:root.tr(modelData.ar,modelData.en);padding:8
+      contentItem:RowLayout {spacing:12
+       NavIcon {kind:sidebarButton.modelData.icon;ink:sidebarButton.sectionColor;Layout.preferredWidth:34;Layout.preferredHeight:34}
+       Text {Layout.fillWidth:true;text:sidebarButton.text;color:sidebarButton.selected?sidebarButton.sectionColor:theme.silver;font.pixelSize:14;font.bold:sidebarButton.selected;wrapMode:Text.Wrap;horizontalAlignment:root.arabic?Text.AlignRight:Text.AlignLeft;verticalAlignment:Text.AlignVCenter}
+      }
+      background:Rectangle {radius:12;color:sidebarButton.selected?"#193448":sidebarButton.hovered?theme.raised:"#0B1D2B";border.color:sidebarButton.selected?sidebarButton.sectionColor:"#223B4D"}
       accent: root.page===modelData.key.split(":")[0]&&(modelData.key.indexOf("router:")!==0||root.routerGroup===modelData.key.split(":")[1]) ? theme.blue : theme.muted
       onClicked: root.navigateTask(modelData.key)
-      NavIcon {anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; kind: parent.modelData.icon; ink: parent.accent}
      }
     }
     }}
     FgButton {Layout.fillWidth: true; text: root.tr("ترمنال عائم • F4","Floating terminal • F4"); accent: theme.mint; onClicked: {terminalWindow.show();terminalWindow.raise()}}
     FgButton {Layout.fillWidth: true; text: root.arabic ? "English" : "العربية"; onClicked: root.arabic=!root.arabic}
-    Text {text: "FG Machines · 0.17.1"; color: theme.muted; font.pixelSize: 12}
+    Text {text: "FG Machines · 0.17.2"; color: theme.muted; font.pixelSize: 12}
    }
   }
   ColumnLayout {
-   Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 24; spacing: 16
+   Layout.fillWidth: true; Layout.fillHeight: true; Layout.margins: 20; spacing: 12
    RowLayout {
     Layout.fillWidth: true
     FgButton {text: root.tr("رجوع","Back"); enabled: root.history.length>0; onClicked:root.goBack()}
@@ -85,7 +90,7 @@ ApplicationWindow {
     Text {text: backend.routerConnected?root.tr("الراوتر متصل","Router connected"):root.tr("الراوتر غير متصل","Router disconnected"); color: theme.silver}
    }
    Text {Layout.fillWidth: true; text: backend.status.includes(" • ") ? backend.status.split(" • ")[root.arabic?0:1] : backend.status; color: theme.mint; wrapMode: Text.Wrap}
-   HomeWorkspace {visible:root.page==="home";arabic:root.arabic;Layout.fillWidth:true;Layout.fillHeight:true;onOpenPage:function(key){root.navigateTask(key)}}
+   HomeWorkspace {routerConnected:backend.routerConnected;serverConnected:backend.connected;visible:root.page==="home";arabic:root.arabic;Layout.fillWidth:true;Layout.fillHeight:true;onOpenPage:function(key){root.navigateTask(key)}}
    AboutWorkspace {visible:root.page==="about";Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    NetworkBillingWorkspace {visible:root.page==="billing";enabled:!routerTools.busy;Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
    BusinessTransferWorkspace {visible:root.page==="transfer";Layout.fillWidth:true;Layout.fillHeight:true;arabic:root.arabic}
@@ -160,7 +165,7 @@ ApplicationWindow {
     Text {Layout.columnSpan:2;Layout.fillWidth:true;color:theme.muted;wrapMode:Text.Wrap;text:root.tr("اختر جهازًا لنسخ عنوانه، ثم احفظ كل ميكروتيك باسم مستقل. أجهزة DHCP وARP ليست مؤكدة الاتصال، وضبط الأكسس يعتمد على موديله.","Select a device to fill its IP, then save each MikroTik with a separate name. DHCP/ARP devices are not verified online; AP configuration depends on its model.")}
     Text {Layout.columnSpan: 2; Layout.fillWidth: true; text: root.tr("RouterOS API / API-SSL / REST. اختر صفًا لتعديل العنصر. الأسرار محجوبة.","RouterOS API / API-SSL / REST. Select a row to edit. Secrets are redacted."); color: theme.muted; wrapMode: Text.Wrap}
    }
-   RouterToolsWorkspace {id:toolsWorkspace;enabled:!networkBilling.busy;visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
+   RouterToolsWorkspace {onConnectRouter:root.navigateTask("router");id:toolsWorkspace;enabled:!networkBilling.busy;visible: root.page==="tools"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    BusinessWorkspace {id:localBusiness;visible: root.page==="commerce"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    VoucherStudio {id:voucherStudio;visible: root.page==="vouchers"; arabic: root.arabic; Layout.fillWidth: true; Layout.fillHeight: true}
    Rectangle {
