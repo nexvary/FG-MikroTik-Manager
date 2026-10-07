@@ -10,6 +10,8 @@ Dialog {
  palette.button: dialogTheme.raised
  palette.buttonText: dialogTheme.white
  palette.highlight: dialogTheme.mint
- header:Text {text:control.title;color:dialogTheme.gold;font.pixelSize:20;font.bold:true;padding:18;wrapMode:Text.Wrap}
+ header:Item {implicitWidth:360;implicitHeight:dialogTitle.implicitHeight+36
+  Text {id:dialogTitle;anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:18;text:control.title;color:dialogTheme.gold;font.pixelSize:20;font.bold:true;wrapMode:Text.Wrap}
+ }
  background: Rectangle {color:dialogTheme.panel;radius:14;border.width:1;border.color:dialogTheme.muted}
 }
