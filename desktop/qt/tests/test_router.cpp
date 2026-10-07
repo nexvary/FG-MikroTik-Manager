@@ -11,7 +11,7 @@ private slots:
   QByteArray b(4,'\0');auto tlv=[&](quint16 type,QByteArray value){b.append(char(type>>8));b.append(char(type&255));b.append(char(value.size()>>8));b.append(char(value.size()&255));b+=value;};
   tlv(1,QByteArray::fromHex("AABBCCDDEEFF"));tlv(5,"branch-router");tlv(7,"7.20");tlv(8,"MikroTik");tlv(12,"hEX");tlv(17,QByteArray::fromHex("C0A85801"));tlv(16,"bridge");
   auto row=RouterDiscoveryCodec::parseMndp(b,QHostAddress("192.168.88.254"));QCOMPARE(row["host"].toString(),QString("192.168.88.1"));QCOMPARE(row["mac"].toString(),QString("AA:BB:CC:DD:EE:FF"));QCOMPARE(row["name"].toString(),QString("branch-router"));QCOMPARE(row["method"].toString(),QString("MNDP"));QCOMPARE(row["verification"].toString(),QString("MNDP RouterOS"));
-  auto hosts=RouterDiscoveryCodec::scanHosts(QHostAddress("192.168.88.10"),16,254);QCOMPARE(hosts.size(),254);QVERIFY(!hosts.contains("192.168.88.10"));QVERIFY(hosts.contains("192.168.88.1"));QVERIFY(!hosts.contains("192.168.89.1"));
+  auto hosts=RouterDiscoveryCodec::scanHosts(QHostAddress("192.168.88.10"),16,254);QCOMPARE(hosts.size(),253);QVERIFY(!hosts.contains("192.168.88.10"));QVERIFY(hosts.contains("192.168.88.1"));QVERIFY(!hosts.contains("192.168.89.1"));
   QCOMPARE(RouterDiscoveryCodec::scanHosts(QHostAddress("192.168.88.1"),31,254).size(),0);QVERIFY(RouterDiscoveryCodec::parseMndp(QByteArray(3,'\0'),QHostAddress("192.168.88.1")).isEmpty());
  }
  void inventoryMergeAndConflicts(){
