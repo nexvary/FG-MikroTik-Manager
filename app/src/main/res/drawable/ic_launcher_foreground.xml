@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Subtle halo -->
+    <path android:fillColor="#132A3C" android:pathData="M54,16A38,38 0,1 0,54 92A38,38 0,1 0,54 16"/>
+    <path android:fillColor="#0E1D2A" android:strokeColor="#5B7690" android:strokeWidth="1.4"
+        android:pathData="M26,22H82A12,12 0,0 1,94 34V80A12,12 0,0 1,82 92H26A12,12 0,0 1,14 80V34A12,12 0,0 1,26 22Z"/>
+
+    <!-- FG monogram -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFD56A"
+        android:strokeWidth="5.5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M34,35V54M34,35H49M34,44H46"/>
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFD56A"
+        android:strokeWidth="5.5" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M76,38C73,34 69,33 65,33C57,33 52,39 52,45C52,52 57,57 65,57C70,57 74,55 77,52V47H68"/>
+
+    <!-- Wi-Fi signal -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#5EDCFF"
+        android:strokeWidth="3.2" android:strokeLineCap="round"
+        android:pathData="M37,64C47,56 61,56 71,64"/>
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#42E6A4"
+        android:strokeWidth="3.2" android:strokeLineCap="round"
+        android:pathData="M43,69C50,64 58,64 65,69"/>
+    <path android:fillColor="#A7FF67" android:pathData="M51,73A3,3 0,1 0,57 73A3,3 0,1 0,51 73"/>
+
+    <!-- Router -->
+    <path android:fillColor="#C9D9E6" android:strokeColor="#EEF6FC" android:strokeWidth="1.2"
+        android:pathData="M27,77H81A7,7 0,0 1,88 84V87H20V84A7,7 0,0 1,27 77Z"/>
+    <path android:fillColor="#17344A" android:pathData="M24,82H84V87H24Z"/>
+    <path android:fillColor="#42E6A4" android:pathData="M30,83A2,2 0,1 0,34 83A2,2 0,1 0,30 83"/>
+    <path android:fillColor="#5EDCFF" android:pathData="M38,83A2,2 0,1 0,42 83A2,2 0,1 0,38 83"/>
+    <path android:fillColor="#FFC34C" android:pathData="M46,83A2,2 0,1 0,50 83A2,2 0,1 0,46 83"/>
+    <path android:fillColor="#8DA9BF" android:pathData="M58,81H78V85H58Z"/>
+</vector>
