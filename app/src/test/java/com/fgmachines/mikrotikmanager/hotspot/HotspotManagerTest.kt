@@ -56,6 +56,19 @@ class HotspotManagerTest {
         val html=PortalTemplates.render(mapOf("login.html" to "@@NETWORK@@ @@WEBSITE@@ @@LOGO@@"),PortalDesign(networkName="<script>alert(1)</script>",website="javascript:alert(1)",logoDataUri="javascript:alert(2)"))["login.html"]!!
         assertFalse(html.contains("<script>"));assertFalse(html.contains("javascript:"))
     }
+    @Test fun premiumLoginPortalKeepsLocalBrandingAndSecureControls() {
+        val source = java.io.File("src/main/assets/hotspot/login.html").readText()
+        val css = java.io.File("src/main/assets/hotspot/fg.css").readText()
+        assertTrue(source.contains("portal-orbit"))
+        assertTrue(source.contains("id=\"connectButton\""))
+        assertTrue(source.contains("chapChallenge"))
+        assertTrue(source.contains("secureLogin"))
+        assertFalse(source.contains("http://"))
+        assertFalse(source.contains("https://"))
+        assertTrue(css.contains(".portal-orbit"))
+        assertTrue(css.contains(".connect-button"))
+    }
+
     @Test fun durationsHandleRouterOsUnitsAndUnknownFormats() {
         assertEquals(93784L,RouterDuration.seconds("1d2h3m4s")); assertEquals(3723L,RouterDuration.seconds("01:02:03")); assertNull(RouterDuration.seconds("bad"))
     }
