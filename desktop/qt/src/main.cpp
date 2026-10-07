@@ -58,6 +58,12 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
       if(bounds.left()<0||bounds.right()>w->width()+1||bounds.top()<0||bounds.bottom()>w->height()+1||control->width()<80){qWarning()<<"Router control clipped"<<name<<bounds;app.exit(22);return;}
      }
     }
+    if(page=="router-saved"){
+     auto close=w->findChild<QQuickItem*>("connectionOptionsCloseButton");
+     if(!close||!close->isVisible()){app.exit(23);return;}
+     auto bounds=close->mapRectToScene(QRectF(0,0,close->width(),close->height()));
+     if(bounds.top()<0||bounds.bottom()>w->height()-20){qWarning()<<"Connection options close button clipped"<<bounds;app.exit(24);return;}
+    }
     bool saved=false;
     if(terminal){for(auto window:QGuiApplication::allWindows()){auto view=qobject_cast<QQuickWindow*>(window);if(view&&view!=w&&view->isVisible())saved=view->grabWindow().save("qt-proof/terminal-ar.png")||saved;}}
     else saved=w->grabWindow().save("qt-proof/"+page+(ar?"-ar.png":"-en.png"));

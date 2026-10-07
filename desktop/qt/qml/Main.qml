@@ -258,8 +258,10 @@ ApplicationWindow {
   id:connectionOptions;objectName:"connectionOptionsDialog";parent:Overlay.overlay;anchors.centerIn:parent;modal:true
   width:Math.min(620,parent.width-40);height:Math.min(540,parent.height-40)
   title:root.tr("الاتصالات المحفوظة والإعداد المتقدم","Saved connections & advanced settings")
-  contentItem:ScrollView {
-   id:connectionOptionsScroll;clip:true;contentWidth:availableWidth
+  contentItem:ColumnLayout {
+   spacing:12
+   ScrollView {
+   id:connectionOptionsScroll;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;contentWidth:availableWidth
    ColumnLayout {
     width:connectionOptionsScroll.availableWidth;spacing:12
     Text {text:root.tr("استدعاء اتصال محفوظ","Load a saved connection");color:theme.gold;font.bold:true}
@@ -271,9 +273,11 @@ ApplicationWindow {
     CheckBox {id:rememberRouterPassword;Layout.fillWidth:true;text:root.tr("حفظ كلمة المرور على هذا الكمبيوتر","Remember password on this PC");palette.windowText:theme.silver;font.pixelSize:14}
     Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.muted;text:root.tr("تُشفّر كلمة المرور وتُربط بحساب Windows الحالي.","The password is encrypted for the current Windows account.");font.pixelSize:14}
     FgButton {text:root.tr("حفظ الاتصال","Save connection");accent:theme.gold;enabled:profileName.text.trim().length>0&&routerUrl.text.trim().length>0&&routerUser.text.trim().length>0&&routerPort.acceptableInput&&!backend.busy;onClicked:backend.saveRouterProfile(profileName.text,commerce.scope,routerUrl.text,Number(routerPort.text),routerUser.text,routerProtocol.currentText,routerPassword.text,rememberRouterPassword.checked)}
-    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:root.tr("REST عادةً على 443، وAPI-SSL على 8729، وAPI على 8728. اختر البروتوكول والمنفذ المفعّلين في الراوتر.","REST typically uses 443, API-SSL 8729 and API 8728. Select the protocol and port enabled on your router.");font.pixelSize:14}
-    FgButton {text:root.tr("إغلاق","Close");onClicked:connectionOptions.close()}
+    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.silver;text:root.tr("اختر البروتوكول والمنفذ المفعّلين في الراوتر.","Select the protocol and port enabled on your router.");font.pixelSize:14}
+    Text {Layout.fillWidth:true;wrapMode:Text.Wrap;LayoutMirroring.enabled:false;color:theme.silver;font.pixelSize:14;text:"REST: 443  •  API-SSL: 8729  •  API: 8728"}
    }
+   }
+   FgButton {objectName:"connectionOptionsCloseButton";text:root.tr("إغلاق","Close");onClicked:connectionOptions.close()}
   }
  }
  FgDialog {
