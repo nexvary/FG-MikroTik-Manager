@@ -161,7 +161,7 @@ void RouterClient::discover(QVariantList savedProfiles){
   }
  }
  for(auto value:savedProfiles){auto p=value.toMap();addCandidate(p.value("host").toString(),"Saved Router",p.value("name").toString(),p.value("port").toInt());}
- auto adapterFor=[adapters](QString host){QHostAddress h(host);bool ok=false;auto a=h.toIPv4Address(&ok);if(!ok)return QString{};for(const auto&i:adapters)if((a&i.mask)==(i.address&i.mask))return i.name;return QString{};};
+ auto adapterFor=[adapters](QString host){QHostAddress h(host);bool ok=false;auto a=h.toIPv4Address(&ok);if(!ok)return QString{};QStringList names;for(const auto&i:adapters)if((a&i.mask)==(i.address&i.mask)&&!names.contains(i.name))names.append(i.name);return names.join(" / ");};
  auto markDiagnostics=[this,current](const QString &adapter,const QString &field,const QString &value){
   if(current!=discoveryGeneration)return;for(int i=0;i<discoveryDiagnosticsRows.size();i++){auto row=discoveryDiagnosticsRows[i].toObject();if(adapter.isEmpty()||row["adapter"].toString()==adapter){row[field]=value;discoveryDiagnosticsRows[i]=row;}}emit changed();
  };
