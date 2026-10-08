@@ -92,7 +92,7 @@ private slots:
      else if(command=="/system/clock/set")for(auto key:attrs.keys())clock[key]=attrs[key];
      else if(command=="/system/ntp/client/print")rows.append(QJsonObject{{"enabled","yes"}});
      else if(command=="/system/ntp/client/servers/print")rows.append(QJsonObject{{"address","time.cloudflare.com"},{"enabled","yes"}});
-     else if(command=="/interface/print")rows.append(QJsonObject{{"name","ether1"},{"mac-address","AA:BB:CC:DD:EE:FF"}});
+     else if(command=="/interface/print")rows.append(QJsonObject{{"name","ether1"},{"type","ether"},{"mac-address","AA:BB:CC:DD:EE:FF"}});
      else if(command=="/ip/hotspot/profile/print")rows.append(profile);
      else if(command=="/file/add"){
       auto row=attrs;row[".id"]="*F"+QString::number(files.size());files.append(row);
