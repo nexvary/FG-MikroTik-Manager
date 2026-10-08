@@ -40,9 +40,13 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
    const QStringList pages{"home","accesspoints","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing","about"};
-   if(*index>=pages.size()*2+26){app.exit(0);return;}
-   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool hotspotProof=extra>=14;const bool routerReview=extra>=6&&extra<14;const bool ar=hotspotProof?(extra%2==0):routerReview?(extra%2==0):*index>=pages.size();auto page=hotspotProof?QString(extra<16?"hotspot-wan-auto":extra<18?"hotspot-wan-manual":extra<20?"hotspot-wan-failed":extra<22?"hotspot-wan-validation":extra<24?"hotspot-plan":"hotspot-ready"):routerReview?QString(extra<8?"router-discovery":extra<10?"router-compact":extra<12?"router-saved":"router-discovery-details"):terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
-   if(hotspotProof){
+   if(*index>=pages.size()*2+34){app.exit(0);return;}
+   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool voucherProof=extra>=26;const bool hotspotProof=extra>=14&&extra<26;const bool routerReview=extra>=6&&extra<14;const bool ar=(hotspotProof||voucherProof)?(extra%2==0):routerReview?(extra%2==0):*index>=pages.size();auto page=voucherProof?QString(extra<28?"voucher-create":extra<30?"voucher-activate":extra<32?"voucher-print":"voucher-archive"):hotspotProof?QString(extra<16?"hotspot-wan-auto":extra<18?"hotspot-wan-manual":extra<20?"hotspot-wan-failed":extra<22?"hotspot-wan-validation":extra<24?"hotspot-plan":"hotspot-ready"):routerReview?QString(extra<8?"router-discovery":extra<10?"router-compact":extra<12?"router-saved":"router-discovery-details"):terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
+   if(voucherProof){
+    QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("arabic",ar);w->resize(1280,800);
+    if(!QMetaObject::invokeMethod(w,"showVoucherStep",Q_ARG(QVariant,(extra-26)/2))){app.exit(31);return;}
+   }
+   else if(hotspotProof){
     QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("arabic",ar);w->setProperty("page","tools");
     routerTools.loadUiProofFixture(extra>=18&&extra<22);
     if(!QMetaObject::invokeMethod(w,"showHotspotProof",Q_ARG(QVariant,(extra-14)/2))){app.exit(25);return;}

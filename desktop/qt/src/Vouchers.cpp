@@ -80,16 +80,16 @@ QString Vouchers::shareCard(int index,bool arabic){if(!authorization()||index<0|
 QVariantList Vouchers::profiles()const{return authorization()&&router->connected()&&catalogIdentity==router->identityKey()?profileCatalog.toVariantList():QVariantList{};}
 QVariantList Vouchers::servers()const{return authorization()&&router->connected()&&catalogIdentity==router->identityKey()?serverCatalog.toVariantList():QVariantList{};}
 void Vouchers::loadProfiles(QString mode){
- if(working||router->busy())return;profileCatalog={};serverCatalog={};catalogMode=mode;catalogIdentity=router->identityKey();
+ if(working||router->busy()){message="انتظر انتهاء العملية الحالية ثم أعد قراءة الباقات • Wait for the current operation, then reload profiles";emit changed();return;}profileCatalog={};serverCatalog={};catalogMode=mode;catalogIdentity=router->identityKey();
  if(mode=="OFFLINE"){emit changed();return;}
  if(!authorization()||!router->connected()){message="اتصل بالراوتر لقراءة الباقات • Connect a router to load profiles";emit changed();return;}
  if(!QStringList{"HOTSPOT","PPPOE","USER_MANAGER"}.contains(mode)){message="INVALID_MODE";emit changed();return;}
- working=true;auto identity=catalogIdentity;auto menu=mode=="HOTSPOT"?"ip/hotspot/user/profile":mode=="PPPOE"?"ppp/profile":"user-manager/profile";
+ working=true;message="جارٍ قراءة باقات الراوتر • Loading router profiles";auto identity=catalogIdentity;auto menu=mode=="HOTSPOT"?"ip/hotspot/user/profile":mode=="PPPOE"?"ppp/profile":"user-manager/profile";
  router->read(menu,[this,mode,identity](RouterReply r){
   if(!authorization()||identity!=router->identityKey()){working=false;profileCatalog={};serverCatalog={};emit changed();return;}
   if(!r.ok()){working=false;message=r.error;emit changed();return;}profileCatalog=r.rows;
-  if(mode!="HOTSPOT"){working=false;message="تمت قراءة الباقات • Profiles loaded";emit changed();return;}
-  router->read("ip/hotspot",[this,identity](RouterReply reply){if(authorization()&&identity==router->identityKey()&&reply.ok())serverCatalog=reply.rows;working=false;message=reply.ok()?"تمت قراءة الباقات والخوادم • Profiles and servers loaded":reply.error;emit changed();});
+  if(mode!="HOTSPOT"){working=false;message=profileCatalog.isEmpty()?"لا توجد باقات لهذه الخدمة على الراوتر • No profiles found for this service":"تمت قراءة الباقات • Profiles loaded";emit changed();return;}
+  router->read("ip/hotspot",[this,identity](RouterReply reply){if(authorization()&&identity==router->identityKey()&&reply.ok())serverCatalog=reply.rows;working=false;message=reply.ok()?(profileCatalog.isEmpty()?"لا توجد باقات HotSpot على الراوتر • No HotSpot user profiles found":"تمت قراءة الباقات والخوادم • Profiles and servers loaded"):reply.error;emit changed();});
  });emit changed();
 }
 void Vouchers::openBatch(QString id){if(!authorization()||working||!QRegularExpression("^[0-9]{1,19}(-[a-fA-F0-9-]{36})?$").match(id).hasMatch())return;try{check(ids().contains(id),"BATCH_NOT_FOUND");auto bytes=Vault::unprotect(readBounded(directory+"/"+id+".fgv"));auto doc=QJsonDocument::fromJson(bytes);bytes.fill('\0');check(doc.isObject()&&doc.object()["vouchers"].isArray(),"ARCHIVE_INVALID");batch=doc.object();batchId=id;message="تم فتح الدفعة • Batch opened";}catch(const std::exception&e){message=e.what();}emit changed();}

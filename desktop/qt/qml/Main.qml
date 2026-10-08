@@ -35,6 +35,7 @@ ApplicationWindow {
 
  function closeReviewDialogs(){deviceDetails.close();connectionOptions.close();discoveryDetails.close();localBusiness.closeDialogs();voucherStudio.closeDialogs();adminEditor.close();terminalWindow.hide()}
  function showBusinessEditor(){localBusiness.showEditorFor("renew")}
+ function showVoucherStep(value){page="vouchers";voucherStudio.showStep(value)}
  function showVoucherPreview(){voucherStudio.previewFirst()}
  function showRouterEditor(){adminEditor.open()}
  function showConnectionOptions(){connectionOptions.open()}
