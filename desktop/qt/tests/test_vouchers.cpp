@@ -10,6 +10,11 @@
 #include "Vault.hpp"
 class VoucherTests:public QObject{Q_OBJECT
 private slots:
+ void disconnectedProfileReadAndSessionNotification(){
+  QTemporaryDir directory;RouterClient router;Vouchers vouchers(&router,nullptr,directory.path());QSignalSpy changed(&vouchers,&Vouchers::changed);
+  vouchers.loadProfiles("HOTSPOT");QVERIFY(vouchers.profiles().isEmpty());QVERIFY(vouchers.status().contains("Connect a router"));
+  changed.clear();router.close();QVERIFY(!changed.isEmpty());QVERIFY(vouchers.profiles().isEmpty());
+ }
  void sharingIncludesCredentialsAndActivationState(){
   QJsonObject card{{"mode","HOTSPOT"},{"username","alice"},{"password","separate-secret"},{"limitUptime","2h"},{"limitBytesTotal",104857600},{"absoluteExpiryEpochMs",qint64(1790000000000)},{"provisionState","DRAFT"},{"branding",QJsonObject{{"networkName","FG Machines"},{"portalLoginUrl","http://192.168.10.1/login"}}}};
   auto en=Vouchers::shareText(card,false);QVERIFY(en.contains("Password: separate-secret"));QVERIFY(en.contains("Usage allowance: 2h"));QVERIFY(en.contains("Data: 100.00 MB"));QVERIFY(en.contains("Expires:"));QVERIFY(en.contains("activation is not confirmed"));
