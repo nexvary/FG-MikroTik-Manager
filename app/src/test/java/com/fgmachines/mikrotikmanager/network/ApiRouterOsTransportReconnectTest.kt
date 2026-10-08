@@ -13,6 +13,27 @@ class ApiRouterOsTransportReconnectTest {
     @Test fun readReconnectsAfterPeerClosesWithoutAReply() = exercise(false)
     @Test fun lostMutationReplyIsNotReplayedAndNextReadReconnects() = exercise(true)
 
+    @Test fun fileReadPreservesLargeScalarDataFromDoneSentence(): Unit = runBlocking {
+        val listener=ServerSocket(0).apply { soTimeout=5000 }
+        val executor=Executors.newSingleThreadExecutor()
+        val transport=ApiRouterOsTransport(RouterConnectionSettings("127.0.0.1",listener.localPort,"admin","test-only"))
+        val text="مرحبا".repeat(2000)
+        val server=executor.submit {
+            listener.accept().use { socket ->
+                login(socket)
+                val words=RouterOsApiCodec.readSentence(socket.getInputStream())
+                assertEquals("/file/read",words.first())
+                assertTrue(words.contains("=file=flash/portal/login.html"))
+                reply(socket,listOf("!done","=data=$text"))
+            }
+        }
+        try {
+            assertEquals(text,transport.execute("/file/read",mapOf("file" to "flash/portal/login.html","offset" to "0","chunk-size" to "32768")).single()["data"])
+            server.get(6,TimeUnit.SECONDS)
+            Unit
+        } finally { transport.close();listener.close();executor.shutdownNow() }
+    }
+
     private fun exercise(mutation: Boolean): Unit = runBlocking {
         val listener = ServerSocket(0).apply { soTimeout = 5000 }
         val executor = Executors.newSingleThreadExecutor()

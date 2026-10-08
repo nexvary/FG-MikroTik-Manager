@@ -97,16 +97,21 @@ private slots:
      else if(command=="/file/add"){
       auto row=attrs;row[".id"]="*F"+QString::number(files.size());files.append(row);
      }else if(command=="/file/set"){
-      for(int i=0;i<files.size();i++){auto row=files[i].toObject();if(row[".id"]==attrs[".id"]){row["contents"]=attrs["contents"];files[i]=row;}}
+      for(int i=0;i<files.size();i++){auto row=files[i].toObject();if(row[".id"]==attrs[".id"]){row["contents"]=attrs["contents"];row["size"]=QString::number(attrs["contents"].toString().toUtf8().size());files[i]=row;}}
      }else if(command=="/file/print"){
-      bool explicitContents=attrs[".proplist"].toString().split(',').contains("contents");
-      bool omit= !explicitContents;if(explicitContents){contentReads++;if(missingReads>0){missingReads--;omit=true;}}
-      for(auto value:files){auto row=value.toObject();if(omit)row.remove("contents");else if(corrupt&&row.contains("contents"))row["contents"]="corrupt";rows.append(row);}
+      for(auto value:files){auto row=value.toObject();row.remove("contents");rows.append(row);}
+     }else if(command=="/file/read"){
+      contentReads++;if(missingReads>0){missingReads--;}
+      else for(auto value:files){auto row=value.toObject();if(row["name"]==attrs["file"]){
+       auto bytes=row["contents"].toString().toUtf8().mid(attrs["offset"].toString().toInt(),attrs["chunk-size"].toString().toInt());
+       rows.append(QJsonObject{{"data",corrupt?QString("corrupt"):QString::fromUtf8(bytes)}});
+      }}
      }else if(command=="/ip/hotspot/profile/set"){
       bindings++;auto directory=attrs["html-directory"].toString();allFilesVerifiedAtBinding=true;
       for(auto name:assets.keys()){bool found=false;for(auto value:files){auto row=value.toObject();if(row["name"]==directory+"/"+name&&row["contents"]==assets[name])found=true;}allFilesVerifiedAtBinding&=found;}
       for(auto key:attrs.keys())profile[key]=attrs[key];
      }
+     if(command=="/file/read"&&rows.size()==1){peer->write(RouterCodec::sentence({"!done","=data="+rows.first().toObject()["data"].toString()}));continue;}
      QByteArray reply;for(auto value:rows){QStringList sentence{"!re"};auto row=value.toObject();for(auto key:row.keys())sentence.append("="+key+"="+row[key].toString());reply+=RouterCodec::sentence(sentence);}reply+=RouterCodec::sentence({"!done"});peer->write(reply);
     }
    });
@@ -115,7 +120,7 @@ private slots:
   RouterTools tools(&client);tools.installPortal("*P",{{"networkName",QString::fromUtf8("شبكة العملاء")}});
   QTRY_VERIFY_WITH_TIMEOUT(!tools.busy(),15000);
   if(corrupt){QCOMPARE(bindings,0);QCOMPARE(profile["html-directory"].toString(),QString("flash/old"));QVERIFY(tools.status().contains("PORTAL_UPLOAD_VERIFY_FAILED"));QVERIFY(tools.status().contains("alogin.html"));}
-  else{QCOMPARE(bindings,1);QVERIFY(allFilesVerifiedAtBinding);QVERIFY(tools.status().contains("Portal installed and verified"));QCOMPARE(contentReads,assets.size()+(QString(QTest::currentDataTag())=="delayed-explicit-readback"?2:0));}
+  else{QVERIFY2(tools.status().contains("Portal installed and verified"),qPrintable(tools.status()));QCOMPARE(bindings,1);QVERIFY(allFilesVerifiedAtBinding);QCOMPARE(contentReads,assets.size()+(QString(QTest::currentDataTag())=="delayed-explicit-readback"?2:0));}
  }
  void portalEscapes(){auto assets=RouterTools::renderPortal({{"networkName","<script>alert(1)</script>"},{"color","#159DFF"},{"website","javascript:alert(1)"}});QVERIFY(!assets["login.html"].toString().contains("<script>alert(1)</script>"));QVERIFY(assets["login.html"].toString().contains("&lt;script&gt;"));QVERIFY(!assets["login.html"].toString().contains("javascript:alert"));QVERIFY_EXCEPTION_THROWN(RouterTools::renderPortal({{"color","red;display:none"}}),std::runtime_error);}
 };

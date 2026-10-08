@@ -64,7 +64,7 @@ class ApiRouterOsTransport internal constructor(
                 }
                 // Only reads may be replayed: a lost response to an add/set/remove
                 // cannot prove that RouterOS did not already apply the mutation.
-                val attempts = if (command.endsWith("/print")) 2 else 1
+                val attempts = if (command.endsWith("/print") || command == "/file/read") 2 else 1
                 var result: List<Map<String, String>>? = null
                 for (attempt in 0 until attempts) {
                     ensureConnected()
@@ -182,11 +182,9 @@ class ApiRouterOsTransport internal constructor(
                 }
                 "!done" -> {
                     trapMessage?.let { throw RouterOsException(it) }
-                    if (rows.isEmpty()) {
+                    if (rows.isEmpty() && attributes.isNotEmpty()) {
                         val createdId = attributes["ret"]
-                        if (!createdId.isNullOrBlank()) {
-                            return listOf(mapOf(".id" to createdId))
-                        }
+                        return listOf(if (!createdId.isNullOrBlank()) attributes + (".id" to createdId) else attributes)
                     }
                     return rows
                 }

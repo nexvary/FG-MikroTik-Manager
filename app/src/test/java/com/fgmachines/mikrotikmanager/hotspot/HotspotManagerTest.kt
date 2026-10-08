@@ -32,14 +32,20 @@ class HotspotManagerTest {
             "status.html" to "status", "md5.js" to "md5", "fg.css" to "x".repeat(10418))
         val directory = HotspotManager(t).installPortal("*P", files)
         assertEquals(directory, t.profile["html-directory"])
-        assertEquals(files.size, t.executed.count { it.first == "/file/print" &&
-            it.second[".proplist"] == ".id,name,contents" })
+        assertEquals(files.size, t.executed.count { it.first == "/file/read" })
         assertFalse(t.read("file").any { it.containsKey("contents") })
+    }
+    @Test fun chunkedReadbackUsesByteOffsetsAndPreservesArabicCharacters() = runTest {
+        val t=Fake();val text="a"+"ش".repeat(20000)
+        HotspotManager(t).installPortal("*P",mapOf("login.html" to text,"status.html" to "status","md5.js" to "md5"))
+        val reads=t.executed.filter { it.first=="/file/read" && it.second["file"]!!.endsWith("/login.html") }
+        assertEquals(listOf("0","32767"),reads.map { it.second["offset"] })
+        assertEquals(listOf("32767","7234"),reads.map { it.second["chunk-size"] })
     }
     @Test fun retriesOnlyReadbackUntilContentsBecomeVisible() = runTest {
         val t = Fake(); t.missingReadbacks = 2
         HotspotManager(t).installPortal("*P", mapOf("login.html" to "login", "status.html" to "status", "md5.js" to "md5"))
-        assertEquals(5, t.executed.count { it.first == "/file/print" })
+        assertEquals(5, t.executed.count { it.first == "/file/read" })
         assertEquals(4, t.executed.count { it.first == "/file/set" }) // three files and rollback pointer
     }
     @Test fun corruptReadbackKeepsOldPortalAndNamesFailingFile() = runTest {
@@ -121,10 +127,18 @@ class HotspotManagerTest {
         override suspend fun execute(command:String,attributes:Map<String,String>):List<Map<String,String>> {
             executed+=command to attributes
             if(command=="/ip/hotspot/profile/set"&&!refuseBinding)profile.putAll(attributes)
-            if(command=="/file/set"&&!failFile)files.first{it[".id"]==attributes[".id"]}.putAll(attributes)
-            if(command=="/file/print" && attributes[".proplist"]==".id,name,contents") {
-                if(missingReadbacks>0) { missingReadbacks--;return read("file") }
-                return files.map { row -> row.toMap().let { if(corruptReadback && it.containsKey("contents")) it+("contents" to "corrupt") else it } }
+            if(command=="/file/set"&&!failFile)files.first{it[".id"]==attributes[".id"]}.apply {
+                putAll(attributes);put("size",attributes.getValue("contents").toByteArray(Charsets.UTF_8).size.toString())
+            }
+            if(command=="/file/print") return read("file")
+            if(command=="/file/read") {
+                if(missingReadbacks>0) { missingReadbacks--;return emptyList() }
+                val file=files.first { it["name"]==attributes["file"] }
+                val bytes=file["contents"].orEmpty().toByteArray(Charsets.UTF_8)
+                val start=attributes.getValue("offset").toInt()
+                val end=minOf(start+attributes.getValue("chunk-size").toInt(),bytes.size)
+                val data=if(corruptReadback) "corrupt" else bytes.copyOfRange(start,end).toString(Charsets.UTF_8)
+                return listOf(mapOf("data" to data))
             }
             return emptyList()
         }

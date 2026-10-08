@@ -247,15 +247,28 @@ RouterJob RouterTools::run(QString operation,QJsonObject fields){bool nested=fie
    auto users=co_await call("ip/hotspot/user");tables["ip/hotspot/user"]=users.rows;auto active=co_await call("ip/hotspot/active","print",{},false);tables["ip/hotspot/active"]=active.rows;unavailable.remove("ip/hotspot/active");if(!active.ok())unavailable.insert("ip/hotspot/active");message="تم تحديث المشترك • Subscriber updated";
   }
   else if(operation=="portal_install"){
-   auto response=co_await call("ip/hotspot/profile");auto profile=find(QJsonObject{{"profiles",response.rows}},"profiles",".id",str(fields,"profile"));check(!profile.isEmpty(),"PROFILE_NOT_FOUND");auto files=renderPortal(fields["design"].toObject());auto existing=co_await call("file");bool flash=!find(QJsonObject{{"files",existing.rows}},"files","name","flash").isEmpty();auto directory=QString(flash?"flash/":"")+"fg-mtm-"+QString::number(QDateTime::currentMSecsSinceEpoch());co_await call("file","add",{{"name",directory},{"type","directory"}});for(auto name:files.keys()){auto path=directory+"/"+name;co_await call("file","add",{{"name",path},{"type","file"}});auto read=co_await call("file");auto file=find(QJsonObject{{"files",read.rows}},"files","name",path);check(!str(file,".id").isEmpty(),"PORTAL_FILE_CREATE_FAILED");co_await call("file","set",{{".id",file[".id"]},{"contents",files[name]}});// Request contents explicitly: a normal file listing can omit large text files.
-    bool matches=false;QJsonObject saved;
+   auto response=co_await call("ip/hotspot/profile");auto profile=find(QJsonObject{{"profiles",response.rows}},"profiles",".id",str(fields,"profile"));check(!profile.isEmpty(),"PROFILE_NOT_FOUND");auto files=renderPortal(fields["design"].toObject());auto existing=co_await call("file");bool flash=!find(QJsonObject{{"files",existing.rows}},"files","name","flash").isEmpty();auto directory=QString(flash?"flash/":"")+"fg-mtm-"+QString::number(QDateTime::currentMSecsSinceEpoch());co_await call("file","add",{{"name",directory},{"type","directory"}});for(auto name:files.keys()){auto path=directory+"/"+name;co_await call("file","add",{{"name",path},{"type","file"}});auto read=co_await call("file");auto file=find(QJsonObject{{"files",read.rows}},"files","name",path);check(!str(file,".id").isEmpty(),"PORTAL_FILE_CREATE_FAILED");co_await call("file","set",{{".id",file[".id"]},{"contents",files[name]}});// File print can omit contents even with an explicit proplist. Read this file directly.
+    auto expected=str(files,name).toUtf8();bool matches=false;QByteArray saved;bool readable=false;
     for(int attempt=0;attempt<4&&!matches;attempt++){
      if(attempt)co_await RouterDelay{this,lifetime,200};
-     auto verified=co_await call("file","print",{{".proplist",".id,name,contents"}});
-     saved=find(QJsonObject{{"files",verified.rows}},"files",".id",str(file,".id"));
-     matches=saved.contains("contents")&&saved["contents"]==files[name];
+     saved.clear();readable=true;
+     auto metadata=co_await call("file","print",{{".proplist",".id,name,size"}});
+     auto current=find(QJsonObject{{"files",metadata.rows}},"files",".id",str(file,".id"));
+     bool sizeOk=false;auto size=str(current,"size").toLongLong(&sizeOk);
+     if(!sizeOk||size!=expected.size()){readable=false;continue;}
+     for(qsizetype offset=0;offset<expected.size();){
+      auto end=std::min(offset+qsizetype(32768),expected.size());
+      // Do not split a UTF-8 character across replies decoded by the transport.
+      while(end<expected.size()&&(quint8(expected[end])&0xc0)==0x80)--end;
+      auto chunk=co_await call("file","read",{{"file",path},{"offset",QString::number(offset)},{"chunk-size",QString::number(end-offset)}});
+      if(chunk.rows.size()!=1||!chunk.rows.first().toObject().contains("data")){readable=false;break;}
+      auto bytes=str(chunk.rows.first().toObject(),"data").toUtf8();saved+=bytes;
+      if(bytes!=expected.mid(offset,end-offset)){readable=false;break;}offset=end;
+     }
+     matches=readable&&saved==expected;
     }
-    if(!matches)throw std::runtime_error((QString("PORTAL_UPLOAD_VERIFY_FAILED: ")+name+"; expected UTF-8 bytes="+QString::number(str(files,name).toUtf8().size())+"; read UTF-8 bytes="+(saved.contains("contents")?QString::number(str(saved,"contents").toUtf8().size()):QString("missing"))+"; existing portal is unchanged").toStdString());}
+    if(!matches)throw std::runtime_error((QString("PORTAL_UPLOAD_VERIFY_FAILED: ")+name+"; expected UTF-8 bytes="+QString::number(expected.size())+"; read UTF-8 bytes="+QString::number(saved.size())+"; existing portal is unchanged").toStdString());}
+
    QJsonObject receipt{{"profile",profile[".id"]},{"name",profile["name"]},{"before",QJsonObject{{"html-directory",str(profile,"html-directory")},{"html-directory-override",str(profile,"html-directory-override")}}},{"directory",directory},{"connection",client->identityKey()},{"fingerprint",fingerprint()},{"state","APPLYING"}};journal["portal"]=receipt;persist();auto pointer=directory+"/rollback.txt";co_await call("file","add",{{"name",pointer},{"type","file"}});auto list=co_await call("file");auto pointerFile=find(QJsonObject{{"files",list.rows}},"files","name",pointer);check(!str(pointerFile,".id").isEmpty(),"ROLLBACK_POINTER_FAILED");co_await call("file","set",{{".id",pointerFile[".id"]},{"contents","profile="+str(profile,"name")+"\nhtml-directory="+str(profile,"html-directory")+"\nhtml-directory-override="+str(profile,"html-directory-override")}});co_await call("ip/hotspot/profile","set",{{".id",profile[".id"]},{"html-directory",directory},{"html-directory-override",""}});auto verify=co_await call("ip/hotspot/profile");auto current=find(QJsonObject{{"profiles",verify.rows}},"profiles",".id",str(profile,".id"));check(current["html-directory"]==directory&&str(current,"html-directory-override").isEmpty(),"PORTAL_BINDING_VERIFY_FAILED");receipt["state"]="ACTIVE";journal["portal"]=receipt;persist();message="تم تثبيت صفحة الدخول والتحقق منها • Portal installed and verified";
   }
   else if(operation=="portal_restore"){

@@ -103,17 +103,37 @@ class HotspotManager(private val transport: RouterOsTransport) {
             transport.create("file", mapOf("name" to path, "type" to "file"))
             val id = transport.read("file").firstOrNull { it["name"] == path }?.get(".id") ?: error("Could not create $name")
             transport.execute("/file/set", mapOf(".id" to id, "contents" to contents))
-            // A normal listing may omit contents for large files even though get can read them.
-            var saved: String? = null
+            // Lists can omit contents, including when requested explicitly. Read this file directly.
+            val expected = contents.toByteArray(Charsets.UTF_8)
+            var matches = false
+            var readBytes = 0
             for (attempt in 0..3) {
                 if (attempt > 0) kotlinx.coroutines.delay(200)
-                saved = transport.execute("/file/print", mapOf(".proplist" to ".id,name,contents"))
-                    .firstOrNull { it[".id"] == id }?.get("contents")
-                if (saved == contents) break
+                val metadata = transport.execute("/file/print", mapOf(".proplist" to ".id,name,size"))
+                    .firstOrNull { it[".id"] == id }
+                if (metadata?.get("size")?.toLongOrNull() != expected.size.toLong()) continue
+                var offset = 0
+                matches = true
+                readBytes = 0
+                while (offset < expected.size) {
+                    var end = minOf(offset + 32768, expected.size)
+                    // Preserve complete UTF-8 characters when decoding each API/REST reply.
+                    while (end < expected.size && (expected[end].toInt() and 0xC0) == 0x80) end--
+                    val rows = transport.execute("/file/read", mapOf("file" to path,
+                        "offset" to offset.toString(), "chunk-size" to (end - offset).toString()))
+                    val data = rows.singleOrNull()?.get("data")?.toByteArray(Charsets.UTF_8)
+                    readBytes += data?.size ?: 0
+                    if (data == null || !data.contentEquals(expected.copyOfRange(offset, end))) {
+                        matches = false
+                        break
+                    }
+                    offset = end
+                }
+                if (matches) break
             }
-            require(saved == contents) {
-                "Upload verification failed for $name; expected UTF-8 bytes=${contents.toByteArray().size}; " +
-                    "read UTF-8 bytes=${saved?.toByteArray()?.size ?: "missing"}; existing portal is unchanged"
+            require(matches) {
+                "Upload verification failed for $name; expected UTF-8 bytes=${expected.size}; " +
+                    "read UTF-8 bytes=$readBytes; existing portal is unchanged"
             }
         }
         // Save an explicit rollback pointer before switching. Never overwrite the owner's old files.
