@@ -11,6 +11,7 @@ class RouterTools:public QObject{
  Q_PROPERTY(QString status READ status NOTIFY changed)
  Q_PROPERTY(QVariantList checks READ checks NOTIFY changed)
  Q_PROPERTY(QVariantList changes READ changes NOTIFY changed)
+ Q_PROPERTY(QVariantMap planSummary READ planSummary NOTIFY changed)
  Q_PROPERTY(QVariantList backups READ backups NOTIFY changed)
  Q_PROPERTY(QVariantList interfaces READ interfaces NOTIFY changed)
  Q_PROPERTY(QVariantList wanCandidates READ wanCandidates NOTIFY changed)
@@ -26,6 +27,7 @@ class RouterTools:public QObject{
 public:
  RouterTools(RouterClient *client,QObject*p=nullptr);~RouterTools();
  bool busy()const{return working;}QString status()const{return message;}QVariantList checks()const{return report.toVariantList();}QVariantList changes()const{return pending["changes"].toArray().toVariantList();}
+ QVariantMap planSummary()const{return pending.toVariantMap();}
  QVariantList interfaces()const{return tables["interface"].toArray().toVariantList();}
  QVariantList clientInterfaces()const;
  QVariantMap wanDetection()const;

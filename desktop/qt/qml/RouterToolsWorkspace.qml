@@ -18,7 +18,7 @@ ColumnLayout {
  property string logoDataUri:routerTools.portalDesign.logoDataUri||""
  property var selectedNetworks: []
  function showTab(index,online){tabs.currentIndex=index;subscribers.onlineOnly=online||false}
- function showWanProof(mode){tabs.currentIndex=1;wanAuto.checked=(mode===0||mode===2||mode>=4);wanManual.currentIndex=(mode===1)?0:-1;backupPassword.text=mode===5?"fixture-backup-only":"";workspace.reviewedInput=mode>=4?workspace.inputKey():"";hotspotScroll.contentItem.contentY=mode>=4?Math.max(0,hotspotContent.height-hotspotScroll.height):0}
+ function showWanProof(mode){tabs.currentIndex=1;wanAuto.checked=(mode===0||mode===2||mode>=4);wanManual.currentIndex=(mode===1)?0:-1;backupPassword.text=mode===5?"fixture-backup-only":"";workspace.reviewedInput=mode>=4?workspace.inputKey():"";Qt.callLater(function(){hotspotScroll.contentItem.contentY=mode>=4?Math.max(0,hotspotContent.height-hotspotScroll.height):0})}
  function tr(ar,en){return arabic?ar:en}
  function comboValue(control){var item=control.model[control.currentIndex];return item&&item.value!==undefined?item.value:control.currentText}
  function selectedWan(){return wanAuto.checked&&(workspace.detectedWan.name||"").length?(workspace.detectedWan.name||""):wanManual.currentText}
@@ -58,6 +58,17 @@ ColumnLayout {
    Text {text: workspace.tr("اختر شبكة العملاء. الخطة تستبعد واجهة الإنترنت وتحافظ على البوابة الحالية.","Select the client network. The plan excludes WAN and preserves the current gateway."); color: theme.silver; wrapMode: Text.Wrap; Layout.fillWidth: true}
    GridLayout {columns: 2; Layout.fillWidth: true
     Text {text: workspace.tr("واجهة العملاء","Client interface"); color: theme.silver} FgCombo {id: client; model: routerTools.clientInterfaces; textRole: "name"; Layout.fillWidth: true;onActivated:workspace.inspectedInterface=currentText}
+   }
+   Rectangle {Layout.fillWidth:true;implicitHeight:wanManual.visible&&wanAuto.checked?190:wanAuto.checked?118:144;radius:14;color:theme.panel;border.color:(workspace.selectedWan().length&&workspace.selectedWan()!==client.currentText)?theme.blue:theme.error
+    ColumnLayout {anchors.fill:parent;anchors.margins:14;spacing:7
+     RowLayout {Layout.fillWidth:true;NavIcon {kind:8;Layout.preferredWidth:30;Layout.preferredHeight:30} Text {text:workspace.tr("واجهة الإنترنت / WAN","Internet interface / WAN");color:theme.white;font.bold:true;Layout.fillWidth:true} CheckBox {id:wanAuto;objectName:"wanAutoSelector";checked:true;text:workspace.tr("تلقائي","Auto")}}
+     Text {visible:wanAuto.checked;Layout.fillWidth:true;wrapMode:Text.Wrap;text:(workspace.detectedWan.name||"").length?workspace.tr("✓ تم اكتشاف واجهة الإنترنت تلقائيًا: ","✓ Auto detected WAN: ")+(workspace.detectedWan.name||""):workspace.tr("تعذر تحديد واجهة الإنترنت تلقائيًا. ألغِ تلقائي واخترها يدويًا.","WAN could not be detected automatically. Turn off Auto and choose it manually.");color:(workspace.detectedWan.name||"").length?theme.mint:theme.gold}
+     Text {visible:wanAuto.checked&&(workspace.detectedWan.source||"").length;Layout.fillWidth:true;text:workspace.tr("المصدر: ","Source: ")+(workspace.detectedWan.source||"");color:theme.silver}
+     FgCombo {id:wanManual;objectName:"wanManualSelector";visible:!wanAuto.checked||!(workspace.detectedWan.name||"").length;Layout.fillWidth:true;model:routerTools.wanCandidates;textRole:"name";currentIndex:-1;LayoutMirroring.enabled:false}
+     Text {visible:workspace.selectedWan().length>0&&workspace.selectedWan()===client.currentText;Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr("واجهة العملاء لا يمكن أن تكون هي نفسها واجهة الإنترنت.","Client interface cannot be the WAN interface.");color:theme.error;font.bold:true}
+    }
+   }
+   GridLayout {columns:2;Layout.fillWidth:true
     Text {text: workspace.tr("عنوان البوابة","Gateway CIDR"); color: theme.silver} FgField {id: gateway; text: "192.168.10.1/24"; Layout.fillWidth: true}
     Text {text: workspace.tr("شبكة العملاء","Client subnet"); color: theme.silver} FgField {id: subnet; text: "192.168.10.0/24"; Layout.fillWidth: true}
     Text {text: workspace.tr("مدى العناوين","Address pool"); color: theme.silver} FgField {id: pool; text: "192.168.10.10-192.168.10.250"; Layout.fillWidth: true}
@@ -65,15 +76,6 @@ ColumnLayout {
    }
    CheckBox {id: syncTime; checked: true; text: workspace.tr("ضبط الساعة وتفعيل NTP تلقائيًا","Set clock and enable NTP automatically")}
    CheckBox {id: replacePortal; text: workspace.tr("استبدال صفحة الدخول الموجودة","Replace existing login portal")}
-   Rectangle {Layout.fillWidth:true;implicitHeight:wanManual.visible&&wanAuto.checked?210:170;radius:14;color:theme.panel;border.color:(workspace.selectedWan().length&&workspace.selectedWan()!==client.currentText)?theme.blue:theme.error
-    ColumnLayout {anchors.fill:parent;anchors.margins:14;spacing:7
-     RowLayout {Layout.fillWidth:true;Text {text:workspace.tr("واجهة الإنترنت / WAN","Internet interface / WAN");color:theme.white;font.bold:true;Layout.fillWidth:true} CheckBox {id:wanAuto;objectName:"wanAutoSelector";checked:true;text:workspace.tr("تلقائي","Auto")}}
-     Text {visible:wanAuto.checked;Layout.fillWidth:true;wrapMode:Text.Wrap;text:(workspace.detectedWan.name||"").length?workspace.tr("✓ تم اكتشاف واجهة الإنترنت تلقائيًا: ","✓ Auto detected WAN: ")+(workspace.detectedWan.name||""):workspace.tr("تعذر تحديد واجهة الإنترنت تلقائيًا. ألغِ تلقائي واخترها يدويًا.","WAN could not be detected automatically. Turn off Auto and choose it manually.");color:(workspace.detectedWan.name||"").length?theme.mint:theme.gold}
-     Text {visible:wanAuto.checked&&(workspace.detectedWan.source||"").length;Layout.fillWidth:true;text:workspace.tr("المصدر: ","Source: ")+(workspace.detectedWan.source||"");color:theme.silver}
-     FgCombo {id:wanManual;objectName:"wanManualSelector";visible:!wanAuto.checked||!(workspace.detectedWan.name||"").length;Layout.fillWidth:true;model:routerTools.wanCandidates;textRole:"name";currentIndex:-1;LayoutMirroring.enabled:false}
-     Text {visible:workspace.selectedWan().length>0&&workspace.selectedWan()===client.currentText;Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr("واجهة العملاء لا يمكن أن تكون هي نفسها واجهة الإنترنت.","Client interface cannot be the WAN interface.");color:theme.error;font.bold:true}
-    }
-   }
    Text {visible:!workspace.selectedWan().length;Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.error;text:workspace.tr("حدد واجهة الإنترنت قبل بدء إعداد HotSpot.","Select the Internet interface before HotSpot setup.")}
    Text {visible:workspace.selectedWan().length>0&&!routerTools.wanHasRoute(workspace.selectedWan());Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.gold;text:workspace.tr("الواجهة المختارة لا تبدو متصلة بمسار افتراضي للإنترنت.","No active default route on the selected WAN.")}
    RowLayout {Layout.fillWidth:true;FgButton {Layout.fillWidth:true;text: workspace.tr("معاينة خطة HotSpot","Preview HotSpot plan"); enabled: !routerTools.busy&&workspace.hotspotInputValid(); onClicked: {workspace.reviewedInput=workspace.inputKey();routerTools.planHotspot({interface:client.currentText,wan:workspace.selectedWan(),gateway:gateway.text,network:subnet.text,pool:pool.text,dnsName:dnsName.text,synchronizeTime:syncTime.checked,replacePortal:replacePortal.checked,design:workspace.design()})}} FgButton {Layout.fillWidth:true;text: workspace.tr("خطة جمع منافذ العملاء","Preview client bridge"); enabled: !routerTools.busy&&workspace.hotspotInputValid(); onClicked: routerTools.planPorts(client.currentText,workspace.selectedWan())}}
@@ -84,7 +86,7 @@ ColumnLayout {
      Text {text:workspace.tr("البوابة / الشبكة","Gateway / network");color:theme.muted} Text {text:gateway.text+"  •  "+subnet.text;color:theme.white}
      Text {text:workspace.tr("مدى العناوين","Pool");color:theme.muted} Text {text:pool.text;color:theme.white}
      Text {text:workspace.tr("اسم الدخول","Login DNS");color:theme.muted} Text {text:dnsName.text;color:theme.white}
-     Text {text:"NAT / HotSpot";color:theme.muted} Text {text:workspace.tr("إعادة استخدام الموجود وإنشاء الناقص فقط","Reuse existing; create missing only");color:theme.mint}
+     Text {text:"NAT / HotSpot";color:theme.muted} Text {text:"NAT: "+workspace.tr(routerTools.planSummary.natExisting?"موجود":"سيتم إنشاؤه",routerTools.planSummary.natExisting?"Existing":"Will create")+" • HotSpot: "+workspace.tr(routerTools.planSummary.hotspotExisting?"موجود":"سيتم إنشاؤه",routerTools.planSummary.hotspotExisting?"Existing":"Will create");color:theme.mint}
     }
    }
    Repeater {model: routerTools.changes; Text {required property var modelData; text: modelData.label+" • /"+modelData.menu+"/"+modelData.action; color: theme.gold; wrapMode: Text.Wrap; Layout.fillWidth: true}}
