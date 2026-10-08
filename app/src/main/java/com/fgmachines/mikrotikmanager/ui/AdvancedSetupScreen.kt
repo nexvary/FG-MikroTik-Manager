@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -34,7 +35,7 @@ fun AdvancedSetupScreen(
     arabic: Boolean, snapshot: DashboardSnapshot?, manager: AdvancedRouterManager?, hotspot: HotspotManager?,
     batches: List<SavedVoucherBatch>, onRefresh: () -> Unit, onAdmin: (RouterAdminModule) -> Unit,
     onTerminal: () -> Unit, onManualNetwork: () -> Unit, modifier: Modifier = Modifier,
-    initialPanel: String = "home", demo: Boolean = false
+    initialPanel: String = "home", demo: Boolean = false, demoWanAvailable: Boolean = true
 ) {
     val context = LocalContext.current; val scope = rememberCoroutineScope()
     val vault = remember(manager) { RouterChangeVault(context, manager?.routerKey ?: "preview") }
@@ -80,14 +81,14 @@ fun AdvancedSetupScreen(
     fun freshSecret() = UUID.randomUUID().toString().replace("-", "")
     suspend fun protectedBackup(password: String): String { val file = manager!!.backup(password); vault.rememberBackup(file,password); record("إنشاء نسخة احتياطية", "Create encrypted backup", true,file); return file }
     fun checkNetwork(next: String) { openPanel(next); run("فحص الشبكة", "Inspect network", false) { report = manager!!.inspect(request?.interfaceName, true); label("اكتمل الفحص", "Inspection completed") } }
-    fun startWizard() { openPanel("wizard"); wizardStep=0; plan=null; wanAuto=true; request=report?.let { manager?.suggestion(it) } }
+    fun startWizard() { openPanel("wizard"); wizardStep=0; plan=null; wanAuto=true; request=report?.let { manager?.suggestion(it) } ?: request }
     LaunchedEffect(manager) {
         if (manager != null) run("فحص جاهزية الراوتر", "Router readiness", false) { report=manager.inspect(deep=true); backups=manager.listBackups(); label("تم الفحص", "Checked") }
         if (demo) {
-            val rows=mapOf("interface" to listOf(mapOf("name" to "bridge-clients","running" to "true")), "ip/address" to listOf(mapOf("interface" to "bridge-clients","address" to "192.168.10.1/24")), "system/resource" to listOf(mapOf("free-hdd-space" to "25000000","cpu-load" to "3","free-memory" to "100000000","total-memory" to "128000000")), "system/clock" to listOf(mapOf("date" to "2026-10-01", "time" to "22:10:00")))
+            val rows=mapOf("interface" to listOf(mapOf("name" to "fg-clients","type" to "bridge","running" to "true"),mapOf("name" to "ether1","type" to "ether","running" to "true")), "ip/address" to listOf(mapOf("interface" to "fg-clients","address" to "192.168.10.1/24")), "ip/route" to if(demoWanAvailable) listOf(mapOf("dst-address" to "0.0.0.0/0","active" to "true","gateway" to "192.168.1.1","immediate-gw" to "192.168.1.1%ether1")) else emptyList(), "system/resource" to listOf(mapOf("free-hdd-space" to "25000000","cpu-load" to "3","free-memory" to "100000000","total-memory" to "128000000")), "system/clock" to listOf(mapOf("date" to "2026-10-01", "time" to "22:10:00")))
             val fake = object: com.fgmachines.mikrotikmanager.network.RouterOsTransport { override suspend fun read(menu:String)=emptyList<RouterRow>();override suspend fun create(menu:String,attributes:RouterRow)=emptyList<RouterRow>();override suspend fun execute(command:String,attributes:RouterRow)=emptyList<RouterRow>();override fun close(){} }
-            report=AdvancedRouterManager(fake).evaluate(rows,client="bridge-clients")
-            request=ClientSetupRequest("bridge-clients","192.168.10.1/24","192.168.10.0/24","192.168.10.10-192.168.10.250","wifi.local")
+            report=AdvancedRouterManager(fake).evaluate(rows,client="fg-clients")
+            request=ClientSetupRequest("fg-clients","192.168.10.1/24","192.168.10.0/24","192.168.10.10-192.168.10.250","wifi.local",wanInterface=if(demoWanAvailable) "ether1" else "")
         }
     }
     LaunchedEffect(panel,wizardStep,request) {
@@ -226,11 +227,11 @@ fun AdvancedSetupScreen(
                     val selected=request?.wanInterface.orEmpty()
                     AdvancedCard {
                         Text(label("واجهة الإنترنت / WAN", "Internet interface / WAN"),color=FgWhite,fontWeight=FontWeight.Bold)
-                        Row { Checkbox(wanAuto,{ auto -> wanAuto=auto;request=request?.copy(wanInterface=if(auto) detected?.interfaceName.orEmpty() else "");plan=null });Text(label("اكتشاف تلقائي", "Auto detect"),color=FgSilver) }
+                        Row { Checkbox(wanAuto,{ auto -> wanAuto=auto;request=request?.copy(wanInterface=if(auto) detected?.interfaceName.orEmpty() else "");plan=null },modifier=Modifier.testTag("wanAuto"));Text(label("اكتشاف تلقائي", "Auto detect"),color=FgSilver) }
                         if(wanAuto) Text(if(selected.isNotBlank()) label("تم اكتشاف واجهة الإنترنت تلقائيًا: ","Internet interface detected: ")+selected else label("تعذر تحديد واجهة الإنترنت تلقائيًا. اختر الوضع اليدوي.","WAN detection failed. Choose Manual."),color=if(selected.isBlank()) FgAmber else FgMint)
                         if(!wanAuto) {
                             Box {
-                                OutlinedButton(onClick={wanMenu=true},enabled=!busy,modifier=Modifier.fillMaxWidth()) { Text(selected.ifBlank { label("اختيار واجهة الإنترنت", "Choose WAN interface") }) }
+                                OutlinedButton(onClick={wanMenu=true},enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("wanManual")) { Text(selected.ifBlank { label("اختيار واجهة الإنترنت", "Choose WAN interface") }) }
                                 DropdownMenu(expanded=wanMenu,onDismissRequest={wanMenu=false}) {
                                     report?.let { WanResolver.candidates(it.tables) }.orEmpty().forEach { row -> val name=row["name"].orEmpty()
                                         DropdownMenuItem(text={Text(name)},onClick={request=request?.copy(wanInterface=name);wanMenu=false;plan=null})
@@ -308,6 +309,11 @@ fun AdvancedSetupScreen(
 private fun friendlyAdvancedError(message: String,arabic: Boolean): String {
     if(!arabic)return message.ifBlank{"Operation could not be completed; check connection and permissions."}
     return when {
+        message.contains("WAN interface missing",true)->"حدد واجهة الإنترنت قبل بدء إعداد HotSpot."
+        message.contains("No active default route",true)->"الواجهة المختارة لا تبدو متصلة بمسار افتراضي للإنترنت."
+        message.contains("WAN and client",true)->"واجهة العملاء لا يمكن أن تكون واجهة الإنترنت نفسها."
+        message.contains("Selected WAN",true)->"واجهة الإنترنت المختارة معطلة أو غير موجودة."
+        message.contains("WAN route changed",true)->"تغيّر مسار الإنترنت بعد معاينة الخطة؛ أعد الفحص والمراجعة."
         message.contains("management connection",true)->"أنت متصل عبر شبكة العملاء المراد تعديلها. اتصل بالراوتر من شبكة الإنترنت الرئيسية أولًا حتى نحافظ على اتصال الإدارة أثناء تجهيز المنافذ."
         message.contains("firewall rules",true)->"توجد قواعد حماية مرتبطة بمنفذ العملاء مباشرة؛ لا يمكن نقلها تلقائيًا دون مراجعة حتى لا تتعطل الشبكة."
         message.contains("clock",true)||message.contains("time synchronization",true)->"لم نتمكن من تأكيد ضبط الساعة أو تفعيل المزامنة. تأكد من صحة وقت الهاتف وصلاحية الحساب؛ لن نعرض الساعة جاهزة دون تحقق."
