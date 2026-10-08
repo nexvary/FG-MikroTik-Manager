@@ -59,6 +59,8 @@ fun AdvancedSetupScreen(
     var tools by remember { mutableStateOf<String?>(null) }
     var wizardStep by rememberSaveable { mutableStateOf(0) }
     var request by remember { mutableStateOf<ClientSetupRequest?>(null) }
+    var wanAuto by rememberSaveable { mutableStateOf(true) }
+    var wanMenu by remember { mutableStateOf(false) }
     var plan by remember { mutableStateOf<PreparationPlan?>(null) }
     var restoreFile by remember { mutableStateOf<String?>(null) }
     var restorePassword by remember { mutableStateOf("") }
@@ -78,7 +80,7 @@ fun AdvancedSetupScreen(
     fun freshSecret() = UUID.randomUUID().toString().replace("-", "")
     suspend fun protectedBackup(password: String): String { val file = manager!!.backup(password); vault.rememberBackup(file,password); record("إنشاء نسخة احتياطية", "Create encrypted backup", true,file); return file }
     fun checkNetwork(next: String) { openPanel(next); run("فحص الشبكة", "Inspect network", false) { report = manager!!.inspect(request?.interfaceName, true); label("اكتمل الفحص", "Inspection completed") } }
-    fun startWizard() { openPanel("wizard"); wizardStep=0; plan=null; request=report?.let { manager?.suggestion(it) } }
+    fun startWizard() { openPanel("wizard"); wizardStep=0; plan=null; wanAuto=true; request=report?.let { manager?.suggestion(it) } }
     LaunchedEffect(manager) {
         if (manager != null) run("فحص جاهزية الراوتر", "Router readiness", false) { report=manager.inspect(deep=true); backups=manager.listBackups(); label("تم الفحص", "Checked") }
         if (demo) {
@@ -88,7 +90,7 @@ fun AdvancedSetupScreen(
             request=ClientSetupRequest("bridge-clients","192.168.10.1/24","192.168.10.0/24","192.168.10.10-192.168.10.250","wifi.local")
         }
     }
-    LaunchedEffect(panel,wizardStep) {
+    LaunchedEffect(panel,wizardStep,request) {
         if (panel=="wizard" && wizardStep==5 && request!=null && manager!=null) run("مراجعة خطة الإعداد", "Preview setup plan", false) { plan=manager.plan(request!!); label("الخطة جاهزة للمراجعة", "Plan ready for review") }
     }
     BackHandler(enabled = tools != null || panel != "home") {
@@ -220,12 +222,31 @@ fun AdvancedSetupScreen(
             if(wizardStep==0) {
                 item { Text(label("تم اقتراح شبكة العملاء تلقائيًا. يمكنك متابعة الإعداد بالقيمة المختارة أو تغييرها.", "Customer network detected automatically; continue with the selection or change it."), color=FgSilver) }
                 item {
-                    val detectedWan=report?.wanInterface.orEmpty()
-                    Text(label("واجهة الإنترنت المكتشفة: ", "Detected WAN: ") + detectedWan.ifBlank { label("غير محددة", "Not detected") } + report?.wanSource?.takeIf { it.isNotBlank() }?.let { " • $it" }.orEmpty(), color=if(detectedWan.isBlank()) FgAmber else FgMint)
+                    val detected=report?.let { AdvancedRouterManager.detectWan(it.tables,request?.interfaceName.orEmpty()) }
+                    val selected=request?.wanInterface.orEmpty()
+                    AdvancedCard {
+                        Text(label("واجهة الإنترنت / WAN", "Internet interface / WAN"),color=FgWhite,fontWeight=FontWeight.Bold)
+                        Row { Checkbox(wanAuto,{ auto -> wanAuto=auto;request=request?.copy(wanInterface=if(auto) detected?.interfaceName.orEmpty() else "");plan=null });Text(label("اكتشاف تلقائي", "Auto detect"),color=FgSilver) }
+                        if(wanAuto) Text(if(selected.isNotBlank()) label("تم اكتشاف واجهة الإنترنت تلقائيًا: ","Internet interface detected: ")+selected else label("تعذر تحديد واجهة الإنترنت تلقائيًا. اختر الوضع اليدوي.","WAN detection failed. Choose Manual."),color=if(selected.isBlank()) FgAmber else FgMint)
+                        if(!wanAuto) {
+                            Box {
+                                OutlinedButton(onClick={wanMenu=true},enabled=!busy,modifier=Modifier.fillMaxWidth()) { Text(selected.ifBlank { label("اختيار واجهة الإنترنت", "Choose WAN interface") }) }
+                                DropdownMenu(expanded=wanMenu,onDismissRequest={wanMenu=false}) {
+                                    report?.let { WanResolver.candidates(it.tables) }.orEmpty().forEach { row -> val name=row["name"].orEmpty()
+                                        DropdownMenuItem(text={Text(name)},onClick={request=request?.copy(wanInterface=name);wanMenu=false;plan=null})
+                                    }
+                                }
+                            }
+                        }
+                        if(selected.isBlank()) Text(label("حدد واجهة الإنترنت قبل بدء إعداد HotSpot.","Select the Internet interface before HotSpot setup."),color=FgAmber)
+                        if(selected.isNotBlank()&&selected==request?.interfaceName) Text(label("واجهة العملاء لا يمكن أن تكون واجهة الإنترنت نفسها.","WAN and client interface are the same."),color=FgAmber)
+                        if(selected.isNotBlank()&&report?.let{WanResolver.hasRoute(it.tables,selected)}!=true) Text(label("الواجهة المختارة لا تبدو متصلة بمسار افتراضي للإنترنت.","No active default route on selected WAN."),color=FgAmber)
+                        if(details&&detected!=null) Text("Source: ${detected.source}\nConfidence: ${detected.confidence}\nGateway: ${detected.gateway}\nImmediate gateway: ${detected.immediateGateway}\nParent: ${detected.parentInterface}",color=FgSilver)
+                    }
                 }
                 item { Text(label("اختر شبكة العملاء. لا تختَر منفذ الإنترنت أو اتصال الإدارة الحالي؛ تشغيل HotSpot قد يفصل الهاتف.", "Select the client network. Avoid the internet or current management interface; enabling HotSpot may disconnect this phone."),color=FgAmber) }
                 items(report?.let { RouterAutomation.clientCandidates(it) }.orEmpty()) { row ->
-                    val name=row["name"].orEmpty();OutlinedButton(onClick={ request=manager?.suggestion(report!!,name) ?: request?.copy(interfaceName=name) },modifier=Modifier.fillMaxWidth()) { Text((if(request?.interfaceName==name) "✓ " else "")+name) }
+                    val name=row["name"].orEmpty();OutlinedButton(onClick={ request=(manager?.suggestion(report!!,name) ?: request?.copy(interfaceName=name))?.let { it.copy(wanInterface=if(wanAuto) AdvancedRouterManager.detectWan(report!!.tables,name).interfaceName else request?.wanInterface.orEmpty()) };plan=null },modifier=Modifier.fillMaxWidth()) { Text((if(request?.interfaceName==name) "✓ " else "")+name) }
                 }
             }
             request?.let { req ->
@@ -247,6 +268,9 @@ fun AdvancedSetupScreen(
                 if(wizardStep in listOf(5,6)) item {
                     plan?.let { proposed -> AdvancedCard {
                         Text(label("سيتم تنفيذ:", "Planned changes:"),color=FgWhite)
+                        Text("${proposed.request.interfaceName} → ${proposed.request.wanInterface}\nGateway: ${proposed.request.gatewayCidr}\nNetwork: ${proposed.request.networkCidr}\nPool: ${proposed.request.poolRange}\nLogin DNS: ${proposed.request.dnsName}",color=FgSilver)
+                        Text("NAT: "+if(proposed.changes.any{it.menu=="ip/firewall/nat"}) label("سيتم إنشاؤه","Will create") else label("موجود","Existing"),color=FgMint)
+                        Text("HotSpot: "+if(proposed.changes.any{it.menu=="ip/hotspot"&&it.command=="add"}) label("سيتم إنشاؤه","Will create") else label("موجود","Existing"),color=FgMint)
                         if(proposed.request.synchronizeTime) Text(label("• ضبط الوقت والتاريخ تلقائيًا وتفعيل المزامنة بالإنترنت", "• Set clock automatically and enable continuous NTP"),color=FgSilver)
                         proposed.changes.forEach { Text("• "+if(arabic) it.ar else it.en,color=FgSilver) }
                         if(proposed.installPortal) Text(label("• تثبيت صفحة العملاء في مجلد جديد", "• Install customer portal into a new directory"),color=FgSilver)
@@ -254,7 +278,7 @@ fun AdvancedSetupScreen(
                         Text(label("سيتم حفظ Backup مشفّر أولًا. لن يتم تعديل اتصال الإنترنت أو المديرين أو قواعد المشاركة العاملة. قد ينقطع اتصال الهاتف على شبكة العملاء؛ استخدم منفذ إدارة منفصلًا. الرجوع: النسخة الاحتياطية محفوظة في تبويب الاستعادة.", "An encrypted backup is required first. WAN, administrators and existing working NAT rules are preserved. Client-network connectivity may be interrupted; use a separate management interface. Recovery: restore the saved backup from Backup & recovery."),color=FgAmber)
                     } }
                 }
-                if(wizardStep==6) item { Button(onClick={ val chosen=plan?:return@Button;confirm("تطبيق الخطة على شبكة العملاء مع حفظ Backup؟ قد ينقطع الاتصال.", "Apply the reviewed client-network plan after backup? Connectivity may be interrupted.") { run("تجهيز الراوتر للكروت", "Prepare router for vouchers",false) { val secret=freshSecret();val assets=context.assets.list("hotspot").orEmpty().associateWith { context.assets.open("hotspot/$it").bufferedReader().use{it.readText()} };val result=manager!!.apply(chosen,PortalTemplates.render(assets,design),secret,onChange={change,success,backup->record(change.ar,change.en,success,backup)}){file->vault.rememberBackup(file,secret);record("نسخة قبل إعداد الشبكة", "Backup before network setup",true,file)};report=result.readiness;record("تطبيق خطة شبكة العملاء", "Apply client setup",result.readiness.ready,result.backupName);prefs.edit().putString("design",Json.encodeToString(design)).apply();wizardStep=7;label("اكتمل التنفيذ؛ النسخة: ", "Applied; backup: ")+result.backupName } } },enabled=manager!=null&&plan!=null&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("تنفيذ", "Apply")) } }
+                if(wizardStep==6) item { Button(onClick={ val chosen=plan?:return@Button;confirm("تطبيق الخطة على شبكة العملاء مع حفظ Backup؟ قد ينقطع الاتصال.", "Apply the reviewed client-network plan after backup? Connectivity may be interrupted.") { run("تجهيز الراوتر للكروت", "Prepare router for vouchers",false) { val secret=freshSecret();val assets=context.assets.list("hotspot").orEmpty().associateWith { context.assets.open("hotspot/$it").bufferedReader().use{it.readText()} };val result=manager!!.apply(chosen,PortalTemplates.render(assets,design),secret,onChange={change,success,backup->record(change.ar,change.en,success,backup)}){file->vault.rememberBackup(file,secret);record("نسخة قبل إعداد الشبكة", "Backup before network setup",true,file)};report=result.readiness;record("تطبيق خطة شبكة العملاء", "Apply client setup",result.readiness.ready,result.backupName);prefs.edit().putString("design",Json.encodeToString(design)).apply();wizardStep=7;label("اكتمل التنفيذ؛ النسخة: ", "Applied; backup: ")+result.backupName } } },enabled=manager!=null&&plan!=null&&plan?.request==req&&!busy,modifier=Modifier.fillMaxWidth()) { Text(label("تنفيذ", "Apply")) } }
                 if(wizardStep==7) {
                     item { Text(if(report?.ready==true) label("شبكة العملاء جاهزة للكروت ✓", "Client network ready for vouchers ✓") else label("تم التنفيذ، لكن توجد نقاط تحتاج مراجعة.", "Applied, with remaining items to review."),color=if(report?.ready==true) FgMint else FgAmber);Text(label("اختبر عميل Wi-Fi فعليًا قبل توزيع الكروت.", "Test an actual Wi-Fi client before distributing vouchers."),color=FgSilver) }
                     items(report?.blockers.orEmpty()) { Text(if(arabic) it.messageAr else it.messageEn,color=FgAmber) }
@@ -262,7 +286,7 @@ fun AdvancedSetupScreen(
                 }
                 if(wizardStep<6) item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     if(wizardStep>0) OutlinedButton(onClick={wizardStep--},enabled=!busy,modifier=Modifier.weight(1f)) { Text(label("السابق", "Previous")) }
-                    Button(onClick={ if(wizardStep==4)prefs.edit().putString("design",Json.encodeToString(design)).apply();wizardStep++ },enabled=!busy&&req.interfaceName.isNotBlank()&&(wizardStep!=5||plan!=null),modifier=Modifier.weight(1f)) { Text(label("التالي", "Next")) }
+                    Button(onClick={ if(wizardStep==4)prefs.edit().putString("design",Json.encodeToString(design)).apply();wizardStep++ },enabled=!busy&&req.interfaceName.isNotBlank()&&req.wanInterface.isNotBlank()&&req.wanInterface!=req.interfaceName&&report?.let{WanResolver.hasRoute(it.tables,req.wanInterface)}==true&&(wizardStep!=5||plan!=null),modifier=Modifier.weight(1f)) { Text(label("التالي", "Next")) }
                 } }
             }
         }

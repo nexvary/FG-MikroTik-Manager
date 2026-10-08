@@ -40,11 +40,12 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
   auto index=std::make_shared<int>(0);auto step=std::make_shared<std::function<void()>>();
   *step=[&,w,index,step]{
    const QStringList pages{"home","accesspoints","settings","business","radius","router","diagnostics","commerce","vouchers","tools","monitor","transfer","billing","about"};
-   if(*index>=pages.size()*2+18){app.exit(0);return;}
-   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool hotspotProof=extra>=14;const bool routerReview=extra>=6&&extra<14;const bool ar=hotspotProof?(extra%2==0):routerReview?(extra%2==0):*index>=pages.size();auto page=hotspotProof?QString(extra<16?"hotspot-wan-auto":"hotspot-wan-manual"):routerReview?QString(extra<8?"router-discovery":extra<10?"router-compact":extra<12?"router-saved":"router-discovery-details"):terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
+   if(*index>=pages.size()*2+26){app.exit(0);return;}
+   const int extra=*index-pages.size()*2;const bool terminal=extra==0;const bool hotspotProof=extra>=14;const bool routerReview=extra>=6&&extra<14;const bool ar=hotspotProof?(extra%2==0):routerReview?(extra%2==0):*index>=pages.size();auto page=hotspotProof?QString(extra<16?"hotspot-wan-auto":extra<18?"hotspot-wan-manual":extra<20?"hotspot-wan-failed":extra<22?"hotspot-wan-validation":extra<24?"hotspot-plan":"hotspot-ready"):routerReview?QString(extra<8?"router-discovery":extra<10?"router-compact":extra<12?"router-saved":"router-discovery-details"):terminal?QString("terminal"):extra==1?QString("business-editor"):extra==2?QString("voucher-preview"):extra==3?QString("router-editor"):extra==4?QString("subscribers"):extra==5?QString("online"):pages[*index%pages.size()];
    if(hotspotProof){
     QMetaObject::invokeMethod(w,"closeReviewDialogs");w->setProperty("arabic",ar);w->setProperty("page","tools");
-    if(!QMetaObject::invokeMethod(w,"showHotspotProof",Q_ARG(QVariant,extra>=16))){app.exit(25);return;}
+    routerTools.loadUiProofFixture(extra>=18&&extra<22);
+    if(!QMetaObject::invokeMethod(w,"showHotspotProof",Q_ARG(QVariant,(extra-14)/2))){app.exit(25);return;}
     w->resize(1280,800);
    }
    else if(routerReview){
@@ -59,7 +60,11 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
    QTimer::singleShot(800,&app,[&,w,index,step,page,ar,terminal,routerReview,hotspotProof]{
     if(hotspotProof){
      auto automatic=w->findChild<QQuickItem*>("wanAutoSelector");
-     if(!automatic||automatic->property("checked").toBool()!=(page=="hotspot-wan-auto")){qWarning()<<"WAN proof mode mismatch";app.exit(26);return;}
+     if(!automatic||automatic->property("checked").toBool()!=(page=="hotspot-wan-auto"||page=="hotspot-wan-failed"||page=="hotspot-plan"||page=="hotspot-ready")){qWarning()<<"WAN proof mode mismatch";app.exit(26);return;}
+     auto apply=w->findChild<QQuickItem*>("hotspotApplyButton");
+     if(!apply||apply->isEnabled()!=(page=="hotspot-ready")){qWarning()<<"WAN apply validation mismatch"<<page;app.exit(27);return;}
+     if(page=="hotspot-wan-auto"&&routerTools.detectWanFor("fg-clients").value("name").toString()!="ether1"){app.exit(28);return;}
+     if(page=="hotspot-wan-failed"&&!routerTools.detectWanFor("fg-clients").isEmpty()){app.exit(29);return;}
     }
     if(routerReview){
      auto results=w->findChild<QQuickItem*>("discoveryResultsList");

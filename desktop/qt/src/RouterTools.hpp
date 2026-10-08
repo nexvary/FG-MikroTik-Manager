@@ -13,6 +13,7 @@ class RouterTools:public QObject{
  Q_PROPERTY(QVariantList changes READ changes NOTIFY changed)
  Q_PROPERTY(QVariantList backups READ backups NOTIFY changed)
  Q_PROPERTY(QVariantList interfaces READ interfaces NOTIFY changed)
+ Q_PROPERTY(QVariantList wanCandidates READ wanCandidates NOTIFY changed)
  Q_PROPERTY(QVariantList clientInterfaces READ clientInterfaces NOTIFY changed)
  Q_PROPERTY(QVariantMap wanDetection READ wanDetection NOTIFY changed)
  Q_PROPERTY(QVariantList dhcpNetworks READ dhcpNetworks NOTIFY changed)
@@ -28,6 +29,10 @@ public:
  QVariantList interfaces()const{return tables["interface"].toArray().toVariantList();}
  QVariantList clientInterfaces()const;
  QVariantMap wanDetection()const;
+ QVariantList wanCandidates()const;
+ Q_INVOKABLE QVariantMap detectWanFor(QString client)const;
+ Q_INVOKABLE bool wanHasRoute(QString name)const;
+ Q_INVOKABLE bool hotspotPlanMatches(QJsonObject request)const;
  QVariantList dhcpNetworks()const{return client->authorized()?tables["ip/dhcp-server/network"].toArray().toVariantList():QVariantList{};}
  QVariantList users()const;
  QVariantList activeSessions()const{return client->authorized()&&client->connected()?Protocol::redact(tables["ip/hotspot/active"]).toArray().toVariantList():QVariantList{};}
@@ -42,7 +47,7 @@ public:
  static QJsonObject pingEvidence(QJsonArray rows);
  static QJsonObject renderPortal(QJsonObject design);
  Q_INVOKABLE void inspect(QString clientInterface={});
- void loadUiProofFixture();
+ void loadUiProofFixture(bool noWan=false);
  Q_INVOKABLE void refreshSubscribers();
  Q_INVOKABLE void planHotspot(QJsonObject request);
  Q_INVOKABLE void planPorts(QString client,QString wan);

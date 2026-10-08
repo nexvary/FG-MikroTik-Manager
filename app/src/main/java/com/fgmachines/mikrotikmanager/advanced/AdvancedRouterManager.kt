@@ -16,7 +16,7 @@ data class ReadinessCheck(val key: String, val ar: String, val en: String, val s
 data class PingEvidence(val sent: Int, val received: Int, val latencyMs: Double?) {
     val lossPercent get() = if (sent > 0) 100 * (sent - received) / sent else null
 }
-data class WanDetection(val interfaceName: String = "", val source: String = "", val distance: Int? = null, val routingTable: String = "")
+data class WanDetection(val interfaceName: String = "", val source: String = "", val distance: Int? = null, val routingTable: String = "", val confidence: String = "", val gateway: String = "", val immediateGateway: String = "", val parentInterface: String = "")
 data class ReadinessReport(val tables: Map<String, List<RouterRow>>, val checks: List<ReadinessCheck>, val clientInterface: String, val wanInterface: String, val internet: PingEvidence?, val signature: String, val unavailable: Set<String> = emptySet(), val readErrors: Map<String, String> = emptyMap(), val wanSource: String = "") {
     val required = setOf("route", "wan", "nat", "dns", "client", "ip", "dhcp", "dhcp-network", "pool", "hotspot", "profile", "files", "api")
     val blockers get() = checks.filter { it.key in required && it.state != CheckState.READY }
@@ -26,14 +26,14 @@ data class ReadinessReport(val tables: Map<String, List<RouterRow>>, val checks:
     fun rows(menu: String) = tables[menu].orEmpty()
     fun check(key: String) = checks.firstOrNull { it.key == key }
 }
-data class ClientSetupRequest(val interfaceName: String, val gatewayCidr: String, val networkCidr: String, val poolRange: String, val dnsName: String, val replacePortal: Boolean = false, val synchronizeTime: Boolean = true)
+data class ClientSetupRequest(val interfaceName: String, val gatewayCidr: String, val networkCidr: String, val poolRange: String, val dnsName: String, val replacePortal: Boolean = false, val synchronizeTime: Boolean = true, val wanInterface: String = "")
 data class ConfigurationChange(val menu: String, val command: String, val attributes: Map<String, String>, val ar: String, val en: String, val undo: Map<String, String>? = null)
 data class PreparationPlan(val request: ClientSetupRequest, val changes: List<ConfigurationChange>, val profileName: String, val installPortal: Boolean, val signature: String)
 data class PreparationResult(val backupName: String, val changes: Int, val portalDirectory: String?, val readiness: ReadinessReport)
 
 /** Diagnostics and reviewed repairs over the existing authenticated transport. */
 class AdvancedRouterManager(private val transport: RouterOsTransport, val routerKey: String = "router") {
-    private val menus = listOf("system/resource", "system/clock", "interface", "interface/bridge", "interface/bridge/port", "interface/vlan", "ip/dhcp-client", "interface/pppoe-client", "interface/list/member", "ip/address", "ip/route", "ip/firewall/nat", "ip/firewall/filter", "ip/dns", "ip/dhcp-server", "ip/dhcp-server/network", "ip/pool", "ip/hotspot", "ip/hotspot/profile", "ip/hotspot/user/profile", "ip/service", "user", "system/scheduler", "file")
+    private val menus = listOf("system/resource", "system/clock", "interface", "interface/bridge", "interface/bridge/port", "interface/vlan", "interface/ethernet", "interface/lte", "ip/dhcp-client", "interface/pppoe-client", "interface/list/member", "ip/address", "ip/route", "ip/firewall/nat", "ip/firewall/filter", "ip/dns", "ip/dhcp-server", "ip/dhcp-server/network", "ip/pool", "ip/hotspot", "ip/hotspot/profile", "ip/hotspot/user/profile", "ip/service", "user", "system/scheduler", "file")
     suspend fun inspect(client: String? = null, deep: Boolean = true): ReadinessReport {
         val tables = linkedMapOf<String, List<RouterRow>>()
         val errors = mutableSetOf<String>()
@@ -55,7 +55,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         fun rows(menu: String) = tables[menu].orEmpty()
         val route = rows("ip/route").filter { it["dst-address"] == "0.0.0.0/0" && enabled(it) && it["active"] in listOf("true", "yes") }
             .minWithOrNull(compareBy<RouterRow>({ if (it["routing-table"].orEmpty().let { table -> table.isBlank() || table.equals("main", true) }) 0 else 1 }, { it["distance"]?.toIntOrNull() ?: 1 }))
-        val wanDetection = detectWan(tables)
+        val wanDetection = detectWan(tables, client.orEmpty())
         val resolvedWan = wanDetection.interfaceName
         val selected = client?.takeIf { rows("interface").any { row -> row["name"] == it } }
             ?: rows("ip/hotspot").firstOrNull()?.get("interface")
@@ -74,7 +74,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         val profile = rows("ip/hotspot/profile").firstOrNull { it["name"] == hotspot?.get("profile") }
         val loginFiles = profile != null && portalFilesPresent(profile, rows("file"))
         val dns = rows("ip/dns").firstOrNull().orEmpty()
-        val nat = rows("ip/firewall/nat").any { servesClientNat(it, address?.get("address").orEmpty(), resolvedWan) }
+        val nat = rows("ip/firewall/nat").any { servesClientNat(it, address?.get("address").orEmpty(), resolvedWan, tables) }
         val resource = rows("system/resource").firstOrNull().orEmpty()
         val api = rows("ip/service").any { enabled(it) && it["name"] in listOf("api", "api-ssl", "www-ssl", "www") }
         val checks = mutableListOf<ReadinessCheck>()
@@ -138,7 +138,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         var first = base + 10; var last = minOf(base+250, broadcast-1)
         if (first > last) first=base+1
         if (gateway in first..last) { if(gateway-first > last-gateway) last=gateway-1 else first=gateway+1 }
-        return ClientSetupRequest(interfaceName, cidr, networkOf(cidr), numberIp(first)+"-"+numberIp(last), "wifi.local")
+        return ClientSetupRequest(interfaceName, cidr, networkOf(cidr), numberIp(first)+"-"+numberIp(last), "wifi.local", wanInterface=detectWan(report.tables,interfaceName).interfaceName)
     }
 
     suspend fun plan(request: ClientSetupRequest): PreparationPlan {
@@ -152,7 +152,11 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         val report = inspect(request.interfaceName, deep = false)
         require(report.unavailable.intersect(setOf("interface", "ip/address", "ip/route", "ip/pool", "ip/dns", "ip/dhcp-server", "ip/dhcp-server/network", "ip/hotspot", "ip/hotspot/profile", "file", "ip/firewall/nat")).isEmpty()) { "Configuration could not be verified; check account permissions before setup" }
         require(report.rows("interface").any { it["name"] == request.interfaceName && enabled(it) }) { "Choose an enabled client interface" }
-        require(request.interfaceName != report.wanInterface || report.wanInterface.isBlank()) { "The internet interface cannot be used as the client network" }
+        val internet = request.wanInterface.ifBlank { detectWan(report.tables, request.interfaceName).interfaceName }
+        require(internet.isNotBlank()) { "حدد واجهة الإنترنت قبل بدء إعداد HotSpot. / WAN interface missing" }
+        require(WanResolver.candidates(report.tables).any { it["name"] == internet }) { "Selected WAN is disabled or missing" }
+        require(request.interfaceName != internet) { "WAN and client interface are the same" }
+        require(WanResolver.hasRoute(report.tables,internet)) { "الواجهة المختارة لا تبدو متصلة بمسار افتراضي للإنترنت. / No active default route on selected WAN" }
         require(report.rows("ip/address").none { it["interface"] != request.interfaceName && validCidr(it["address"].orEmpty()) && overlaps(it["address"].orEmpty(), request.networkCidr) }) { "Client subnet overlaps another interface; choose a separate network" }
         val changes = mutableListOf<ConfigurationChange>()
         val tag = "fg-mtm-" + UUID.randomUUID().toString().take(8)
@@ -173,7 +177,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         else if (!enabled(dhcp)) set("ip/dhcp-server", mapOf(".id" to dhcp.getValue(".id"), "disabled" to "no"), mapOf(".id" to dhcp.getValue(".id"), "disabled" to "yes"), "تفعيل توزيع العناوين الحالي", "Enable existing DHCP server")
         else require(dhcp["invalid"] !in listOf("yes", "true")) { "Existing DHCP is invalid; review its interface before automatic changes" }
         if (dhcp != null && pool == null) set("ip/dhcp-server", mapOf(".id" to dhcp.getValue(".id"), "address-pool" to poolName), mapOf(".id" to dhcp.getValue(".id"), "address-pool" to dhcp["address-pool"].orEmpty()), "ربط مدى العناوين الحالي", "Assign the missing DHCP pool")
-        if (report.rows("ip/firewall/nat").none { servesClientNat(it, request.networkCidr, report.wanInterface) } && report.wanInterface.isNotBlank()) add("ip/firewall/nat", mapOf("chain" to "srcnat", "action" to "masquerade", "src-address" to request.networkCidr, "out-interface" to report.wanInterface, "comment" to "FG MTM client internet"), "إضافة مشاركة الإنترنت لشبكة العملاء فقط", "Add missing NAT for the client subnet only")
+        if (report.rows("ip/firewall/nat").none { servesClientNat(it, request.networkCidr, internet, report.tables) } && internet.isNotBlank()) add("ip/firewall/nat", mapOf("chain" to "srcnat", "action" to "masquerade", "src-address" to request.networkCidr, "out-interface" to internet, "comment" to "FG MTM client internet"), "إضافة مشاركة الإنترنت لشبكة العملاء فقط", "Add missing NAT for the client subnet only")
         val server = report.rows("ip/hotspot").firstOrNull { it["interface"] == request.interfaceName }
         val profile = report.rows("ip/hotspot/profile").firstOrNull { it["name"] == server?.get("profile") }
         val profileName = profile?.get("name") ?: tag
@@ -183,13 +187,14 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
         if (server == null) add("ip/hotspot", mapOf("name" to tag, "interface" to request.interfaceName, "profile" to profileName, "address-pool" to poolName, "disabled" to "no"), "إنشاء خادم دخول العملاء الناقص", "Create missing HotSpot server")
         else if (!enabled(server)) set("ip/hotspot", mapOf(".id" to server.getValue(".id"), "disabled" to "no"), mapOf(".id" to server.getValue(".id"), "disabled" to "yes"), "تفعيل دخول العملاء الحالي", "Enable existing HotSpot server")
         else require(server["invalid"] !in listOf("true", "yes")) { "Existing HotSpot is invalid; inspect the client interface" }
-        return PreparationPlan(request, changes, profileName, request.replacePortal || profile == null || !portalFilesPresent(profile, report.rows("file")), report.signature)
+        return PreparationPlan(request.copy(wanInterface=internet), changes, profileName, request.replacePortal || profile == null || !portalFilesPresent(profile, report.rows("file")), report.signature)
     }
 
     suspend fun apply(plan: PreparationPlan, portalFiles: Map<String, String>, backupPassword: String, onChange: (ConfigurationChange, Boolean, String) -> Unit = { _,_,_ -> }, onBackup: (String) -> Unit = {}): PreparationResult {
         val current = inspect(plan.request.interfaceName, deep = false)
-        require(current.unavailable.isEmpty()) { "Configuration read failed; reconnect and review a fresh plan" }
+        require(current.unavailable.intersect(setOf("interface","ip/route","ip/address","ip/firewall/nat","ip/dns","ip/dhcp-server","ip/dhcp-server/network","ip/hotspot","ip/hotspot/profile","file")).isEmpty()) { "Configuration read failed; reconnect and review a fresh plan" }
         require(current.signature == plan.signature) { "Router configuration changed after preview; review a fresh plan" }
+        require(plan.request.wanInterface != plan.request.interfaceName && WanResolver.hasRoute(current.tables,plan.request.wanInterface)) { "WAN route changed after preview; review a fresh plan" }
         val backup = backup(backupPassword)
         onBackup(backup)
         if (plan.request.synchronizeTime) synchronizeClock()
@@ -284,29 +289,7 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
     }
     companion object {
         fun enabled(row: RouterRow) = row["disabled"] !in listOf("yes", "true")
-        fun detectWan(tables: Map<String, List<RouterRow>>): WanDetection {
-            fun rows(menu: String) = tables[menu].orEmpty()
-            val interfaces = rows("interface").associateBy { it["name"].orEmpty() }
-            data class Candidate(val name: String, val source: String, val score: Int, val distance: Int?, val table: String)
-            var best: Candidate? = null
-            fun consider(name: String, source: String, score: Int, distance: Int? = null, table: String = "") {
-                val clean = name.trim(); val row = interfaces[clean] ?: return
-                if (clean.isBlank() || !enabled(row)) return
-                val candidate = Candidate(clean, source, score, distance, table); val current = best
-                if (current == null || candidate.score > current.score || (candidate.score == current.score && (candidate.distance ?: Int.MAX_VALUE) < (current.distance ?: Int.MAX_VALUE))) best = candidate
-            }
-            rows("ip/route").filter { it["dst-address"] == "0.0.0.0/0" && enabled(it) && it["active"] in listOf("true", "yes") }.forEach { route ->
-                val distance = route["distance"]?.toIntOrNull()?.coerceAtLeast(0) ?: 1
-                val table = route["routing-table"].orEmpty(); val immediate = route["immediate-gw"].orEmpty().substringBefore(',').trim(); val gateway = route["gateway"].orEmpty().substringBefore(',').trim()
-                val name = when { '%' in immediate -> immediate.substringAfter('%').trim(); immediate in interfaces -> immediate; '%' in gateway -> gateway.substringAfter('%').trim(); gateway in interfaces -> gateway; else -> "" }
-                consider(name, "Active default route", 1000 - distance.coerceAtMost(100) - if (table.isNotBlank() && !table.equals("main", true)) 50 else 0, distance, table)
-            }
-            rows("ip/dhcp-client").filter { enabled(it) && it["status"].equals("bound", true) }.forEach { consider(it["interface"].orEmpty(), "Bound DHCP client", 850) }
-            rows("interface/pppoe-client").filter { enabled(it) && (it["running"] in listOf("true", "yes") || it["status"].equals("connected", true) || it["status"].equals("bound", true)) }.forEach { consider(it["interface"].orEmpty(), "Connected PPPoE client", 830) }
-            rows("interface/list/member").filter { it["list"].equals("WAN", true) }.forEach { consider(it["interface"].orEmpty(), "RouterOS WAN interface list", 760) }
-            rows("interface").filter { enabled(it) && it["running"] in listOf("true", "yes") && (it["type"].equals("lte", true) || it["name"].orEmpty().startsWith("lte", true)) }.forEach { consider(it["name"].orEmpty(), "Running LTE interface", 650) }
-            return best?.let { WanDetection(it.name, it.source, it.distance, it.table) } ?: WanDetection()
-        }
+        fun detectWan(tables: Map<String, List<RouterRow>>, client: String = ""): WanDetection = WanResolver.detect(tables, client)
         fun portalFilesPresent(profile: RouterRow, files: List<RouterRow>): Boolean {
             return PortalPaths.present(profile, files)
         }
@@ -338,10 +321,13 @@ class AdvancedRouterManager(private val transport: RouterOsTransport, val router
             val text = tables.filterKeys { it !in listOf("system/resource", "system/clock", "system/scheduler") }.toSortedMap().map { (menu, rows) -> menu + rows.filter { row -> row["dynamic"] !in listOf("true", "yes") && (menu != "file" || row["name"].orEmpty().substringAfterLast('/') in setOf("login.html", "status.html", "md5.js")) }.map { row -> row.filterKeys { it in keys }.toSortedMap().toString() }.sorted().joinToString() }.joinToString()
             return MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
         }
-        private fun servesClientNat(row: RouterRow, cidr: String, wan: String): Boolean {
+        private fun servesClientNat(row: RouterRow, cidr: String, wan: String, tables: Map<String, List<RouterRow>> = emptyMap()): Boolean {
             if (!enabled(row) || row["chain"] != "srcnat" || row["action"] !in listOf("masquerade", "src-nat")) return false
             val output = row["out-interface"].orEmpty()
             if (output.isNotBlank() && wan.isNotBlank() && output != wan) return false
+            val list = row["out-interface-list"].orEmpty()
+            if (list.isNotBlank() && tables["interface/list/member"].orEmpty().none { it["list"] == list && it["interface"] == wan && enabled(it) }) return false
+            if (listOf("dst-address", "src-address-list", "dst-address-list", "protocol", "dst-port", "src-port", "connection-mark", "routing-mark", "to-addresses", "to-ports").any { !row[it].isNullOrBlank() }) return false
             val source = row["src-address"].orEmpty()
             return source.isBlank() || source == "0.0.0.0/0" || (validCidr(source) && validCidr(cidr) && belongs(cidr.substringBefore('/'), source) && source.substringAfter('/').toInt() <= cidr.substringAfter('/').toInt())
         }

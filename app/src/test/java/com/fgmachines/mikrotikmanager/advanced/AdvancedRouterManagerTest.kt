@@ -56,7 +56,7 @@ class AdvancedRouterManagerTest {
         assertEquals("ether2", detected.interfaceName); assertEquals("Bound DHCP client", detected.source)
     }
     @Test fun wanDetectionSupportsPppoeLteAndCurrentFgClientsFixture() {
-        val pppoe = mapOf("interface" to listOf(mapOf("name" to "pppoe-out1", "running" to "true"), mapOf("name" to "fg-clients", "running" to "true")), "interface/pppoe-client" to listOf(mapOf("interface" to "pppoe-out1", "running" to "true")))
+        val pppoe = mapOf("interface" to listOf(mapOf("name" to "pppoe-out1", "running" to "true"), mapOf("name" to "fg-clients", "running" to "true")), "interface/pppoe-client" to listOf(mapOf("name" to "pppoe-out1", "interface" to "ether1", "running" to "true")))
         assertEquals("pppoe-out1", AdvancedRouterManager.detectWan(pppoe).interfaceName)
         val lte = mapOf("interface" to listOf(mapOf("name" to "lte1", "type" to "lte", "running" to "true"), mapOf("name" to "fg-clients", "type" to "bridge", "running" to "true")))
         assertEquals("lte1", AdvancedRouterManager.detectWan(lte).interfaceName)
@@ -106,6 +106,48 @@ class AdvancedRouterManagerTest {
         assertFalse(report.ready);assertTrue(report.voucherReady)
         tables["ip/hotspot"]=emptyList()
         assertFalse(AdvancedRouterManager(Fake()).evaluate(tables).voucherReady)
+    }
+    @Test fun numericGatewayV6AndLogicalWanMatrix() {
+        for(name in listOf("ether1","wan","pppoe-out1","lte1","vlan-wan","sfp1","bridge-wan")) {
+            val t=mapOf("interface" to listOf(mapOf("name" to name),mapOf("name" to "fg-clients")),
+                "ip/route" to listOf(mapOf("dst-address" to "0.0.0.0/0","active" to "true","gateway" to "192.168.1.1")),
+                "ip/address" to listOf(mapOf("interface" to name,"address" to "192.168.1.2/24")))
+            assertEquals(name,AdvancedRouterManager.detectWan(t,"fg-clients").interfaceName)
+            assertTrue(WanResolver.hasRoute(t,name))
+            assertEquals("",AdvancedRouterManager.detectWan(t,name).interfaceName)
+            val v6=t+("ip/route" to listOf(mapOf("dst-address" to "0.0.0.0/0","active" to "true","gateway-status" to "192.168.1.1 reachable via $name")))
+            assertEquals(name,AdvancedRouterManager.detectWan(v6).interfaceName)
+        }
+    }
+    @Test fun ambiguityInactiveDisabledAndMainTablePriority() {
+        val t=mapOf("interface" to listOf(mapOf("name" to "ether1"),mapOf("name" to "ether2")),"ip/route" to listOf(
+            mapOf("dst-address" to "0.0.0.0/0","active" to "true","gateway" to "ether1","routing-table" to "main","distance" to "90"),
+            mapOf("dst-address" to "0.0.0.0/0","active" to "true","gateway" to "ether2","routing-table" to "vpn","distance" to "1")))
+        assertEquals("ether1",AdvancedRouterManager.detectWan(t).interfaceName)
+        val equal=t+("ip/route" to t.getValue("ip/route").map{it+("routing-table" to "main")+("distance" to "1")})
+        assertEquals("",AdvancedRouterManager.detectWan(equal).interfaceName)
+        assertEquals("",AdvancedRouterManager.detectWan(t+("ip/route" to t.getValue("ip/route").map{it+("active" to "false")})).interfaceName)
+        assertEquals("",AdvancedRouterManager.detectWan(t+("interface" to t.getValue("interface").map{it+("disabled" to "true")})).interfaceName)
+    }
+    @Test fun manualWanValidationAndNatReuse() = runTest {
+        val t=Fake(configured());val m=AdvancedRouterManager(t)
+        val req=ClientSetupRequest("ether2","192.168.10.1/24","192.168.10.0/24","192.168.10.10-192.168.10.250","wifi.local",wanInterface="ether1")
+        assertTrue(m.plan(req).changes.none{it.menu=="ip/firewall/nat"})
+        t.tables["ip/firewall/nat"]=listOf(mapOf("chain" to "srcnat","action" to "masquerade","out-interface-list" to "WAN"))
+        t.tables["interface/list/member"]=listOf(mapOf("list" to "WAN","interface" to "ether1"))
+        assertTrue(m.plan(req).changes.none{it.menu=="ip/firewall/nat"})
+        t.tables["ip/firewall/nat"]=emptyList()
+        assertEquals(1,m.plan(req).changes.count{it.menu=="ip/firewall/nat"})
+        t.tables["ip/route"]=emptyList()
+        try {m.plan(req);fail("No active default route must block setup")} catch(_:IllegalArgumentException){}
+        try {m.plan(req.copy(wanInterface=""));fail("Empty WAN must block setup")} catch(_:IllegalArgumentException){}
+    }
+    @Test fun activeRouteChangeAbortsBeforeBackup() = runTest {
+        val t=Fake(configured());val m=AdvancedRouterManager(t)
+        val plan=m.plan(ClientSetupRequest("ether2","192.168.10.1/24","192.168.10.0/24","192.168.10.10-192.168.10.250","wifi.local"))
+        t.tables["ip/route"]=t.tables.getValue("ip/route").map{it+("active" to "false")}
+        try {m.apply(plan,emptyMap(),"abcdefghijklmnop");fail("Inactive WAN must abort")} catch(_:IllegalArgumentException){}
+        assertTrue(t.calls.isEmpty())
     }
     private fun configured(): Map<String,List<RouterRow>> = mapOf(
         "interface" to listOf(mapOf("name" to "ether1","running" to "true"),mapOf("name" to "ether2","running" to "true")),

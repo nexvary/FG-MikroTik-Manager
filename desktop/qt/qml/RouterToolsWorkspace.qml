@@ -6,6 +6,11 @@ ColumnLayout {
  id: workspace
  property bool arabic: true
  property string inspectedInterface:""
+ property string reviewedInput:""
+ property var detectedWan: {var revision=routerTools.wanDetection;return routerTools.detectWanFor(client.currentText)}
+ function currentRequest(){return {interface:client.currentText,wan:workspace.selectedWan(),gateway:gateway.text,network:subnet.text,pool:pool.text,dnsName:dnsName.text,synchronizeTime:syncTime.checked,replacePortal:replacePortal.checked,design:workspace.design()}}
+ function planReady(){var revision=routerTools.changes;return routerTools.hotspotPlanMatches(currentRequest())}
+ function inputKey(){return JSON.stringify([client.currentText,selectedWan(),gateway.text,subnet.text,pool.text,dnsName.text,syncTime.checked,replacePortal.checked,design()])}
  signal connectRouter()
  property alias currentTab:tabs.currentIndex
  property alias onlineOnly:subscribers.onlineOnly
@@ -13,11 +18,11 @@ ColumnLayout {
  property string logoDataUri:routerTools.portalDesign.logoDataUri||""
  property var selectedNetworks: []
  function showTab(index,online){tabs.currentIndex=index;subscribers.onlineOnly=online||false}
- function showWanProof(manual){tabs.currentIndex=1;wanAuto.checked=!manual}
+ function showWanProof(mode){tabs.currentIndex=1;wanAuto.checked=(mode===0||mode===2||mode>=4);wanManual.currentIndex=(mode===1)?0:-1;backupPassword.text=mode===5?"fixture-backup-only":"";workspace.reviewedInput=mode>=4?workspace.inputKey():"";hotspotScroll.contentItem.contentY=mode>=4?Math.max(0,hotspotContent.height-hotspotScroll.height):0}
  function tr(ar,en){return arabic?ar:en}
  function comboValue(control){var item=control.model[control.currentIndex];return item&&item.value!==undefined?item.value:control.currentText}
- function selectedWan(){return wanAuto.checked?(routerTools.wanDetection.name||""):wanManual.currentText}
- function hotspotInputValid(){return client.currentText.length>0&&selectedWan().length>0&&client.currentText!==selectedWan()&&gateway.text.length>0&&subnet.text.length>0&&pool.text.length>0}
+ function selectedWan(){return wanAuto.checked&&(workspace.detectedWan.name||"").length?(workspace.detectedWan.name||""):wanManual.currentText}
+ function hotspotInputValid(){var revision=routerTools.wanDetection;return client.currentText.length>0&&selectedWan().length>0&&client.currentText!==selectedWan()&&routerTools.wanHasRoute(selectedWan())&&gateway.text.length>0&&subnet.text.length>0&&pool.text.length>0}
  function design(){return {networkName:networkName.text,supportPhone:support.text,welcome:welcome.text,color:color.text,terms:terms.text,website:website.text,logoDataUri:workspace.logoDataUri}}
  Theme {id: theme}
  FileDialog {id:logoPicker;fileMode:FileDialog.OpenFile;nameFilters:["Images (*.png *.jpg *.jpeg *.webp)"];onAccepted:{let logo=routerTools.portalLogo(selectedFile);if(logo.length)workspace.logoDataUri=logo}}
@@ -49,7 +54,7 @@ ColumnLayout {
    }
    ScrollView {Layout.fillWidth:true;Layout.fillHeight:true;clip: true; ListView {model: routerTools.checks; implicitWidth: workspace.width-24; spacing: 6; delegate: Rectangle {required property var modelData; width: ListView.view.width; height: 82; radius: 12; color: theme.panel; RowLayout {anchors.fill: parent; anchors.margins: 14; Text {text: workspace.tr(modelData.ar||modelData.check,modelData.en||modelData.check); color: theme.white; Layout.fillWidth: true;wrapMode:Text.Wrap} Text {text: (modelData.detail||"").includes(" • ")?(modelData.detail||"").split(" • ")[workspace.arabic?0:1]:modelData.detail; color: theme.muted; Layout.fillWidth: true; elide: Text.ElideRight} Text {text: modelData.state; color: modelData.state==="READY"?theme.mint:theme.gold}}}}}
   }
-  ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 12
+  ScrollView {id:hotspotScroll;clip: true; ColumnLayout {id:hotspotContent;width: workspace.width-24; spacing: 12
    Text {text: workspace.tr("اختر شبكة العملاء. الخطة تستبعد واجهة الإنترنت وتحافظ على البوابة الحالية.","Select the client network. The plan excludes WAN and preserves the current gateway."); color: theme.silver; wrapMode: Text.Wrap; Layout.fillWidth: true}
    GridLayout {columns: 2; Layout.fillWidth: true
     Text {text: workspace.tr("واجهة العملاء","Client interface"); color: theme.silver} FgCombo {id: client; model: routerTools.clientInterfaces; textRole: "name"; Layout.fillWidth: true;onActivated:workspace.inspectedInterface=currentText}
@@ -60,26 +65,30 @@ ColumnLayout {
    }
    CheckBox {id: syncTime; checked: true; text: workspace.tr("ضبط الساعة وتفعيل NTP تلقائيًا","Set clock and enable NTP automatically")}
    CheckBox {id: replacePortal; text: workspace.tr("استبدال صفحة الدخول الموجودة","Replace existing login portal")}
-   Rectangle {Layout.fillWidth:true;implicitHeight:wanAuto.checked?112:150;radius:14;color:theme.panel;border.color:(workspace.selectedWan().length&&workspace.selectedWan()!==client.currentText)?theme.blue:theme.error
+   Rectangle {Layout.fillWidth:true;implicitHeight:wanManual.visible&&wanAuto.checked?210:170;radius:14;color:theme.panel;border.color:(workspace.selectedWan().length&&workspace.selectedWan()!==client.currentText)?theme.blue:theme.error
     ColumnLayout {anchors.fill:parent;anchors.margins:14;spacing:7
      RowLayout {Layout.fillWidth:true;Text {text:workspace.tr("واجهة الإنترنت / WAN","Internet interface / WAN");color:theme.white;font.bold:true;Layout.fillWidth:true} CheckBox {id:wanAuto;objectName:"wanAutoSelector";checked:true;text:workspace.tr("تلقائي","Auto")}}
-     Text {visible:wanAuto.checked;Layout.fillWidth:true;wrapMode:Text.Wrap;text:(routerTools.wanDetection.name||"").length?workspace.tr("✓ تم اكتشاف واجهة الإنترنت تلقائيًا: ","✓ Auto detected WAN: ")+(routerTools.wanDetection.name||""):workspace.tr("تعذر تحديد واجهة الإنترنت تلقائيًا. ألغِ تلقائي واخترها يدويًا.","WAN could not be detected automatically. Turn off Auto and choose it manually.");color:(routerTools.wanDetection.name||"").length?theme.mint:theme.gold}
-     Text {visible:wanAuto.checked&&(routerTools.wanDetection.source||"").length;Layout.fillWidth:true;text:workspace.tr("المصدر: ","Source: ")+(routerTools.wanDetection.source||"");color:theme.silver}
-     FgCombo {id:wanManual;objectName:"wanManualSelector";visible:!wanAuto.checked;Layout.fillWidth:true;model:routerTools.interfaces;textRole:"name"}
+     Text {visible:wanAuto.checked;Layout.fillWidth:true;wrapMode:Text.Wrap;text:(workspace.detectedWan.name||"").length?workspace.tr("✓ تم اكتشاف واجهة الإنترنت تلقائيًا: ","✓ Auto detected WAN: ")+(workspace.detectedWan.name||""):workspace.tr("تعذر تحديد واجهة الإنترنت تلقائيًا. ألغِ تلقائي واخترها يدويًا.","WAN could not be detected automatically. Turn off Auto and choose it manually.");color:(workspace.detectedWan.name||"").length?theme.mint:theme.gold}
+     Text {visible:wanAuto.checked&&(workspace.detectedWan.source||"").length;Layout.fillWidth:true;text:workspace.tr("المصدر: ","Source: ")+(workspace.detectedWan.source||"");color:theme.silver}
+     FgCombo {id:wanManual;objectName:"wanManualSelector";visible:!wanAuto.checked||!(workspace.detectedWan.name||"").length;Layout.fillWidth:true;model:routerTools.wanCandidates;textRole:"name";currentIndex:-1;LayoutMirroring.enabled:false}
      Text {visible:workspace.selectedWan().length>0&&workspace.selectedWan()===client.currentText;Layout.fillWidth:true;wrapMode:Text.Wrap;text:workspace.tr("واجهة العملاء لا يمكن أن تكون هي نفسها واجهة الإنترنت.","Client interface cannot be the WAN interface.");color:theme.error;font.bold:true}
     }
    }
-   RowLayout {Layout.fillWidth:true;FgButton {Layout.fillWidth:true;text: workspace.tr("معاينة خطة HotSpot","Preview HotSpot plan"); enabled: !routerTools.busy&&workspace.hotspotInputValid(); onClicked: routerTools.planHotspot({interface:client.currentText,wan:workspace.selectedWan(),gateway:gateway.text,network:subnet.text,pool:pool.text,dnsName:dnsName.text,synchronizeTime:syncTime.checked,replacePortal:replacePortal.checked,design:workspace.design()})} FgButton {Layout.fillWidth:true;text: workspace.tr("خطة جمع منافذ العملاء","Preview client bridge"); enabled: !routerTools.busy&&workspace.hotspotInputValid(); onClicked: routerTools.planPorts(client.currentText,workspace.selectedWan())}}
-   Rectangle {visible:routerTools.changes.length>0;Layout.fillWidth:true;implicitHeight:126;radius:14;color:theme.raised;border.color:"#315366"
+   Text {visible:!workspace.selectedWan().length;Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.error;text:workspace.tr("حدد واجهة الإنترنت قبل بدء إعداد HotSpot.","Select the Internet interface before HotSpot setup.")}
+   Text {visible:workspace.selectedWan().length>0&&!routerTools.wanHasRoute(workspace.selectedWan());Layout.fillWidth:true;wrapMode:Text.Wrap;color:theme.gold;text:workspace.tr("الواجهة المختارة لا تبدو متصلة بمسار افتراضي للإنترنت.","No active default route on the selected WAN.")}
+   RowLayout {Layout.fillWidth:true;FgButton {Layout.fillWidth:true;text: workspace.tr("معاينة خطة HotSpot","Preview HotSpot plan"); enabled: !routerTools.busy&&workspace.hotspotInputValid(); onClicked: {workspace.reviewedInput=workspace.inputKey();routerTools.planHotspot({interface:client.currentText,wan:workspace.selectedWan(),gateway:gateway.text,network:subnet.text,pool:pool.text,dnsName:dnsName.text,synchronizeTime:syncTime.checked,replacePortal:replacePortal.checked,design:workspace.design()})}} FgButton {Layout.fillWidth:true;text: workspace.tr("خطة جمع منافذ العملاء","Preview client bridge"); enabled: !routerTools.busy&&workspace.hotspotInputValid(); onClicked: routerTools.planPorts(client.currentText,workspace.selectedWan())}}
+   Rectangle {visible:routerTools.changes.length>0;Layout.fillWidth:true;implicitHeight:190;radius:14;color:theme.raised;border.color:"#315366"
     GridLayout {anchors.fill:parent;anchors.margins:12;columns:2;columnSpacing:18;rowSpacing:5
      Text {text:workspace.tr("واجهة العملاء","Client interface");color:theme.muted} Text {text:client.currentText;color:theme.white}
      Text {text:workspace.tr("واجهة الإنترنت","WAN");color:theme.muted} Text {text:workspace.selectedWan();color:theme.mint}
      Text {text:workspace.tr("البوابة / الشبكة","Gateway / network");color:theme.muted} Text {text:gateway.text+"  •  "+subnet.text;color:theme.white}
      Text {text:workspace.tr("مدى العناوين","Pool");color:theme.muted} Text {text:pool.text;color:theme.white}
+     Text {text:workspace.tr("اسم الدخول","Login DNS");color:theme.muted} Text {text:dnsName.text;color:theme.white}
+     Text {text:"NAT / HotSpot";color:theme.muted} Text {text:workspace.tr("إعادة استخدام الموجود وإنشاء الناقص فقط","Reuse existing; create missing only");color:theme.mint}
     }
    }
    Repeater {model: routerTools.changes; Text {required property var modelData; text: modelData.label+" • /"+modelData.menu+"/"+modelData.action; color: theme.gold; wrapMode: Text.Wrap; Layout.fillWidth: true}}
-   RowLayout {FgField {id: backupPassword; echoMode: TextInput.Password; placeholderText: workspace.tr("كلمة مرور النسخة الاحتياطية (12+)","Router backup password (12+)"); Layout.fillWidth: true} FgButton {text: workspace.tr("تأكيد الخطة وبدء الإعداد","Confirm plan & configure"); enabled: backupPassword.text.length>=12&&!routerTools.busy&&workspace.hotspotInputValid(); onClicked: {routerTools.apply(backupPassword.text);backupPassword.clear()}}}
+   RowLayout {FgField {id: backupPassword; echoMode: TextInput.Password; placeholderText: workspace.tr("كلمة مرور النسخة الاحتياطية (12+)","Router backup password (12+)"); Layout.fillWidth: true} FgButton {objectName:"hotspotApplyButton";text: workspace.tr("تأكيد الخطة وبدء الإعداد","Confirm plan & configure"); enabled: backupPassword.text.length>=12&&!routerTools.busy&&workspace.hotspotInputValid()&&workspace.reviewedInput===workspace.inputKey()&&workspace.planReady(); onClicked: {routerTools.apply(backupPassword.text);backupPassword.clear()}}}
   }}
   SubscriberWorkspace {id:subscribers;arabic:workspace.arabic}
   ScrollView {clip: true; ColumnLayout {width: workspace.width-24; spacing: 14
