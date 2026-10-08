@@ -49,7 +49,7 @@ class HotspotWanUiTest {
         compose.onNode(hasText("fg-clients") and hasAnyAncestor(isPopup())).performClick()
         scrollText("WAN and client interface are the same.").assertIsDisplayed()
         scrollText("Next").assertIsNotEnabled()
-        scrollTag("wanManual").performClick();compose.onNodeWithText("ether1").performClick()
+        scrollTag("wanManual").performClick();compose.onNode(hasText("ether1") and hasAnyAncestor(isPopup())).performClick()
         scrollText("Next").assertIsEnabled()
     }
     @Test fun noRouteShowsFailureAndBlocksSetup() {
@@ -57,7 +57,7 @@ class HotspotWanUiTest {
         capture("hotspot-wan-failed-en.png")
         scrollText("Next").assertIsNotEnabled()
         scrollTag("wanAuto").performClick()
-        scrollTag("wanManual").performClick();compose.onNodeWithText("ether1").performClick()
+        scrollTag("wanManual").performClick();compose.onNode(hasText("ether1") and hasAnyAncestor(isPopup())).performClick()
         scrollText("No active default route on selected WAN.").assertIsDisplayed()
         scrollText("Next").assertIsNotEnabled()
     }
