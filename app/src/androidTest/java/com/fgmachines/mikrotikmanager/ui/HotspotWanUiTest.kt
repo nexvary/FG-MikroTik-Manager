@@ -25,6 +25,12 @@ class HotspotWanUiTest {
         } } }
         compose.waitForIdle()
     }
+    private fun scrollNode(matcher: SemanticsMatcher): SemanticsNodeInteraction {
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(matcher)
+        return compose.onNode(matcher).performScrollTo()
+    }
+    private fun scrollText(value: String) = scrollNode(hasText(value))
+    private fun scrollTag(value: String) = scrollNode(hasTestTag(value))
     private fun capture(name:String) {
         compose.waitForIdle();val i=InstrumentationRegistry.getInstrumentation();i.waitForIdleSync()
         android.os.SystemClock.sleep(750)
@@ -32,32 +38,32 @@ class HotspotWanUiTest {
         i.targetContext.openFileOutput(name,0).use { check(b.compress(Bitmap.CompressFormat.PNG,100,it)) };b.recycle()
     }
     @Test fun detectsEther1AndAllowsNext() {
-        open();compose.onNodeWithText("Internet interface detected: ether1").performScrollTo().assertIsDisplayed()
+        open();scrollText("Internet interface detected: ether1").assertIsDisplayed()
         capture("hotspot-wan-auto-en.png")
-        compose.onNodeWithText("Next").performScrollTo().assertIsEnabled()
+        scrollText("Next").assertIsEnabled()
     }
     @Test fun manualSelectorRequiresExplicitChoiceAndRejectsClientWan() {
-        open();compose.onNodeWithTag("wanAuto").performScrollTo().performClick()
-        compose.onNodeWithText("Next").performScrollTo().assertIsNotEnabled()
-        compose.onNodeWithTag("wanManual").performScrollTo().performClick();capture("hotspot-wan-manual-en.png")
+        open();scrollTag("wanAuto").performClick()
+        scrollText("Next").assertIsNotEnabled()
+        scrollTag("wanManual").performClick();capture("hotspot-wan-manual-en.png")
         compose.onNode(hasText("fg-clients") and hasAnyAncestor(isPopup())).performClick()
-        compose.onNodeWithText("WAN and client interface are the same.").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Next").performScrollTo().assertIsNotEnabled()
-        compose.onNodeWithTag("wanManual").performScrollTo().performClick();compose.onNodeWithText("ether1").performClick()
-        compose.onNodeWithText("Next").performScrollTo().assertIsEnabled()
+        scrollText("WAN and client interface are the same.").assertIsDisplayed()
+        scrollText("Next").assertIsNotEnabled()
+        scrollTag("wanManual").performClick();compose.onNodeWithText("ether1").performClick()
+        scrollText("Next").assertIsEnabled()
     }
     @Test fun noRouteShowsFailureAndBlocksSetup() {
-        open(false);compose.onNodeWithText("WAN detection failed. Choose Manual.").performScrollTo().assertIsDisplayed()
+        open(false);scrollText("WAN detection failed. Choose Manual.").assertIsDisplayed()
         capture("hotspot-wan-failed-en.png")
-        compose.onNodeWithText("Next").performScrollTo().assertIsNotEnabled()
-        compose.onNodeWithTag("wanAuto").performScrollTo().performClick()
-        compose.onNodeWithTag("wanManual").performScrollTo().performClick();compose.onNodeWithText("ether1").performClick()
-        compose.onNodeWithText("No active default route on selected WAN.").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Next").performScrollTo().assertIsNotEnabled()
+        scrollText("Next").assertIsNotEnabled()
+        scrollTag("wanAuto").performClick()
+        scrollTag("wanManual").performClick();compose.onNodeWithText("ether1").performClick()
+        scrollText("No active default route on selected WAN.").assertIsDisplayed()
+        scrollText("Next").assertIsNotEnabled()
     }
     @Test fun arabicRtlDetectsEther1() {
-        open(arabic=true);compose.onNodeWithText("تم اكتشاف واجهة الإنترنت تلقائيًا: ether1").performScrollTo().assertIsDisplayed()
+        open(arabic=true);scrollText("تم اكتشاف واجهة الإنترنت تلقائيًا: ether1").assertIsDisplayed()
         capture("hotspot-wan-auto-ar.png")
-        compose.onNodeWithText("التالي").performScrollTo().assertIsEnabled()
+        scrollText("التالي").assertIsEnabled()
     }
 }
