@@ -1,5 +1,9 @@
 #include <QtTest>
 #include "RouterTools.hpp"
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QStandardPaths>
+#include <memory>
 class ToolTests:public QObject{Q_OBJECT
  QJsonObject fixture(){return {{"interface",QJsonArray{QJsonObject{{"name","ether1"},{"type","ether"},{"running","yes"}},QJsonObject{{"name","ether2"},{"type","ether"},{"running","yes"}},QJsonObject{{"name","ether3"},{"type","ether"},{"running","no"}}}},{"ip/route",QJsonArray{QJsonObject{{"dst-address","0.0.0.0/0"},{"active","yes"},{"immediate-gw","192.168.1.1%ether1"}}}},{"ip/dns",QJsonArray{QJsonObject{{"servers",""},{"allow-remote-requests","no"}}}}};}
 private slots:
@@ -60,6 +64,59 @@ private slots:
  }
  void portsExcludeWanAndOccupied(){auto f=fixture();f["ip/dhcp-client"]=QJsonArray{QJsonObject{{"interface","ether1"}}};auto plan=RouterTools::portsPlan(f,"ether2","ether1","192.168.1.2");for(auto value:plan["changes"].toArray()){auto step=value.toObject();QVERIFY(step["attributes"].toObject()["interface"]!="ether1");}f["ip/firewall/filter"]=QJsonArray{QJsonObject{{"in-interface","ether2"}}};QVERIFY_EXCEPTION_THROWN(RouterTools::portsPlan(f,"ether2","ether1","192.168.1.2"),std::runtime_error);}
  void dnsPrivateOnly(){QVERIFY(RouterTools::privateSubnet("10.0.0.0/8"));QVERIFY(RouterTools::privateSubnet("172.16.0.0/12"));QVERIFY(RouterTools::privateSubnet("192.168.10.0/24"));QVERIFY(RouterTools::privateSubnet("100.64.0.0/10"));QVERIFY(!RouterTools::privateSubnet("8.8.8.0/24"));QVERIFY(!RouterTools::privateSubnet("192.168.10.1/24"));auto f=fixture();f["ip/dhcp-server/network"]=QJsonArray{QJsonObject{{".id","*1"},{"address","192.168.10.0/24"},{"dns-server","192.168.10.1"}}};auto plan=RouterTools::dnsPlan(f,{"*1"},"FAMILY");for(auto v:plan["changes"].toArray())QVERIFY(!v.toObject()["attributes"].toObject().contains("allow-remote-requests"));f["ip/dhcp-server/network"]=QJsonArray{QJsonObject{{".id","*1"},{"address","8.8.8.0/24"}}};QVERIFY_EXCEPTION_THROWN(RouterTools::dnsPlan(f,{"*1"},"FAMILY"),std::runtime_error);}
+ void portalUploadReadback_data(){
+  QTest::addColumn<bool>("corrupt");QTest::addColumn<int>("missingReads");
+  QTest::newRow("large-contents-omitted-in-normal-print")<<false<<0;
+  QTest::newRow("delayed-explicit-readback")<<false<<2;
+  QTest::newRow("corrupt-content-never-bound")<<true<<0;
+ }
+ void portalUploadReadback(){
+  QFETCH(bool,corrupt);QFETCH(int,missingReads);
+  QStandardPaths::setTestModeEnabled(true);
+  QTcpServer server;QVERIFY(server.listen(QHostAddress::LocalHost));
+  QJsonArray files{QJsonObject{{".id","*flash"},{"name","flash"},{"type","disk"}}};
+  QJsonObject profile{{".id","*P"},{"name","clients"},{"html-directory","flash/old"},{"html-directory-override",""}};
+  QJsonObject clock{{"date",QDate::currentDate().toString("yyyy-MM-dd")},{"time",QTime::currentTime().toString("HH:mm:ss")}};
+  int contentReads=0,bindings=0;bool allFilesVerifiedAtBinding=false;
+  auto assets=RouterTools::renderPortal({{"networkName",QString::fromUtf8("شبكة العملاء")}});
+  QVERIFY(assets["login.html"].toString().toUtf8().size()>4096);
+  connect(&server,&QTcpServer::newConnection,this,[&]{
+   auto peer=server.nextPendingConnection();auto buffer=std::make_shared<QByteArray>();
+   connect(peer,&QTcpSocket::readyRead,this,[&,peer,buffer]{
+    *buffer+=peer->readAll();QStringList words;
+    while(RouterCodec::takeSentence(*buffer,words)==1){
+     auto command=words.first();QJsonObject attrs;for(auto word:words.mid(1)){auto split=word.indexOf('=',1);if(split>0)attrs[word.mid(1,split-1)]=word.mid(split+1);}
+     QJsonArray rows;
+     if(command=="/system/backup/save")files.append(QJsonObject{{"name",attrs["name"].toString()+".backup"},{"type","backup"}});
+     else if(command=="/system/clock/print")rows.append(clock);
+     else if(command=="/system/clock/set")for(auto key:attrs.keys())clock[key]=attrs[key];
+     else if(command=="/system/ntp/client/print")rows.append(QJsonObject{{"enabled","yes"}});
+     else if(command=="/system/ntp/client/servers/print")rows.append(QJsonObject{{"address","time.cloudflare.com"},{"enabled","yes"}});
+     else if(command=="/interface/print")rows.append(QJsonObject{{"name","ether1"},{"mac-address","AA:BB:CC:DD:EE:FF"}});
+     else if(command=="/ip/hotspot/profile/print")rows.append(profile);
+     else if(command=="/file/add"){
+      auto row=attrs;row[".id"]="*F"+QString::number(files.size());files.append(row);
+     }else if(command=="/file/set"){
+      for(int i=0;i<files.size();i++){auto row=files[i].toObject();if(row[".id"]==attrs[".id"]){row["contents"]=attrs["contents"];files[i]=row;}}
+     }else if(command=="/file/print"){
+      bool explicitContents=attrs[".proplist"].toString().split(',').contains("contents");
+      bool omit= !explicitContents;if(explicitContents){contentReads++;if(missingReads>0){missingReads--;omit=true;}}
+      for(auto value:files){auto row=value.toObject();if(omit)row.remove("contents");else if(corrupt&&row.contains("contents"))row["contents"]="corrupt";rows.append(row);}
+     }else if(command=="/ip/hotspot/profile/set"){
+      bindings++;auto directory=attrs["html-directory"].toString();allFilesVerifiedAtBinding=true;
+      for(auto name:assets.keys()){bool found=false;for(auto value:files){auto row=value.toObject();if(row["name"]==directory+"/"+name&&row["contents"]==assets[name])found=true;}allFilesVerifiedAtBinding&=found;}
+      for(auto key:attrs.keys())profile[key]=attrs[key];
+     }
+     QByteArray reply;for(auto value:rows){QStringList sentence{"!re"};auto row=value.toObject();for(auto key:row.keys())sentence.append("="+key+"="+row[key].toString());reply+=RouterCodec::sentence(sentence);}reply+=RouterCodec::sentence({"!done"});peer->write(reply);
+    }
+   });
+  });
+  RouterClient client;client.configure("127.0.0.1",server.serverPort(),"admin","pw","API");
+  RouterTools tools(&client);tools.installPortal("*P",{{"networkName",QString::fromUtf8("شبكة العملاء")}});
+  QTRY_VERIFY_WITH_TIMEOUT(!tools.busy(),15000);
+  if(corrupt){QCOMPARE(bindings,0);QCOMPARE(profile["html-directory"].toString(),QString("flash/old"));QVERIFY(tools.status().contains("PORTAL_UPLOAD_VERIFY_FAILED"));QVERIFY(tools.status().contains("alogin.html"));}
+  else{QCOMPARE(bindings,1);QVERIFY(allFilesVerifiedAtBinding);QVERIFY(tools.status().contains("Portal installed and verified"));QCOMPARE(contentReads,assets.size()+(QString(QTest::currentDataTag())=="delayed-explicit-readback"?2:0));}
+ }
  void portalEscapes(){auto assets=RouterTools::renderPortal({{"networkName","<script>alert(1)</script>"},{"color","#159DFF"},{"website","javascript:alert(1)"}});QVERIFY(!assets["login.html"].toString().contains("<script>alert(1)</script>"));QVERIFY(assets["login.html"].toString().contains("&lt;script&gt;"));QVERIFY(!assets["login.html"].toString().contains("javascript:alert"));QVERIFY_EXCEPTION_THROWN(RouterTools::renderPortal({{"color","red;display:none"}}),std::runtime_error);}
 };
 QTEST_MAIN(ToolTests)

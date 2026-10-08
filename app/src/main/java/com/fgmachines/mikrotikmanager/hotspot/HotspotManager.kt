@@ -103,8 +103,18 @@ class HotspotManager(private val transport: RouterOsTransport) {
             transport.create("file", mapOf("name" to path, "type" to "file"))
             val id = transport.read("file").firstOrNull { it["name"] == path }?.get(".id") ?: error("Could not create $name")
             transport.execute("/file/set", mapOf(".id" to id, "contents" to contents))
-            val saved = transport.read("file").firstOrNull { it[".id"] == id }?.get("contents")
-            require(saved == contents) { "Upload verification failed for $name; existing portal is unchanged" }
+            // A normal listing may omit contents for large files even though get can read them.
+            var saved: String? = null
+            for (attempt in 0..3) {
+                if (attempt > 0) kotlinx.coroutines.delay(200)
+                saved = transport.execute("/file/print", mapOf(".proplist" to ".id,name,contents"))
+                    .firstOrNull { it[".id"] == id }?.get("contents")
+                if (saved == contents) break
+            }
+            require(saved == contents) {
+                "Upload verification failed for $name; expected UTF-8 bytes=${contents.toByteArray().size}; " +
+                    "read UTF-8 bytes=${saved?.toByteArray()?.size ?: "missing"}; existing portal is unchanged"
+            }
         }
         // Save an explicit rollback pointer before switching. Never overwrite the owner's old files.
         val pointer = "$directory/rollback.txt"

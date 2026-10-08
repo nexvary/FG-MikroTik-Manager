@@ -26,6 +26,34 @@ class HotspotManagerTest {
         assertTrue(t.files.any{it["name"]?.endsWith("rollback.txt")==true && it["contents"]?.contains("html-directory=hotspot")==true})
         assertFalse(t.executed.any{it.first.endsWith("remove")})
     }
+    @Test fun verifiesLargeArabicFilesWhenOrdinaryListingOmitsContents() = runTest {
+        val t = Fake()
+        val files = mapOf("login.html" to "<html>" + "مرحبا".repeat(2000) + "</html>",
+            "status.html" to "status", "md5.js" to "md5", "fg.css" to "x".repeat(10418))
+        val directory = HotspotManager(t).installPortal("*P", files)
+        assertEquals(directory, t.profile["html-directory"])
+        assertEquals(files.size, t.executed.count { it.first == "/file/print" &&
+            it.second[".proplist"] == ".id,name,contents" })
+        assertFalse(t.read("file").any { it.containsKey("contents") })
+    }
+    @Test fun retriesOnlyReadbackUntilContentsBecomeVisible() = runTest {
+        val t = Fake(); t.missingReadbacks = 2
+        HotspotManager(t).installPortal("*P", mapOf("login.html" to "login", "status.html" to "status", "md5.js" to "md5"))
+        assertEquals(5, t.executed.count { it.first == "/file/print" })
+        assertEquals(4, t.executed.count { it.first == "/file/set" }) // three files and rollback pointer
+    }
+    @Test fun corruptReadbackKeepsOldPortalAndNamesFailingFile() = runTest {
+        val t = Fake(); t.corruptReadback = true
+        try {
+            HotspotManager(t).installPortal("*P", mapOf("login.html" to "x".repeat(8456), "status.html" to "status", "md5.js" to "md5"))
+            fail("Corrupt upload cannot be activated")
+        } catch (expected: IllegalArgumentException) {
+            assertTrue(expected.message!!.contains("login.html"))
+            assertTrue(expected.message!!.contains("8456"))
+        }
+        assertEquals("hotspot", t.profile["html-directory"])
+        assertFalse(t.executed.any { it.first == "/ip/hotspot/profile/set" })
+    }
     @Test fun absolutePathsAndFlashNamesResolveWithoutFalseMissingFiles() {
         val files=listOf(mapOf("name" to "flash/hotspot/login.html"),mapOf("name" to "/flash/hotspot/status.html"))
         assertTrue(PortalPaths.present(mapOf("html-directory" to "/flash/hotspot/"),files))
@@ -76,13 +104,15 @@ class HotspotManagerTest {
         val executed=mutableListOf<Pair<String,Map<String,String>>>()
         val files=mutableListOf<MutableMap<String,String>>()
         var failFile=false
+        var missingReadbacks=0
+        var corruptReadback=false
         var refuseBinding=false
         val profile=mutableMapOf(".id" to "*P","name" to "default","html-directory" to "hotspot")
         override suspend fun read(menu:String):List<Map<String,String>> = when(menu) {
             "ip/hotspot/user" -> listOf(mapOf(".id" to "*A","name" to "123456","limit-uptime" to "1h","uptime" to "12m"))
             "ip/hotspot/active" -> listOf(mapOf(".id" to "*B","user" to "123456"))
             "ip/hotspot/profile" -> listOf(profile.toMap())
-            "file" -> files
+            "file" -> files.map { it.filterKeys { key -> key != "contents" } }
             else -> emptyList()
         }
         override suspend fun create(menu:String,attributes:Map<String,String>):List<Map<String,String>> {
@@ -92,6 +122,10 @@ class HotspotManagerTest {
             executed+=command to attributes
             if(command=="/ip/hotspot/profile/set"&&!refuseBinding)profile.putAll(attributes)
             if(command=="/file/set"&&!failFile)files.first{it[".id"]==attributes[".id"]}.putAll(attributes)
+            if(command=="/file/print" && attributes[".proplist"]==".id,name,contents") {
+                if(missingReadbacks>0) { missingReadbacks--;return read("file") }
+                return files.map { row -> row.toMap().let { if(corruptReadback && it.containsKey("contents")) it+("contents" to "corrupt") else it } }
+            }
             return emptyList()
         }
         override fun close(){}
