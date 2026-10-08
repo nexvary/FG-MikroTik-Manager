@@ -61,6 +61,8 @@ int main(int argc,char **argv){QApplication app(argc,argv);if(app.arguments().co
     if(hotspotProof){
      auto automatic=w->findChild<QQuickItem*>("wanAutoSelector");
      if(!automatic||automatic->property("checked").toBool()!=(page=="hotspot-wan-auto"||page=="hotspot-wan-failed"||page=="hotspot-plan"||page=="hotspot-ready")){qWarning()<<"WAN proof mode mismatch";app.exit(26);return;}
+     auto clients=w->findChild<QQuickItem*>("hotspotClientSelector");
+     if(!clients||clients->property("currentText").toString()!="fg-clients"){qWarning()<<"Client selection changed during WAN proof";app.exit(30);return;}
      auto apply=w->findChild<QQuickItem*>("hotspotApplyButton");
      if(!apply||apply->isEnabled()!=(page=="hotspot-ready")){qWarning()<<"WAN apply validation mismatch"<<page;app.exit(27);return;}
      if(page=="hotspot-wan-auto"&&routerTools.detectWanFor("fg-clients").value("name").toString()!="ether1"){app.exit(28);return;}

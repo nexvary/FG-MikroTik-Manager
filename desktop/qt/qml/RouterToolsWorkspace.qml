@@ -57,7 +57,7 @@ ColumnLayout {
   ScrollView {id:hotspotScroll;clip: true; ColumnLayout {id:hotspotContent;width: workspace.width-24; spacing: 12
    Text {text: workspace.tr("اختر شبكة العملاء. الخطة تستبعد واجهة الإنترنت وتحافظ على البوابة الحالية.","Select the client network. The plan excludes WAN and preserves the current gateway."); color: theme.silver; wrapMode: Text.Wrap; Layout.fillWidth: true}
    GridLayout {columns: 2; Layout.fillWidth: true
-    Text {text: workspace.tr("واجهة العملاء","Client interface"); color: theme.silver} FgCombo {id: client; model: routerTools.clientInterfaces; textRole: "name"; Layout.fillWidth: true;onActivated:workspace.inspectedInterface=currentText}
+    Text {text: workspace.tr("واجهة العملاء","Client interface"); color: theme.silver} FgCombo {id: client;objectName:"hotspotClientSelector";model: routerTools.clientInterfaces; textRole: "name"; Layout.fillWidth: true;onActivated:workspace.inspectedInterface=currentText;onModelChanged:Qt.callLater(function(){for(var i=0;i<client.model.length;i++)if(client.model[i].name===workspace.inspectedInterface){client.currentIndex=i;break;}})}
    }
    Rectangle {Layout.fillWidth:true;implicitHeight:wanManual.visible&&wanAuto.checked?190:wanAuto.checked?118:144;radius:14;color:theme.panel;border.color:(workspace.selectedWan().length&&workspace.selectedWan()!==client.currentText)?theme.blue:theme.error
     ColumnLayout {anchors.fill:parent;anchors.margins:14;spacing:7

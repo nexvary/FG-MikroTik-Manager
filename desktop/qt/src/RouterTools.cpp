@@ -96,7 +96,13 @@ QVariantList RouterTools::wanCandidates()const{QVariantList result;for(auto r:ro
 QVariantMap RouterTools::detectWanFor(QString client)const{return detectWanEvidence(tables,client).toVariantMap();}
 bool RouterTools::wanHasRoute(QString name)const{return hasWanRoute(tables,name);}
 bool RouterTools::hotspotPlanMatches(QJsonObject request)const{if(pending["kind"]!="HOTSPOT")return false;auto saved=pending["request"].toObject();for(auto key:{"interface","wan","gateway","network","pool","dnsName","synchronizeTime","replacePortal"})if(saved[key]!=request[key])return false;return !saved.contains("design")||saved["design"]==request["design"];}
-QVariantList RouterTools::clientInterfaces()const{QVariantList result;auto internet=wan(tables);for(auto value:tables["interface"].toArray()){auto row=value.toObject();if(str(row,"name")==internet||!enabled(row))continue;result.append(row.toVariantMap());}return result;}
+QVariantList RouterTools::clientInterfaces()const{
+ QVariantList result;auto internet=wan(tables);auto candidates=rows(tables,"interface");QString preferred;
+ for(auto h:rows(tables,"ip/hotspot"))if(str(h,"interface")!=internet){preferred=str(h,"interface");break;}
+ if(preferred.isEmpty())for(auto bridge:rows(tables,"interface/bridge"))if(enabled(bridge)&&str(bridge,"name")!=internet){preferred=str(bridge,"name");break;}
+ std::stable_sort(candidates.begin(),candidates.end(),[&](QJsonObject a,QJsonObject b){return str(a,"name")==preferred&&str(b,"name")!=preferred;});
+ for(auto row:candidates){if(str(row,"name")==internet||!enabled(row))continue;result.append(row.toVariantMap());}return result;
+}
 namespace {
 qint64 usageNumber(QJsonValue value){bool ok=false;auto n=Protocol::jsonText(value).toLongLong(&ok);return ok&&n>=0?n:-1;}
 qint64 usageDuration(QString value){
