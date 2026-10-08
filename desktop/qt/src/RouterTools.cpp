@@ -1,4 +1,5 @@
 #include <optional>
+#include <QDebug>
 #include <QImageReader>
 #include <QImage>
 #include <QBuffer>
@@ -199,7 +200,11 @@ void RouterTools::inspect(QString selected){launch("inspect",{{"client",selected
 RouterJob RouterTools::run(QString operation,QJsonObject fields){bool nested=fields["_nested"].toBool();QString failure;QJsonArray recovery;QJsonObject plan;
  try{
   loadJournal();if(!nested&&QStringList{"clock","reboot","backup_restore","repair_dns","portal_install"}.contains(operation)){auto secret=QUuid::createUuid().toString(QUuid::WithoutBraces).remove('-');co_await run("backup",{{"password",secret},{"_nested",true}});secret.fill(QChar(0));if(operation=="portal_install")co_await run("clock",{{"_nested",true}});}if(operation=="portal_install"||operation=="portal_restore"){auto identity=co_await call("interface");tables["interface"]=identity.rows;}bool collect=QStringList{"inspect","hotspot_plan","ports_plan","dns_plan","apply","dns_restore"}.contains(operation);
-  if(collect){tables={};unavailable.clear();for(auto menu:inspectionMenus()){auto result=co_await call(menu,"print",{},false);tables[menu]=result.rows;if(!result.ok())unavailable.insert(menu);}evaluate(str(fields,operation=="inspect"?"client":"interface"));emit changed();}
+  if(collect){tables={};unavailable.clear();for(auto menu:inspectionMenus()){auto result=co_await call(menu,"print",{},false);tables[menu]=result.rows;if(!result.ok())unavailable.insert(menu);}auto selected=str(fields,operation=="inspect"?"client":"interface");evaluate(selected);
+   auto evidence=detectWanEvidence(tables,selected);
+   qInfo().noquote()<<"WAN diagnostics:"<<"Default route: 0.0.0.0/0"<<"Gateway:"<<str(evidence,"gateway")<<"Immediate gateway:"<<str(evidence,"immediateGateway")<<"Detected WAN:"<<str(evidence,"name")<<"Confidence:"<<str(evidence,"confidence")<<"Detection source:"<<str(evidence,"source")<<"Routing table:"<<str(evidence,"routingTable")<<"Distance:"<<str(evidence,"distance")<<"Parent interface:"<<str(evidence,"parentInterface");
+   if(evidence.isEmpty())qInfo().noquote()<<"WAN detection:"<<(activeDefaultRoutes(tables).isEmpty()?"No active default route":"Could not map gateway to a unique non-client interface");
+   emit changed();}
   if(operation=="subscribers"){
    tables.remove("ip/hotspot/user");tables.remove("ip/hotspot/active");unavailable.remove("ip/hotspot/active");
    auto users=co_await call("ip/hotspot/user");tables["ip/hotspot/user"]=users.rows;
